@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Suivi Entretien Véhicule</title>
+  
+  <!-- PWA & Meta tags -->
+  <meta name="description" content="Application de suivi et prédiction d'entretien pour vos véhicules">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Entretien">
+  
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- En-tête de l'application -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">🚗</div>
+        <div class="brand-text">
+          <h1>Carnet d'Entretien</h1>
+          <span>Suivi intelligent &amp; prédictif</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Barre de sélection du véhicule actif (1 à 3 véhicules) -->
+    <section class="vehicle-selector-bar" id="vehicleBar">
+      <div class="vehicle-select-wrapper">
+        <select id="vehicleSelect" class="vehicle-select" aria-label="Choisir le véhicule"></select>
+      </div>
+      <button id="btnEditVehicle" class="btn-icon" title="Modifier ce véhicule" aria-label="Modifier le véhicule">⚙️</button>
+      <button id="btnAddVehicle" class="btn-icon" title="Ajouter un véhicule (max 3)" aria-label="Ajouter un véhicule">➕</button>
+    </section>
+
+    <!-- Bannière données de démonstration -->
+    <div id="demoBanner" class="banner banner-demo hidden">
+      <div class="banner-content">
+        <span class="banner-icon">💡</span>
+        <div class="banner-text">
+          <strong>Données d'exemple actives</strong> (Renault Symbol)
+        </div>
+      </div>
+      <button id="btnDeleteDemo" class="banner-btn banner-btn-demo">Supprimer les données d'exemple</button>
+    </div>
+
+    <!-- Bannière de rappel de sauvegarde (> 30 jours) (Étape 6) -->
+    <div id="backupReminderBanner" class="banner banner-backup hidden">
+      <div class="banner-content">
+        <span class="banner-icon">💾</span>
+        <div>
+          <div class="banner-text" id="backupReminderText" style="font-weight: 700;">Pensez à sauvegarder vos données</div>
+          <div class="banner-meta" id="backupReminderMeta" style="font-size: 0.8rem; margin-top: 2px;">
+            Dernière sauvegarde : jamais effectuée
+          </div>
+        </div>
+      </div>
+      <button type="button" id="btnQuickBackup" class="banner-btn banner-btn-demo">Sauvegarder</button>
+    </div>
+
+    <!-- Bannière Statut Hors-ligne -->
+    <div id="offlineBanner" class="banner banner-offline hidden">
+      <div class="banner-content">
+        <span class="banner-icon">📴</span>
+        <div class="banner-text">Mode hors-ligne actif. Vos données restent disponibles localement.</div>
+      </div>
+    </div>
+
+    <!-- VUE 1 : TABLEAU DE BORD (DASHBOARD) -->
+    <div id="viewDashboard" class="view-screen">
+      <!-- Bannière de rappel mise à jour en retard (Stale) -->
+      <div id="staleBanner" class="banner banner-stale hidden">
+        <div class="banner-content">
+          <span class="banner-icon">⚠️</span>
+          <div class="banner-text" id="staleBannerText">
+            Mets à jour ton kilométrage (dernière mise à jour : il y a 9 jours)
+          </div>
+        </div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button id="btnFocusQuickUpdate" class="banner-btn banner-btn-stale">Mettre à jour</button>
+          <button id="btnExportRecurringReminder" class="banner-btn banner-btn-demo" title="Télécharger le rappel récurrent d'odomètre pour votre agenda (.ics)">📅 Rappel agenda</button>
+        </div>
+      </div>
+
+      <!-- Carte Odomètre / Kilométrage Actuel & Saisie Rapide -->
+      <main class="card odometer-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>Odomètre</span>
+          </div>
+          <span class="vehicle-meta-badge" id="vehicleBadge">Renault Symbol • 2015</span>
+        </div>
+
+        <div class="km-hero">
+          <span class="km-hero-label">Kilométrage actuel</span>
+          <div class="km-hero-value">
+            <span id="currentKmDisplay">0</span>
+            <span class="km-hero-unit">km</span>
+          </div>
+          <div class="km-hero-date" id="lastReadingDateDisplay">Dernier relevé : --/--/----</div>
+        </div>
+
+        <!-- Formulaire de mise à jour rapide -->
+        <div class="quick-update-box">
+          <div class="card-subtitle">Mise à jour rapide du kilométrage</div>
+          <form id="quickUpdateForm" class="quick-update-form" novalidate>
+            <input
+              type="number"
+              id="quickKmInput"
+              class="input-km"
+              placeholder="Nouveau km..."
+              inputmode="numeric"
+              min="0"
+              step="1"
+              autocomplete="off"
+              required
+            >
+            <button type="submit" class="btn-primary" id="btnSubmitKm">
+              <span>Enregistrer</span>
+            </button>
+          </form>
+
+          <!-- Message d'erreur dynamique -->
+          <div id="kmErrorBox" class="error-msg hidden">
+            <span>⚠️</span>
+            <span id="kmErrorText"></span>
+          </div>
+
+          <!-- Message de succès / confirmation -->
+          <div id="kmSuccessBox" class="success-msg hidden">
+            <span>✅</span>
+            <span id="kmSuccessText"></span>
+          </div>
+        </div>
+      </main>
+
+      <!-- Bannière de correction automatique (Étape 2) -->
+      <div id="correctionBanner" class="banner-correction hidden">
+        <div class="correction-title">
+          <span>🔄</span>
+          <span>Ajustement prédictif en temps réel</span>
+        </div>
+        <div class="correction-text" id="correctionBannerText">
+          <!-- Rempli dynamiquement lors d'un relevé -->
+        </div>
+        <div class="correction-meta" id="correctionBannerMeta">
+          Calculé à partir de vos habitudes de conduite récentes.
+        </div>
+      </div>
+
+      <!-- Bandeau de synthèse du moteur prédictif -->
+      <div class="prediction-stats-strip" id="predictionStatsStrip">
+        <div class="stat-pill">
+          <span class="stat-pill-label">Rythme quotidien</span>
+          <span class="stat-pill-val" id="statDailyRate">-- km/j</span>
+          <span class="stat-pill-sub" id="statWeeklyRate">-- km/sem</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-pill-label">Km actuel effectif</span>
+          <span class="stat-pill-val" id="statEffectiveKm">-- km</span>
+          <span class="stat-pill-sub" id="statEffectiveSub">À ce jour</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-pill-label">Précision de l'IA</span>
+          <span class="stat-pill-val" id="statAccuracy">--</span>
+          <span class="stat-pill-sub">Écart moyen constaté</span>
+        </div>
+      </div>
+
+      <!-- Section Échéances et Plan d'entretien (Étape 2 & 3) -->
+      <section class="maintenance-section" id="maintenanceSection">
+        <div class="section-header">
+          <div class="section-title">
+            <span>🛠️ Plan d'entretien</span>
+            <span class="vehicle-meta-badge" id="maintenanceCountBadge">0 élément</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button type="button" class="btn-sm btn-secondary" id="btnExportAllIcs" style="display: inline-flex; align-items: center; gap: 5px;" title="Tout exporter vers le calendrier (.ics)">
+              <span>📅</span>
+              <span>Tout exporter</span>
+            </button>
+            <button type="button" class="btn-sm" id="btnAddMaintenanceItem" style="display: inline-flex; align-items: center; gap: 4px;">
+              <span>➕</span>
+              <span>Ajouter</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Bannière Décalage Calendrier (> 7 jours) (Étape 5) -->
+        <div id="calendarShiftBanner" class="banner banner-shift hidden" style="margin-bottom: 12px;">
+          <div class="banner-content">
+            <span class="banner-icon">📅</span>
+            <div>
+              <div class="banner-text" id="calendarShiftBannerText" style="font-weight: 700;">
+                Date modifiée, ré-exporter vers le calendrier ?
+              </div>
+              <div class="banner-meta" id="calendarShiftBannerMeta" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+                Certaines échéances ont évolué de plus de 7 jours suite à votre relevé.
+              </div>
+            </div>
+          </div>
+          <button type="button" id="btnExportShiftedIcs" class="banner-btn banner-btn-shift">
+            Ré-exporter (.ics)
+          </button>
+        </div>
+
+        <!-- Filtres par statut (Étape 3) -->
+        <div class="status-filters" id="statusFilterBar" role="tablist" aria-label="Filtrer par statut">
+          <button type="button" class="filter-chip active" data-filter="all">
+            <span>Tous</span>
+            <span class="filter-chip-count" id="countFilterAll">0</span>
+          </button>
+          <button type="button" class="filter-chip" data-filter="red">
+            <span>🔴 En retard</span>
+            <span class="filter-chip-count" id="countFilterRed">0</span>
+          </button>
+          <button type="button" class="filter-chip" data-filter="orange">
+            <span>🟠 Bientôt</span>
+            <span class="filter-chip-count" id="countFilterOrange">0</span>
+          </button>
+          <button type="button" class="filter-chip" data-filter="green">
+            <span>🟢 OK</span>
+            <span class="filter-chip-count" id="countFilterGreen">0</span>
+          </button>
+          <button type="button" class="filter-chip" data-filter="grey">
+            <span>⚪ À renseigner</span>
+            <span class="filter-chip-count" id="countFilterGrey">0</span>
+          </button>
+        </div>
+
+        <!-- Grille des éléments d'entretien triés par urgence -->
+        <div class="items-grid" id="maintenanceList">
+          <!-- Injecté dynamiquement par app.js -->
+        </div>
+      </section>
+
+      <!-- Historique des relevés (kmLog) -->
+      <section class="card kmlog-card">
+        <div class="kmlog-header">
+          <div class="card-title">
+            <span>Journal des relevés (kmLog)</span>
+          </div>
+          <span class="kmlog-count" id="kmlogCountBadge">0 relevés</span>
+        </div>
+        <p class="card-subtitle">
+          Historique réel utilisé pour calibrer le moteur de prédiction. Une nouvelle saisie le même jour remplace le relevé de la journée.
+        </p>
+        <div class="kmlog-list" id="kmlogList">
+          <!-- Rempli dynamiquement en JS -->
+        </div>
+      </section>
+    </div> <!-- /viewDashboard -->
+
+    <!-- VUE 2 : HABITUDES DE CONDUITE (ÉCRAN 3b) -->
+    <div id="viewHabitudes" class="habitudes-screen hidden">
+      <!-- En-tête Habitudes -->
+      <div class="habitudes-hero">
+        <div class="habitudes-hero-header">
+          <h2 class="habitudes-hero-title">📊 Habitudes &amp; Apprentissage</h2>
+          <p class="card-subtitle">
+            Analyse continue de votre conduite à partir de vos relevés réels.
+          </p>
+        </div>
+
+        <!-- Grille des 4 indicateurs clés -->
+        <div class="habitudes-kpi-grid">
+          <div class="kpi-card">
+            <span class="kpi-card-label">Moyenne journalière</span>
+            <span class="kpi-card-value" id="kpiDaily">-- km</span>
+            <span class="kpi-card-sub">par jour</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-card-label">Moyenne hebdomadaire</span>
+            <span class="kpi-card-value" id="kpiWeekly">-- km</span>
+            <span class="kpi-card-sub">par semaine</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-card-label">Moyenne mensuelle</span>
+            <span class="kpi-card-value" id="kpiMonthly">-- km</span>
+            <span class="kpi-card-sub">par mois</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-card-label">Précision des prédictions</span>
+            <span class="kpi-card-value" id="kpiAccuracy">--</span>
+            <span class="kpi-card-sub" id="kpiAccuracySub">Écart moyen constaté</span>
+          </div>
+        </div>
+
+        <!-- Comparatif : Kilométrage réel vs estimé -->
+        <div class="km-comparison-box">
+          <div class="km-comparison-row">
+            <span>Dernier relevé enregistré :</span>
+            <span class="km-comparison-val" id="habLastRealKm">-- km</span>
+          </div>
+          <div class="km-comparison-row">
+            <span>Kilométrage actuel estimé :</span>
+            <span class="km-comparison-val" style="color: var(--primary);" id="habEstimatedKm">-- km</span>
+          </div>
+          <p class="card-subtitle" id="habEstimatedNote">
+            Estimation utilisée pour calibrer les statuts d'entretien en temps réel.
+          </p>
+        </div>
+      </div>
+
+      <!-- Graphique 1 : Kilométrage hebdomadaire (SVG natif) -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">
+            <span>📅 Kilométrage par semaine</span>
+          </div>
+          <span class="chart-badge" id="chartWeeksBadge">Dernières semaines</span>
+        </div>
+        <div class="svg-chart-container" id="svgWeeksContainer">
+          <!-- Graphique SVG généré par JavaScript -->
+        </div>
+      </div>
+
+      <!-- Graphique 2 : Kilométrage mensuel (SVG natif) -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">
+            <span>📆 Kilométrage par mois</span>
+          </div>
+          <span class="chart-badge">Derniers mois</span>
+        </div>
+        <div class="svg-chart-container" id="svgMonthsContainer">
+          <!-- Graphique SVG généré par JavaScript -->
+        </div>
+      </div>
+
+      <!-- Répartition Semaine vs Week-end (si >= 8 semaines) -->
+      <div class="pattern-comparison-card" id="patternCard">
+        <div class="chart-header">
+          <div class="chart-title">
+            <span>⏱️ Rythme Jours ouvrés vs Week-end</span>
+          </div>
+          <span class="chart-badge" id="patternStatusBadge">Actif</span>
+        </div>
+        <div class="pattern-row">
+          <span class="pattern-label">🏢 Semaine (Lun-Ven)</span>
+          <div class="pattern-bar-outer">
+            <div class="pattern-bar-inner" id="patternWeekdayBar" style="width: 50%;"></div>
+          </div>
+          <span class="pattern-val" id="patternWeekdayVal">-- km/j</span>
+        </div>
+        <div class="pattern-row">
+          <span class="pattern-label">🌴 Week-end (Sam-Dim)</span>
+          <div class="pattern-bar-outer">
+            <div class="pattern-bar-inner" id="patternWeekendBar" style="width: 50%; background-color: var(--warning);"></div>
+          </div>
+          <span class="pattern-val" id="patternWeekendVal">-- km/j</span>
+        </div>
+        <p class="card-subtitle" id="patternExplanation">
+          Ce schéma module automatiquement les prédictions selon les jours calendaires à venir.
+        </p>
+      </div> <!-- /patternCard -->
+    </div> <!-- /viewHabitudes -->
+
+    <!-- VUE 3 : HISTORIQUE DES ENTRETIENS (ÉCRAN 4) -->
+    <div id="viewHistory" class="history-screen hidden">
+      <div class="history-hero">
+        <div>
+          <h2 class="habitudes-hero-title">📜 Historique des entretiens</h2>
+          <p class="card-subtitle">
+            Consultez toutes les opérations de maintenance effectuées, filtrez par véhicule et suivez vos dépenses réelles.
+          </p>
+        </div>
+
+        <!-- Synthèse globale de l'historique -->
+        <div class="history-summary-strip">
+          <div class="kpi-card">
+            <span class="kpi-card-label">Total des dépenses</span>
+            <span class="kpi-card-value" id="histTotalCost" style="color: var(--success-text);">0 DA</span>
+            <span class="kpi-card-sub">sur la sélection</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-card-label">Interventions réalisées</span>
+            <span class="kpi-card-value" id="histTotalCount">0</span>
+            <span class="kpi-card-sub">enregistrées au total</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filtres par véhicule et type d'entretien -->
+      <div class="history-filters-card">
+        <div class="card-subtitle" style="font-weight: 700; color: var(--text-main);">Filtrer l'historique</div>
+        <div class="history-filter-row">
+          <select id="histFilterVehicle" class="history-filter-select" aria-label="Filtrer par véhicule">
+            <option value="all">Tous les véhicules</option>
+          </select>
+          <select id="histFilterType" class="history-filter-select" aria-label="Filtrer par type d'entretien">
+            <option value="all">Tous les types d'entretien</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Liste des interventions enregistrées -->
+      <div class="history-list" id="historyList">
+        <!-- Rempli dynamiquement en JS -->
+      </div>
+    </div> <!-- /viewHistory -->
+
+    <!-- VUE 4 : PARAMÈTRES, SAUVEGARDES & PWA (ÉCRAN 6) -->
+    <div id="viewSettings" class="settings-screen hidden">
+      <div class="settings-hero">
+        <h2 class="habitudes-hero-title">⚙️ Paramètres &amp; Sauvegardes</h2>
+        <p class="card-subtitle">
+          Gérez vos sauvegardes de données, vos intervalles d'entretien par défaut et l'installation hors-ligne de l'application.
+        </p>
+      </div>
+
+      <!-- CARTE 1 : Sauvegarde & Restauration JSON -->
+      <section class="card settings-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>💾 Sauvegarde &amp; Restauration</span>
+          </div>
+          <span class="vehicle-meta-badge" id="backupStatusBadge">Stockage local</span>
+        </div>
+        <p class="card-subtitle">
+          Toutes vos données sont stockées sur cet appareil. Pour éviter toute perte en cas de nettoyage du navigateur ou changement de téléphone, exportez régulièrement un fichier JSON.
+        </p>
+
+        <div class="backup-info-box">
+          <span style="color: var(--text-muted); font-size: 0.88rem;">Dernière sauvegarde :</span>
+          <strong id="lastBackupDateDisplay" style="color: var(--text-main);">Jamais effectuée</strong>
+        </div>
+
+        <div class="settings-actions-row">
+          <button type="button" id="btnExportJsonBackup" class="btn-primary" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+            <span>📥</span>
+            <span>Exporter sauvegarde (JSON)</span>
+          </button>
+          <label for="backupFileInput" class="btn-secondary" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-align: center; margin: 0;">
+            <span>📤</span>
+            <span>Restaurer sauvegarde</span>
+          </label>
+          <input type="file" id="backupFileInput" accept=".json,application/json" class="hidden">
+        </div>
+      </section>
+
+      <!-- CARTE 2 : Application PWA & Hors-Ligne -->
+      <section class="card settings-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>📱 Application &amp; Mode Hors-Ligne</span>
+          </div>
+          <span class="vehicle-meta-badge status-badge-green" id="networkStatusBadge">🟢 En ligne</span>
+        </div>
+        <p class="card-subtitle">
+          Cette application est une PWA (Progressive Web App). Elle fonctionne à 100% hors-ligne grâce au Service Worker.
+        </p>
+
+        <div class="pwa-status-box">
+          <div class="pwa-status-item">
+            <span class="pwa-icon">⚡</span>
+            <div>
+              <strong>Service Worker &amp; Cache</strong>
+              <div class="pwa-status-sub" id="swStatusText">Prêt pour le mode hors-ligne (v5)</div>
+            </div>
+          </div>
+          <div class="pwa-status-item">
+            <span class="pwa-icon">🔒</span>
+            <div>
+              <strong>Confidentialité totale</strong>
+              <div class="pwa-status-sub">Sans compte, sans serveur, 100% local sur votre appareil</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="pwaInstallContainer" style="margin-top: 6px;">
+          <button type="button" id="btnInstallPwa" class="btn-secondary" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+            <span>📲</span>
+            <span id="btnInstallPwaText">Installer l'application sur l'appareil</span>
+          </button>
+          <p id="pwaIosInstructions" class="form-help hidden" style="margin-top: 8px; text-align: center;">
+            💡 <strong>Sur iPhone / iPad :</strong> Touchez le bouton Partager <strong>⎋</strong> dans Safari, puis sélectionnez <strong>« Sur l'écran d'accueil » ➕</strong>.
+          </p>
+        </div>
+      </section>
+
+      <!-- CARTE 3 : Intervalles par défaut (Settings) -->
+      <section class="card settings-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>🛠️ Intervalles par défaut</span>
+          </div>
+          <button type="button" id="btnResetDefaultIntervals" class="btn-sm btn-secondary" title="Rétablir les intervalles standards">
+            ↺ Rétablir
+          </button>
+        </div>
+        <p class="card-subtitle">
+          Ces intervalles pré-remplissent automatiquement les entretiens lors de l'ajout d'un nouveau véhicule.
+        </p>
+
+        <form id="defaultIntervalsForm">
+          <div class="default-intervals-list" id="defaultIntervalsList">
+            <!-- Rempli dynamiquement en JS -->
+          </div>
+          <div style="margin-top: 14px;">
+            <button type="submit" class="btn-primary" style="width: 100%;">
+              💾 Enregistrer les intervalles par défaut
+            </button>
+          </div>
+        </form>
+      </section>
+    </div> <!-- /viewSettings -->
+
+  </div>
+
+  <!-- MODAL: Ajouter / Modifier un véhicule -->
+  <div id="vehicleModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="vehicleModalTitle">Ajouter un véhicule</h2>
+        <button type="button" class="btn-icon" id="btnCloseVehicleModal" aria-label="Fermer">✕</button>
+      </div>
+
+      <form id="vehicleForm">
+        <input type="hidden" id="editVehicleId">
+
+        <div class="form-group">
+          <label class="form-label" for="vehName">Nom usuel (ex: Ma voiture, Travail)</label>
+          <input type="text" id="vehName" class="form-input" placeholder="Ma voiture" required>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="vehBrand">Marque</label>
+            <input type="text" id="vehBrand" class="form-input" placeholder="Renault" required>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="vehModel">Modèle</label>
+            <input type="text" id="vehModel" class="form-input" placeholder="Symbol" required>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="vehYear">Année</label>
+            <input type="number" id="vehYear" class="form-input" placeholder="2015" min="1980" max="2035" required>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="vehPlate">Immatriculation</label>
+            <input type="text" id="vehPlate" class="form-input" placeholder="12345 115 16">
+          </div>
+        </div>
+
+        <div class="form-group" id="vehCurrentKmGroup">
+          <label class="form-label" for="vehCurrentKm">Kilométrage actuel (km)</label>
+          <input type="number" id="vehCurrentKm" class="form-input" placeholder="118000" min="0" step="1" required>
+          <span class="form-help">Point de départ de votre suivi kilométrique.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="vehFrequency">Fréquence des rappels de relevé</label>
+          <div style="display: flex; gap: 8px;">
+            <select id="vehFrequency" class="form-select" style="flex: 1;">
+              <option value="weekly">Hebdomadaire (tous les 7 jours)</option>
+              <option value="daily">Quotidienne (chaque jour)</option>
+            </select>
+            <button type="button" id="btnVehExportReminder" class="btn-sm btn-secondary" title="Télécharger le rappel récurrent pour votre agenda (.ics)">
+              📅 Rappel .ics
+            </button>
+          </div>
+          <span class="form-help">Déclenche la bannière de rappel si aucun relevé n'est saisi.</span>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="btnDeleteVehicle" class="btn-danger hidden">Supprimer</button>
+          <button type="button" id="btnCancelVehicleModal" class="btn-secondary">Annuler</button>
+          <button type="submit" class="btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Ajouter / Modifier un élément d'entretien (Étape 2) -->
+  <div id="maintenanceItemModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="maintModalTitle">Élément d'entretien</h2>
+        <button type="button" class="btn-icon" id="btnCloseMaintModal" aria-label="Fermer">✕</button>
+      </div>
+
+      <form id="maintenanceItemForm">
+        <input type="hidden" id="editMaintItemId">
+
+        <div class="form-group">
+          <label class="form-label" for="maintName">Nom de l'entretien</label>
+          <input type="text" id="maintName" class="form-input" placeholder="Ex: Vidange boîte de vitesse" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Type d'intervalle</label>
+          <div class="segment-group">
+            <button type="button" class="segment-btn active" id="btnTypeKmMonths">Km + Mois</button>
+            <button type="button" class="segment-btn" id="btnTypeDateOnly">Date seulement</button>
+          </div>
+        </div>
+
+        <div class="form-group" id="groupIntervalKm">
+          <label class="form-label" for="maintIntervalKm">Intervalle kilométrique (km)</label>
+          <input type="number" id="maintIntervalKm" class="form-input" placeholder="Ex: 10000" min="500" step="100">
+        </div>
+
+        <div class="form-group" id="groupIntervalMonths">
+          <label class="form-label" for="maintIntervalMonths">Intervalle temporel (mois)</label>
+          <input type="number" id="maintIntervalMonths" class="form-input" placeholder="Ex: 12" min="1" max="120" required>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <div class="form-group" style="flex: 1;" id="groupLastKm">
+            <label class="form-label" for="maintLastKm">Dernier relevé (km)</label>
+            <input type="number" id="maintLastKm" class="form-input" placeholder="Optionnel" min="0" step="1">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="maintLastDate">Dernière date</label>
+            <input type="date" id="maintLastDate" class="form-input">
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="btnDeleteMaintItem" class="btn-danger hidden">Supprimer</button>
+          <button type="button" id="btnCancelMaintModal" class="btn-secondary">Annuler</button>
+          <button type="submit" class="btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: "Fait aujourd'hui" (Étape 4) -->
+  <div id="doneModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="doneModalTitle">✅ Enregistrer l'entretien</h2>
+        <button type="button" class="btn-icon" id="btnCloseDoneModal" aria-label="Fermer">✕</button>
+      </div>
+
+      <p class="card-subtitle">
+        Indiquez les détails de l'intervention. La date et le kilométrage seront automatiquement réinitialisés pour calculer la prochaine échéance.
+      </p>
+
+      <form id="doneForm">
+        <input type="hidden" id="doneItemId">
+
+        <div class="form-group">
+          <label class="form-label">Entretien réalisé</label>
+          <div style="font-size: 1.05rem; font-weight: 700; color: var(--primary);" id="doneItemNameDisplay">
+            Vidange (moteur)
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="doneDateInput">Date de réalisation</label>
+            <input type="date" id="doneDateInput" class="form-input" required>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="doneKmInput">Kilométrage (km)</label>
+            <input type="number" id="doneKmInput" class="form-input" min="0" step="1" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="doneCostInput">Coût total (DA) <span class="text-muted">(optionnel)</span></label>
+          <input type="number" id="doneCostInput" class="form-input" placeholder="Ex: 8500" min="0" step="100">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="doneGarageInput">Garage / Intervenant <span class="text-muted">(optionnel)</span></label>
+          <input type="text" id="doneGarageInput" class="form-input" placeholder="Ex: Garage Naftal, Fait maison...">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="doneNotesInput">Remarques / Référence pièces <span class="text-muted">(optionnel)</span></label>
+          <textarea id="doneNotesInput" class="form-input" style="height: 70px; padding: 8px 12px; resize: none;" placeholder="Ex: Huile 5W40 + filtre Purflux..."></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="btnCancelDoneModal" class="btn-secondary">Annuler</button>
+          <button type="submit" class="btn-primary" style="background: linear-gradient(135deg, var(--success), #059669);">
+            Valider l'entretien
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL / ONBOARDING: Premier lancement (0 véhicule) -->
+  <div id="onboardingModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Bienvenue sur Carnet d'Entretien 👋</h2>
+      </div>
+      <p class="card-subtitle">
+        Commencez par ajouter votre véhicule pour démarrer le suivi intelligent et les prédictions d'entretien.
+      </p>
+
+      <form id="onboardingForm">
+        <div style="display: flex; gap: 10px;">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="onboardBrand">Marque</label>
+            <input type="text" id="onboardBrand" class="form-input" placeholder="Ex: Renault" required>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="onboardModel">Modèle</label>
+            <input type="text" id="onboardModel" class="form-input" placeholder="Ex: Symbol" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="onboardKm">Kilométrage actuel (obligatoire)</label>
+          <input type="number" id="onboardKm" class="form-input" placeholder="Ex: 85000" min="0" step="1" required>
+          <span class="form-help">L'application n'utilise aucune estimation manuelle : elle apprend de vos vrais relevés.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="onboardFrequency">Fréquence des rappels</label>
+          <select id="onboardFrequency" class="form-select">
+            <option value="weekly">Hebdomadaire (recommandé)</option>
+            <option value="daily">Quotidienne</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="onboardYear">Année</label>
+            <input type="number" id="onboardYear" class="form-input" placeholder="2018" min="1980" max="2035">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="onboardPlate">Immatriculation</label>
+            <input type="text" id="onboardPlate" class="form-input" placeholder="Optionnel">
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.84rem; color: var(--text-muted); margin-top: 4px;">
+          <input type="checkbox" id="onboardRecurringReminder" style="accent-color: var(--primary); width: 16px; height: 16px;">
+          <label for="onboardRecurringReminder" style="cursor: pointer;">Exporter aussi le rappel régulier vers mon agenda (.ics)</label>
+        </div>
+
+        <div class="modal-actions" style="flex-direction: column; gap: 10px; margin-top: 12px;">
+          <button type="submit" class="btn-primary" style="width: 100%;">Démarrer mon suivi</button>
+          <button type="button" id="btnLoadDemoFromOnboard" class="btn-secondary" style="width: 100%;">
+            Charger les données d'exemple (Démo)
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Barre de navigation mobile inférieure (4 Onglets) -->
+  <nav class="bottom-nav" aria-label="Navigation principale">
+    <button type="button" class="nav-tab active" id="tabDashboard" aria-label="Tableau de bord">
+      <span class="nav-tab-icon">📋</span>
+      <span>Tableau</span>
+    </button>
+    <button type="button" class="nav-tab" id="tabHistory" aria-label="Historique">
+      <span class="nav-tab-icon">📜</span>
+      <span>Historique</span>
+    </button>
+    <button type="button" class="nav-tab" id="tabHabitudes" aria-label="Habitudes">
+      <span class="nav-tab-icon">📊</span>
+      <span>Habitudes</span>
+    </button>
+    <button type="button" class="nav-tab" id="tabSettings" aria-label="Paramètres">
+      <span class="nav-tab-icon">⚙️</span>
+      <span>Paramètres</span>
+    </button>
+  </nav>
+
+  <!-- Conteneur des notifications Toast -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- Script principal de l'application -->
+  <script src="app.js"></script>
+</body>
+</html>

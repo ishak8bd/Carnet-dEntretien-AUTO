@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- Gauge Arc -->
+  <path d="M 120 320 A 160 160 0 1 1 392 320" fill="none" stroke="#334155" stroke-width="26" stroke-linecap="round"/>
+  <path d="M 120 320 A 160 160 0 0 1 290 102" fill="none" stroke="#10b981" stroke-width="26" stroke-linecap="round"/>
+  <path d="M 290 102 A 160 160 0 0 1 360 180" fill="none" stroke="#f59e0b" stroke-width="26" stroke-linecap="round"/>
+  <path d="M 360 180 A 160 160 0 0 1 392 320" fill="none" stroke="#ef4444" stroke-width="26" stroke-linecap="round"/>
+  
+  <!-- Center Car / Wrench glyph -->
+  <circle cx="256" cy="270" r="42" fill="#1e293b" stroke="#64748b" stroke-width="6"/>
+  <!-- Needle -->
+  <line x1="256" y1="270" x2="350" y2="190" stroke="#ef4444" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="256" cy="270" r="16" fill="#f8fafc"/>
+  
+  <!-- Odometer label box -->
+  <rect x="186" y="360" width="140" height="42" rx="8" fill="#0f172a" stroke="#475569" stroke-width="3"/>
+  <text x="256" y="388" fill="#38bdf8" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="700" font-size="20" text-anchor="middle">118 000 KM</text>
+</svg>
