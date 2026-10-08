@@ -40,31 +40,6 @@
       <button id="btnAddVehicle" class="btn-icon" title="Ajouter un véhicule (max 3)" aria-label="Ajouter un véhicule">➕</button>
     </section>
 
-    <!-- Bannière données de démonstration -->
-    <div id="demoBanner" class="banner banner-demo hidden">
-      <div class="banner-content">
-        <span class="banner-icon">💡</span>
-        <div class="banner-text">
-          <strong>Données d'exemple actives</strong> (Renault Symbol)
-        </div>
-      </div>
-      <button id="btnDeleteDemo" class="banner-btn banner-btn-demo">Supprimer les données d'exemple</button>
-    </div>
-
-    <!-- Bannière de rappel de sauvegarde (> 30 jours) (Étape 6) -->
-    <div id="backupReminderBanner" class="banner banner-backup hidden">
-      <div class="banner-content">
-        <span class="banner-icon">💾</span>
-        <div>
-          <div class="banner-text" id="backupReminderText" style="font-weight: 700;">Pensez à sauvegarder vos données</div>
-          <div class="banner-meta" id="backupReminderMeta" style="font-size: 0.8rem; margin-top: 2px;">
-            Dernière sauvegarde : jamais effectuée
-          </div>
-        </div>
-      </div>
-      <button type="button" id="btnQuickBackup" class="banner-btn banner-btn-demo">Sauvegarder</button>
-    </div>
-
     <!-- Bannière Statut Hors-ligne -->
     <div id="offlineBanner" class="banner banner-offline hidden">
       <div class="banner-content">
@@ -483,6 +458,26 @@
           <p id="pwaIosInstructions" class="form-help hidden" style="margin-top: 8px; text-align: center;">
             💡 <strong>Sur iPhone / iPad :</strong> Touchez le bouton Partager <strong>⎋</strong> dans Safari, puis sélectionnez <strong>« Sur l'écran d'accueil » ➕</strong>.
           </p>
+        </div>
+      </section>
+
+      <!-- CARTE : Données de démonstration (Renault Symbol) -->
+      <section class="card settings-card" id="settingsDemoCard">
+        <div class="card-header">
+          <div class="card-title">
+            <span>🗑️ Données de démonstration</span>
+          </div>
+          <span class="vehicle-meta-badge" id="demoStatusBadge">Renault Symbol</span>
+        </div>
+        <p class="card-subtitle">
+          Vous pouvez supprimer définitivement le véhicule de démonstration (Renault Symbol) et l'ensemble de ses interventions pour configurer votre propre véhicule.
+        </p>
+
+        <div>
+          <button type="button" id="btnDeleteDemoDataSettings" class="btn-danger" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+            <span>🗑️</span>
+            <span>Supprimer toutes les données de la Renault Symbol</span>
+          </button>
         </div>
       </section>
 

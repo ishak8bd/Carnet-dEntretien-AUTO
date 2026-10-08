@@ -1,5 +1,5 @@
 // Service Worker - Suivi Entretien Véhicule PWA (100% Hors-Ligne)
-const CACHE_NAME = 'entretien-v5';
+const CACHE_NAME = 'entretien-v6';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

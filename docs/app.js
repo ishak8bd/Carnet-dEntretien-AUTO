@@ -1168,22 +1168,53 @@ function handleDeleteVehicle() {
   }
 }
 
-/** Supprime les données de démonstration et invite l'utilisateur à démarrer son suivi */
+/** Supprime définitivement les données de démonstration de la Renault Symbol */
 function handleDeleteDemoData() {
   const confirmClean = window.confirm(
-    "Voulez-vous supprimer le véhicule de démonstration et repartir de zéro avec votre propre véhicule ?"
+    "Voulez-vous supprimer définitivement la Renault Symbol et l'ensemble de ses interventions de démonstration pour repartir de zéro avec votre propre véhicule ?"
   );
   if (!confirmClean) return;
 
-  appState.vehicles = [];
-  appState.activeVehicleId = null;
-  appState.history = [];
-  appState.isDemo = false;
-  saveState();
+  // Trouver l'index de la Renault Symbol
+  const demoVehIndex = (appState.vehicles || []).findIndex(v =>
+    (v.brand && v.brand.toLowerCase().includes('renault')) ||
+    (v.model && v.model.toLowerCase().includes('symbol')) ||
+    (v.name && v.name.toLowerCase().includes('symbol'))
+  );
 
-  showToast("Données d'exemple supprimées.", 'info');
+  let demoVehId = null;
+  if (demoVehIndex !== -1) {
+    demoVehId = appState.vehicles[demoVehIndex].id;
+    appState.vehicles.splice(demoVehIndex, 1);
+  } else {
+    // Si démo sans nom spécifique
+    demoVehId = appState.activeVehicleId;
+    appState.vehicles = [];
+  }
+
+  // Nettoyer l'historique associé au véhicule supprimé
+  if (demoVehId) {
+    appState.history = (appState.history || []).filter(h => h.vehicleId !== demoVehId);
+  } else if (appState.vehicles.length === 0) {
+    appState.history = [];
+  }
+
+  appState.isDemo = false;
+
+  if (appState.vehicles.length > 0) {
+    appState.activeVehicleId = appState.vehicles[0].id;
+  } else {
+    appState.activeVehicleId = null;
+    appState.history = [];
+  }
+
+  saveState();
+  showToast("Données de la Renault Symbol supprimées avec succès.", 'info');
   renderApp();
-  if (currentView === 'history') {
+
+  if (currentView === 'settings') {
+    renderSettingsScreen();
+  } else if (currentView === 'history') {
     renderHistoryScreen();
   }
 }
@@ -1306,11 +1337,13 @@ function renderApp() {
   const vehicle = getActiveVehicle();
   const demoBanner = document.getElementById('demoBanner');
 
-  // Bannière démo
-  if (appState.isDemo && vehicle) {
-    demoBanner.classList.remove('hidden');
-  } else {
-    demoBanner.classList.add('hidden');
+  // Bannière démo (si présente)
+  if (demoBanner) {
+    if (appState.isDemo && vehicle) {
+      demoBanner.classList.remove('hidden');
+    } else {
+      demoBanner.classList.add('hidden');
+    }
   }
 
   // Bannière de rappel de sauvegarde (> 30 jours)
@@ -2976,6 +3009,21 @@ function renderSettingsScreen() {
 
     listEl.appendChild(itemEl);
   });
+
+  // 4. Carte Données de démonstration (Renault Symbol)
+  const demoCard = document.getElementById('settingsDemoCard');
+  if (demoCard) {
+    const hasDemo = appState.isDemo || (appState.vehicles && appState.vehicles.some(v =>
+      (v.brand && v.brand.toLowerCase().includes('renault')) ||
+      (v.model && v.model.toLowerCase().includes('symbol')) ||
+      (v.name && v.name.toLowerCase().includes('symbol'))
+    ));
+    if (hasDemo) {
+      demoCard.classList.remove('hidden');
+    } else {
+      demoCard.classList.add('hidden');
+    }
+  }
 }
 
 /** Export complet de l'état en fichier JSON téléchargeable */
@@ -3253,8 +3301,9 @@ function attachEventListeners() {
     input.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 
-  // Supprimer données d'exemple
-  document.getElementById('btnDeleteDemo').addEventListener('click', handleDeleteDemoData);
+  // Supprimer données d'exemple (si bouton présent)
+  const btnDeleteDemo = document.getElementById('btnDeleteDemo');
+  if (btnDeleteDemo) btnDeleteDemo.addEventListener('click', handleDeleteDemoData);
 
   // Filtres par statut (Étape 3)
   document.querySelectorAll('.filter-chip').forEach(chip => {
@@ -3358,6 +3407,10 @@ function attachEventListeners() {
   // Bouton installation PWA
   const btnInstallPwa = document.getElementById('btnInstallPwa');
   if (btnInstallPwa) btnInstallPwa.addEventListener('click', handleInstallPwaClick);
+
+  // Bouton suppression Renault Symbol dans Paramètres
+  const btnDeleteDemoSettings = document.getElementById('btnDeleteDemoDataSettings');
+  if (btnDeleteDemoSettings) btnDeleteDemoSettings.addEventListener('click', handleDeleteDemoData);
 }
 
 // ============================================================================
