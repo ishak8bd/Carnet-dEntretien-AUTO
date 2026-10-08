@@ -82,7 +82,7 @@ Puis ouvrez votre navigateur sur : `http://localhost:8000`.
    - Sous **Build and deployment** > **Branch**, sélectionnez `main` et `/ (root)`.
    - Cliquez sur **Save**.
 2. Votre application sera disponible à l'adresse :
-   `https://isaaxk.github.io/Carnet-d-Entretien-AUTO/`
+   `https://ishak8bd.github.io/Carnet-dEntretien-AUTO/`
 
 ---
 
