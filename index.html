@@ -58,7 +58,7 @@
             Mets à jour ton kilométrage (dernière mise à jour : il y a 9 jours)
           </div>
         </div>
-        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+        <div class="banner-actions">
           <button id="btnFocusQuickUpdate" class="banner-btn banner-btn-stale">Mettre à jour</button>
           <button id="btnExportRecurringReminder" class="banner-btn banner-btn-demo" title="Télécharger le rappel récurrent d'odomètre pour votre agenda (.ics)">📅 Rappel agenda</button>
         </div>
@@ -156,12 +156,12 @@
             <span>🛠️ Plan d'entretien</span>
             <span class="vehicle-meta-badge" id="maintenanceCountBadge">0 élément</span>
           </div>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <button type="button" class="btn-sm btn-secondary" id="btnExportAllIcs" style="display: inline-flex; align-items: center; gap: 5px;" title="Tout exporter vers le calendrier (.ics)">
+          <div class="section-actions">
+            <button type="button" class="btn-sm btn-secondary" id="btnExportAllIcs" title="Tout exporter vers le calendrier (.ics)">
               <span>📅</span>
               <span>Tout exporter</span>
             </button>
-            <button type="button" class="btn-sm" id="btnAddMaintenanceItem" style="display: inline-flex; align-items: center; gap: 4px;">
+            <button type="button" class="btn-sm" id="btnAddMaintenanceItem">
               <span>➕</span>
               <span>Ajouter</span>
             </button>
@@ -169,7 +169,7 @@
         </div>
 
         <!-- Bannière Décalage Calendrier (> 7 jours) (Étape 5) -->
-        <div id="calendarShiftBanner" class="banner banner-shift hidden" style="margin-bottom: 12px;">
+        <div id="calendarShiftBanner" class="banner banner-shift hidden">
           <div class="banner-content">
             <span class="banner-icon">📅</span>
             <div>

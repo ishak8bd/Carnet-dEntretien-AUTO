@@ -1653,7 +1653,7 @@ function renderMaintenanceList(vehicle, engine) {
       ${metricsHtml}
 
       <div class="item-card-bottom">
-        <span>Dernier : ${lastDoneText}</span>
+        <span class="item-last-done-text">Dernier : ${lastDoneText}</span>
         <div class="item-actions">
           <button type="button" class="btn-sm btn-export-item-ics" data-id="${item.id}" title="Ajouter cette échéance à mon calendrier (.ics)">📅 Agenda</button>
           <button type="button" class="btn-sm btn-done-today btn-open-done" data-id="${item.id}">✅ Fait aujourd'hui</button>
