@@ -29,6 +29,11 @@
           <span>Suivi intelligent &amp; prédictif</span>
         </div>
       </div>
+      <div class="header-sync-status" id="headerSyncStatus" role="button" tabindex="0" title="Synchronisation Multi-Appareils (Cliquez pour configurer)">
+        <span class="sync-dot" id="headerSyncDot"></span>
+        <span class="sync-icon" id="headerSyncIcon">☁️</span>
+        <span class="sync-text" id="headerSyncText">Local</span>
+      </div>
     </header>
 
     <!-- Barre de sélection du véhicule actif (1 à 3 véhicules) -->
@@ -157,6 +162,10 @@
             <span class="vehicle-meta-badge" id="maintenanceCountBadge">0 élément</span>
           </div>
           <div class="section-actions">
+            <div class="view-mode-toggle" id="maintViewToggle" role="group" aria-label="Mode d'affichage">
+              <button type="button" class="view-toggle-btn active" data-mode="table" title="Affichage tableau glissable">📋 Tableau</button>
+              <button type="button" class="view-toggle-btn" data-mode="cards" title="Affichage fiches">🗂️ Fiches</button>
+            </div>
             <button type="button" class="btn-sm btn-secondary" id="btnExportAllIcs" title="Tout exporter vers le calendrier (.ics)">
               <span>📅</span>
               <span>Tout exporter</span>
@@ -210,9 +219,11 @@
           </button>
         </div>
 
-        <!-- Grille des éléments d'entretien triés par urgence -->
-        <div class="items-grid" id="maintenanceList">
-          <!-- Injecté dynamiquement par app.js -->
+        <!-- Conteneur d'affichage du plan d'entretien (Tableau glissable ou Grille de fiches) -->
+        <div id="maintenanceContainer">
+          <div class="items-grid" id="maintenanceList">
+            <!-- Injecté dynamiquement par app.js -->
+          </div>
         </div>
       </section>
 
@@ -319,14 +330,14 @@
           <span class="chart-badge" id="patternStatusBadge">Actif</span>
         </div>
         <div class="pattern-row">
-          <span class="pattern-label">🏢 Semaine (Lun-Ven)</span>
+          <span class="pattern-label">🏢 Semaine (Dim-Jeu)</span>
           <div class="pattern-bar-outer">
             <div class="pattern-bar-inner" id="patternWeekdayBar" style="width: 50%;"></div>
           </div>
           <span class="pattern-val" id="patternWeekdayVal">-- km/j</span>
         </div>
         <div class="pattern-row">
-          <span class="pattern-label">🌴 Week-end (Sam-Dim)</span>
+          <span class="pattern-label">🌴 Week-end (Ven-Sam)</span>
           <div class="pattern-bar-outer">
             <div class="pattern-bar-inner" id="patternWeekendBar" style="width: 50%; background-color: var(--warning);"></div>
           </div>
@@ -376,9 +387,23 @@
         </div>
       </div>
 
-      <!-- Liste des interventions enregistrées -->
-      <div class="history-list" id="historyList">
-        <!-- Rempli dynamiquement en JS -->
+      <!-- Barre d'entête et bascule d'affichage de l'historique -->
+      <div class="section-header" style="margin-top: 4px;">
+        <div class="section-title">
+          <span>📜 Interventions enregistrées</span>
+          <span class="vehicle-meta-badge" id="historyCountBadge">0 intervention</span>
+        </div>
+        <div class="view-mode-toggle" id="historyViewToggle" role="group" aria-label="Mode d'affichage de l'historique">
+          <button type="button" class="view-toggle-btn active" data-mode="table" title="Affichage tableau glissable">📋 Tableau</button>
+          <button type="button" class="view-toggle-btn" data-mode="cards" title="Affichage fiches">🗂️ Fiches</button>
+        </div>
+      </div>
+
+      <!-- Conteneur d'affichage de l'historique (Tableau glissable ou Grille de fiches) -->
+      <div id="historyContainer">
+        <div class="history-list" id="historyList">
+          <!-- Rempli dynamiquement en JS -->
+        </div>
       </div>
     </div> <!-- /viewHistory -->
 
@@ -418,6 +443,112 @@
             <span>Restaurer sauvegarde</span>
           </label>
           <input type="file" id="backupFileInput" accept=".json,application/json" class="hidden">
+        </div>
+      </section>
+
+      <!-- CARTE : Synchronisation Multi-Appareils (GitHub Gist) -->
+      <section class="card settings-card" id="settingsSyncCard">
+        <div class="card-header">
+          <div class="card-title">
+            <span>☁️ Synchronisation Multi-Appareils</span>
+          </div>
+          <span class="vehicle-meta-badge" id="syncStatusBadge">⚪ Non synchronisé</span>
+        </div>
+        <p class="card-subtitle">
+          Retrouvez les mêmes données sur votre PC, iPhone ou Android en temps réel grâce à votre compte GitHub (Gist privé et sécurisé).
+        </p>
+
+        <!-- Vue quand la synchronisation est CONNECTÉE -->
+        <div id="syncConnectedView" class="hidden">
+          <div class="sync-info-box">
+            <div class="sync-info-row">
+              <span class="sync-label">Statut Cloud :</span>
+              <span class="sync-value text-success font-bold" id="syncConnectedStatusText">🟢 Connecté &amp; Synchronisé</span>
+            </div>
+            <div class="sync-info-row" style="margin-top: 6px;">
+              <span class="sync-label">Dernière synchro :</span>
+              <strong class="sync-value" id="syncLastTimeDisplay">À l'instant</strong>
+            </div>
+            <div class="sync-info-row" style="margin-top: 6px;">
+              <span class="sync-label">ID du Gist :</span>
+              <span class="sync-value" style="display: flex; align-items: center; gap: 6px;">
+                <code id="syncGistIdShort" style="background: var(--bg-main); padding: 3px 8px; border-radius: 4px; font-size: 0.78rem; border: 1px solid var(--border-color);">-</code>
+                <button type="button" id="btnCopyGistId" class="btn-icon-xs" title="Copier l'ID du Gist">📋</button>
+              </span>
+            </div>
+          </div>
+
+          <div class="settings-actions-row" style="margin-bottom: 10px;">
+            <button type="button" id="btnSyncNow" class="btn-primary" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <span>🔄</span>
+              <span>Synchroniser maintenant</span>
+            </button>
+            <button type="button" id="btnShowQrSync" class="btn-secondary" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <span>📱</span>
+              <span>QR Code mobile</span>
+            </button>
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <button type="button" id="btnCopyMobileLink" class="btn-secondary" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.82rem;">
+              <span>🔗</span>
+              <span>Copier lien de connexion rapide</span>
+            </button>
+            <button type="button" id="btnDisconnectSync" class="btn-danger" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.82rem;">
+              <span>🔌</span>
+              <span>Déconnecter</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Formulaire de configuration (quand non connecté) -->
+        <div id="syncSetupView">
+          <div class="sync-help-box">
+            <div style="font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+              <span>💡</span>
+              <span>Comment activer la synchronisation ?</span>
+            </div>
+            <p style="margin: 0 0 8px 0; font-size: 0.82rem; line-height: 1.45; color: var(--text-muted);">
+              Vos données sont stockées dans un <strong>Gist privé</strong> sur votre GitHub. Toute modification sur un appareil est envoyée automatiquement.
+            </p>
+            <ol style="margin: 0 0 10px 0; padding-left: 18px; font-size: 0.8rem; line-height: 1.5; color: var(--text-muted);">
+              <li>Générez un jeton d'accès GitHub personnel avec la permission <code>gist</code> (30 secondes).</li>
+              <li>Collez le jeton ci-dessous et cliquez sur <em>Activer la synchronisation</em>.</li>
+              <li>Pour votre 2e appareil (smartphone), il vous suffira de scanner le QR Code affiché !</li>
+            </ol>
+            <div>
+              <a href="https://github.com/settings/tokens/new?scopes=gist&description=Carnet+Entretien+Auto+Sync" target="_blank" rel="noopener noreferrer" class="btn-sm btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-size: 0.78rem; padding: 6px 12px;">
+                <span>🔑</span>
+                <span>Créer mon jeton GitHub (permission gist pré-cochée)</span>
+                <span>↗</span>
+              </a>
+            </div>
+          </div>
+
+          <form id="gistSyncForm">
+            <div class="form-group" style="margin-top: 10px;">
+              <label class="form-label" for="syncGithubToken">
+                Jeton GitHub personnel (Personal Access Token) <span style="color: var(--danger);">*</span>
+              </label>
+              <input type="password" id="syncGithubToken" class="form-input" placeholder="ghp_... ou github_pat_..." autocomplete="off" required>
+              <span class="form-help">Votre jeton reste strictement stocké en local dans votre navigateur.</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="syncGistIdInput">
+                ID du Gist (Optionnel)
+              </label>
+              <input type="text" id="syncGistIdInput" class="form-input" placeholder="Laisser vide pour créer un nouveau Gist automatiquement">
+              <span class="form-help">Laissez vide sur le 1er appareil. Sur un 2e appareil, vous pouvez entrer l'ID du Gist ou simplement ouvrir le lien direct / QR Code.</span>
+            </div>
+
+            <div style="margin-top: 14px;">
+              <button type="submit" id="btnSubmitGistSync" class="btn-primary" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                <span>🚀</span>
+                <span>Activer la synchronisation multi-appareils</span>
+              </button>
+            </div>
+          </form>
         </div>
       </section>
 
@@ -487,17 +618,26 @@
           <div class="card-title">
             <span>🛠️ Intervalles par défaut</span>
           </div>
-          <button type="button" id="btnResetDefaultIntervals" class="btn-sm btn-secondary" title="Rétablir les intervalles standards">
-            ↺ Rétablir
-          </button>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <div class="view-mode-toggle" id="intervalsViewToggle" role="group" aria-label="Mode d'affichage des intervalles">
+              <button type="button" class="view-toggle-btn active" data-mode="table" title="Affichage tableau glissable">📋 Tableau</button>
+              <button type="button" class="view-toggle-btn" data-mode="cards" title="Affichage fiches">🗂️ Fiches</button>
+            </div>
+            <button type="button" id="btnResetDefaultIntervals" class="btn-sm btn-secondary" title="Rétablir les intervalles standards">
+              ↺ Rétablir
+            </button>
+          </div>
         </div>
         <p class="card-subtitle">
           Ces intervalles pré-remplissent automatiquement les entretiens lors de l'ajout d'un nouveau véhicule.
         </p>
 
         <form id="defaultIntervalsForm">
-          <div class="default-intervals-list" id="defaultIntervalsList">
-            <!-- Rempli dynamiquement en JS -->
+          <!-- Conteneur d'affichage des intervalles (Tableau glissable ou Grille de fiches) -->
+          <div id="defaultIntervalsContainer">
+            <div class="default-intervals-list" id="defaultIntervalsList">
+              <!-- Rempli dynamiquement en JS -->
+            </div>
           </div>
           <div style="margin-top: 14px;">
             <button type="submit" class="btn-primary" style="width: 100%;">
@@ -748,6 +888,37 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: QR Code & Lien de synchronisation mobile -->
+  <div id="syncQrModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-content" style="max-width: 380px; text-align: center;">
+      <div class="modal-header">
+        <h2 class="modal-title">📱 Connexion Mobile</h2>
+        <button type="button" class="btn-icon" id="btnCloseSyncQrModal" aria-label="Fermer">✕</button>
+      </div>
+
+      <div style="padding: 10px 0;">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
+          Scannez ce QR Code avec l'appareil photo de votre smartphone pour synchroniser instantanément vos données !
+        </p>
+        <div id="syncQrContainer" style="background: #ffffff; padding: 14px; border-radius: var(--radius-md); display: inline-block; margin: 0 auto; box-shadow: var(--shadow-md);">
+          <img id="syncQrImage" alt="QR Code de synchronisation" style="width: 210px; height: 210px; display: block; border-radius: 4px;">
+        </div>
+        <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 12px; line-height: 1.4;">
+          Ce code configure automatiquement le carnet sur votre téléphone. Aucune saisie requise !
+        </p>
+      </div>
+
+      <div class="modal-actions" style="flex-direction: column; gap: 8px; margin-top: 8px;">
+        <button type="button" id="btnCopyQrDirectLink" class="btn-primary" style="width: 100%;">
+          📋 Copier le lien direct de synchronisation
+        </button>
+        <button type="button" id="btnDismissSyncQrModal" class="btn-secondary" style="width: 100%;">
+          Fermer
+        </button>
+      </div>
     </div>
   </div>
 

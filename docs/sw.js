@@ -1,5 +1,5 @@
 // Service Worker - Suivi Entretien Véhicule PWA (100% Hors-Ligne)
-const CACHE_NAME = 'entretien-v7';
+const CACHE_NAME = 'entretien-v8';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -35,6 +35,14 @@ self.addEventListener('activate', (event) => {
 // Stratégie : Network First avec fallback Cache immédiat pour navigation hors-ligne
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  // Ne pas intercepter les requêtes d'API externes (GitHub API, QR server, etc.)
+  try {
+    const requestUrl = new URL(event.request.url);
+    if (requestUrl.origin !== self.location.origin) return;
+  } catch (e) {
+    return;
+  }
 
   event.respondWith(
     fetch(event.request)

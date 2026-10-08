@@ -104,6 +104,51 @@ function getDaysElapsed(dateStr) {
 }
 
 // ============================================================================
+// 2b. PRÉFÉRENCES D'AFFICHAGE UI (TABLEAU GLISSABLE VS FICHES)
+// ============================================================================
+
+const UI_PREFERENCES_KEY = 'suivi_entretien_ui_prefs';
+
+function getUiPreferences() {
+  try {
+    const raw = localStorage.getItem(UI_PREFERENCES_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        maintViewMode: parsed.maintViewMode || 'table',
+        historyViewMode: parsed.historyViewMode || 'table',
+        intervalsViewMode: parsed.intervalsViewMode || 'table'
+      };
+    }
+  } catch (e) {}
+  return {
+    maintViewMode: 'table',      // 'table' glissable par défaut
+    historyViewMode: 'table',    // 'table' glissable par défaut
+    intervalsViewMode: 'table'   // 'table' glissable par défaut
+  };
+}
+
+function saveUiPreference(key, val) {
+  const prefs = getUiPreferences();
+  prefs[key] = val;
+  try {
+    localStorage.setItem(UI_PREFERENCES_KEY, JSON.stringify(prefs));
+  } catch (e) {}
+}
+
+function updateViewToggleButtons(toggleId, activeMode) {
+  const toggle = document.getElementById(toggleId);
+  if (!toggle) return;
+  toggle.querySelectorAll('.view-toggle-btn').forEach(btn => {
+    if (btn.getAttribute('data-mode') === activeMode) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+}
+
+// ============================================================================
 // 3. GESTION DU STOCKAGE & MIGRATIONS LOCALSTORAGE
 // ============================================================================
 
@@ -111,6 +156,9 @@ function getDaysElapsed(dateStr) {
 function saveState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+    if (typeof scheduleAutoSyncPush === 'function') {
+      scheduleAutoSyncPush();
+    }
   } catch (err) {
     console.error('Erreur lors de la sauvegarde dans localStorage:', err);
     showToast("Erreur d'enregistrement : stockage local saturé ou désactivé.", 'error');
@@ -370,7 +418,7 @@ function buildDailyTimeline(kmLog) {
       timeline.push({
         date: formatDateToIso(dayDate),
         km: dailyRate,
-        dayOfWeek: dayDate.getDay() // 0 = dimanche, 6 = samedi
+        dayOfWeek: dayDate.getDay() // 0 = dimanche, 5 = vendredi, 6 = samedi (week-end ven/sam)
       });
     }
   }
@@ -481,7 +529,8 @@ function computePredictionEngine(vehicle) {
     let weekendSum = 0, weekendCount = 0;
 
     timeline.forEach(item => {
-      if (item.dayOfWeek === 0 || item.dayOfWeek === 6) {
+      // Week-end = Vendredi (5) et Samedi (6)
+      if (item.dayOfWeek === 5 || item.dayOfWeek === 6) {
         weekendSum += item.km;
         weekendCount++;
       } else {
@@ -575,7 +624,8 @@ function predictKmForDate(vehicle, targetDateIso) {
   let accumulatedKm = 0;
   for (let d = 1; d <= diffDays; d++) {
     const curDate = new Date(lastDate.getTime() + d * 24 * 60 * 60 * 1000);
-    const isWeekend = curDate.getDay() === 0 || curDate.getDay() === 6;
+    // Week-end = Vendredi (5) et Samedi (6)
+    const isWeekend = curDate.getDay() === 5 || curDate.getDay() === 6;
     const factor = isWeekend ? engine.weekendFactor : engine.weekdayFactor;
     accumulatedKm += engine.dailyRate * factor;
   }
@@ -638,7 +688,8 @@ function estimateDateForTargetKm(vehicle, targetKm, predEngine) {
     while (kmAcc < remainingKm && days < 3650) {
       days++;
       const nextDate = new Date(today.getTime() + days * 24 * 60 * 60 * 1000);
-      const isWeekend = nextDate.getDay() === 0 || nextDate.getDay() === 6;
+      // Week-end = Vendredi (5) et Samedi (6)
+      const isWeekend = nextDate.getDay() === 5 || nextDate.getDay() === 6;
       const factor = isWeekend ? predEngine.weekendFactor : predEngine.weekdayFactor;
       kmAcc += rate * factor;
     }
@@ -1439,15 +1490,18 @@ function setStatusFilter(filter) {
 }
 
 function renderMaintenanceList(vehicle, engine) {
-  const listEl = document.getElementById('maintenanceList');
+  const container = document.getElementById('maintenanceContainer') || document.getElementById('maintenanceList');
   const badgeEl = document.getElementById('maintenanceCountBadge');
-  if (!listEl) return;
+  if (!container) return;
 
-  listEl.innerHTML = '';
+  const prefs = getUiPreferences();
+  updateViewToggleButtons('maintViewToggle', prefs.maintViewMode);
+
+  container.innerHTML = '';
 
   if (!vehicle.maintenanceItems || vehicle.maintenanceItems.length === 0) {
     if (badgeEl) badgeEl.textContent = '0 élément';
-    listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 18px;">Aucun entretien configuré. Cliquez sur "+ Ajouter" pour en créer un.</div>';
+    container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 18px;">Aucun entretien configuré. Cliquez sur "+ Ajouter" pour en créer un.</div>';
     return;
   }
 
@@ -1488,184 +1542,333 @@ function renderMaintenanceList(vehicle, engine) {
     : itemsWithStatus.filter(x => x.due.status === activeStatusFilter);
 
   if (displayedItems.length === 0) {
-    listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 28px;">Aucun entretien ne correspond à ce filtre de statut.</div>';
+    container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 28px;">Aucun entretien ne correspond à ce filtre de statut.</div>';
     return;
   }
 
-  displayedItems.forEach(({ item, due }) => {
-    const card = document.createElement('div');
-    card.className = `item-card item-card-${due.status}`;
+  if (prefs.maintViewMode === 'table') {
+    // ==========================================
+    // AFFICHAGE 1 : TABLEAU GLISSABLE (PAR DÉFAUT)
+    // ==========================================
+    const tableWrap = document.createElement('div');
+    tableWrap.innerHTML = `
+      <div class="table-scroll-hint"><span>👈 Défilement horizontal pour tout voir 👉</span></div>
+      <div class="table-scroll-wrapper">
+        <table class="app-data-table maintenance-table">
+          <thead>
+            <tr>
+              <th>Statut</th>
+              <th>Opération</th>
+              <th>Intervalle</th>
+              <th>Prochaine échéance</th>
+              <th>Restant</th>
+              <th>Délai</th>
+              <th>Usure</th>
+              <th>Dernier réalisé</th>
+              <th style="text-align: center;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="maintenanceTableBody"></tbody>
+        </table>
+      </div>
+    `;
+    container.appendChild(tableWrap);
+    const tbody = document.getElementById('maintenanceTableBody');
 
-    // Badge statut
-    let badgeHtml = '';
-    if (due.status === 'red') {
-      badgeHtml = `<span class="status-badge status-badge-red">🔴 ${due.statusLabel}</span>`;
-    } else if (due.status === 'orange') {
-      badgeHtml = `<span class="status-badge status-badge-orange">🟠 ${due.statusLabel}</span>`;
-    } else if (due.status === 'green') {
-      badgeHtml = `<span class="status-badge status-badge-green">🟢 ${due.statusLabel}</span>`;
-    } else {
-      badgeHtml = `<span class="status-badge status-badge-grey">⚪ ${due.statusLabel}</span>`;
-    }
-
-    // Intervalle description
-    let intervalDesc = '';
-    if (item.intervalKm && item.intervalMonths) {
-      intervalDesc = `Tous les ${formatKm(item.intervalKm)} ou ${item.intervalMonths} mois`;
-    } else if (item.intervalKm) {
-      intervalDesc = `Tous les ${formatKm(item.intervalKm)}`;
-    } else if (item.intervalMonths) {
-      intervalDesc = `Tous les ${item.intervalMonths} mois`;
-    } else {
-      intervalDesc = `Intervalle libre`;
-    }
-
-    // Ligne date d'échéance principale
-    let dueDateHtml = '';
-    if (due.status === 'grey') {
-      dueDateHtml = `<span class="due-date-value text-muted">À renseigner</span>`;
-    } else if (due.targetDate) {
-      const formattedDate = formatDate(due.targetDate);
-      if (due.isDateEstimated) {
-        dueDateHtml = `<span class="due-date-value">vers le ${formattedDate} <span style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">(estimation)</span></span>`;
+    displayedItems.forEach(({ item, due }) => {
+      let badgeHtml = '';
+      if (due.status === 'red') {
+        badgeHtml = `<span class="status-badge status-badge-red">🔴 ${due.statusLabel}</span>`;
+      } else if (due.status === 'orange') {
+        badgeHtml = `<span class="status-badge status-badge-orange">🟠 ${due.statusLabel}</span>`;
+      } else if (due.status === 'green') {
+        badgeHtml = `<span class="status-badge status-badge-green">🟢 ${due.statusLabel}</span>`;
       } else {
-        dueDateHtml = `<span class="due-date-value">le ${formattedDate}</span>`;
+        badgeHtml = `<span class="status-badge status-badge-grey">⚪ ${due.statusLabel}</span>`;
       }
-    } else {
-      dueDateHtml = `<span class="due-date-value text-muted">Estimation indisponible</span>`;
-    }
 
-    // Fourchette de dates (range)
-    let rangeHtml = '';
-    if (due.isDateEstimated && due.rangeStart && due.rangeEnd && due.rangeStart !== due.rangeEnd) {
-      rangeHtml = `
-        <div class="due-range-line">
-          <span>Fourchette :</span>
-          <span class="due-range-badge">entre le ${formatDate(due.rangeStart)} et le ${formatDate(due.rangeEnd)}</span>
-        </div>
-      `;
-    }
+      let intervalDesc = '';
+      if (item.intervalKm && item.intervalMonths) {
+        intervalDesc = `${formatKm(item.intervalKm)} / ${item.intervalMonths} m`;
+      } else if (item.intervalKm) {
+        intervalDesc = `${formatKm(item.intervalKm)}`;
+      } else if (item.intervalMonths) {
+        intervalDesc = `${item.intervalMonths} mois`;
+      } else {
+        intervalDesc = `Libre`;
+      }
 
-    // Calcul de la jauge d'usure / progression (Étape 3)
-    let wearPct = 0;
-    if (item.intervalKm && item.lastKm !== null) {
-      const elapsedKm = Math.max(0, engine.effectiveCurrentKm - item.lastKm);
-      wearPct = Math.min(100, Math.round((elapsedKm / item.intervalKm) * 100));
-    } else if (item.intervalMonths && item.lastDate !== null) {
-      const elapsedDays = Math.max(0, getDaysElapsed(item.lastDate));
-      const totalDays = item.intervalMonths * 30.4375;
-      wearPct = Math.min(100, Math.round((elapsedDays / totalDays) * 100));
-    }
+      let dueDateHtml = '';
+      if (due.status === 'grey') {
+        dueDateHtml = `<span class="text-muted">À renseigner</span>`;
+      } else if (due.targetDate) {
+        const formattedDate = formatDate(due.targetDate);
+        if (due.isDateEstimated) {
+          dueDateHtml = `<strong>~${formattedDate}</strong>`;
+        } else {
+          dueDateHtml = `<strong>${formattedDate}</strong>`;
+        }
+      } else {
+        dueDateHtml = `<span class="text-muted">--</span>`;
+      }
 
-    let progressHtml = '';
-    if (due.status !== 'grey') {
-      progressHtml = `
-        <div class="item-progress-wrapper">
-          <div class="progress-header">
-            <span>Usure / Intervalle parcouru</span>
-            <span>${wearPct}%</span>
-          </div>
-          <div class="progress-track">
-            <div class="progress-bar-fill progress-fill-${due.status}" style="width: ${wearPct}%;"></div>
-          </div>
-        </div>
-      `;
-    }
+      let wearPct = 0;
+      if (item.intervalKm && item.lastKm !== null) {
+        const elapsedKm = Math.max(0, engine.effectiveCurrentKm - item.lastKm);
+        wearPct = Math.min(100, Math.round((elapsedKm / item.intervalKm) * 100));
+      } else if (item.intervalMonths && item.lastDate !== null) {
+        const elapsedDays = Math.max(0, getDaysElapsed(item.lastDate));
+        const totalDays = item.intervalMonths * 30.4375;
+        wearPct = Math.min(100, Math.round((elapsedDays / totalDays) * 100));
+      }
 
-    // Métriques restantes (km & jours)
-    let metricsHtml = '';
-    if (due.status !== 'grey') {
       let kmMetricText = '--';
       let kmMetricClass = '';
       if (due.remainingKm !== null) {
         if (due.remainingKm < 0) {
-          kmMetricText = `Dépassé de ${formatKm(Math.abs(due.remainingKm))}`;
+          kmMetricText = `-${formatKm(Math.abs(due.remainingKm))}`;
           kmMetricClass = 'metric-danger';
         } else if (due.remainingKm <= 1000) {
-          kmMetricText = `Reste ${formatKm(due.remainingKm)}`;
+          kmMetricText = formatKm(due.remainingKm);
           kmMetricClass = 'metric-warning';
         } else {
-          kmMetricText = `Reste ${formatKm(due.remainingKm)}`;
+          kmMetricText = formatKm(due.remainingKm);
         }
-      } else {
-        kmMetricText = 'Non basé sur km';
       }
 
       let daysMetricText = '--';
       let daysMetricClass = '';
       if (due.remainingDays !== null) {
         if (due.remainingDays < 0) {
-          daysMetricText = `Dépassé de ${Math.abs(due.remainingDays)} j`;
+          daysMetricText = `-${Math.abs(due.remainingDays)} j`;
           daysMetricClass = 'metric-danger';
         } else if (due.remainingDays <= 30) {
-          daysMetricText = `Reste ${due.remainingDays} j`;
+          daysMetricText = `${due.remainingDays} j`;
           daysMetricClass = 'metric-warning';
         } else {
-          daysMetricText = `Reste ${due.remainingDays} j`;
+          daysMetricText = `${due.remainingDays} j`;
         }
-      } else {
-        daysMetricText = 'Date non fixée';
       }
 
-      metricsHtml = `
-        <div class="item-metrics">
-          <div class="metric-pill">
-            <span class="metric-pill-label">Kilomètres</span>
-            <span class="metric-pill-val ${kmMetricClass}">${kmMetricText}</span>
+      let lastDoneText = 'Non renseigné';
+      if (item.lastKm !== null && item.lastDate) {
+        lastDoneText = `${formatKm(item.lastKm)} (${formatDate(item.lastDate)})`;
+      } else if (item.lastKm !== null) {
+        lastDoneText = `${formatKm(item.lastKm)}`;
+      } else if (item.lastDate) {
+        lastDoneText = `${formatDate(item.lastDate)}`;
+      }
+
+      const tr = document.createElement('tr');
+      tr.className = `row-${due.status}`;
+      tr.innerHTML = `
+        <td>${badgeHtml}</td>
+        <td>
+          <div class="table-col-name">${escapeHtml(item.name)}</div>
+        </td>
+        <td><span class="table-col-sub">${escapeHtml(intervalDesc)}</span></td>
+        <td>${dueDateHtml}</td>
+        <td><span class="${kmMetricClass}" style="font-weight:700;">${kmMetricText}</span></td>
+        <td><span class="${daysMetricClass}" style="font-weight:700;">${daysMetricText}</span></td>
+        <td>
+          ${due.status !== 'grey' ? `
+            <div style="display:flex; align-items:center; gap:6px;">
+              <div class="progress-track" style="width:44px; height:6px;">
+                <div class="progress-bar-fill progress-fill-${due.status}" style="width: ${wearPct}%;"></div>
+              </div>
+              <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">${wearPct}%</span>
+            </div>
+          ` : `<span style="font-size:0.75rem; color:var(--text-muted);">--</span>`}
+        </td>
+        <td><span class="table-col-sub">${escapeHtml(lastDoneText)}</span></td>
+        <td>
+          <div class="table-actions-cell" style="justify-content: center;">
+            <button type="button" class="btn-sm btn-done-today btn-open-done" data-id="${item.id}" title="Fait aujourd'hui">✅ Fait</button>
+            <button type="button" class="btn-sm btn-export-item-ics" data-id="${item.id}" title="Exporter (.ics)">📅</button>
+            <button type="button" class="btn-sm btn-edit-maint" data-id="${item.id}" title="Modifier">✏️</button>
           </div>
-          <div class="metric-pill">
-            <span class="metric-pill-label">Délai calendaire</span>
-            <span class="metric-pill-val ${daysMetricClass}">${daysMetricText}</span>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } else {
+    // ==========================================
+    // AFFICHAGE 2 : FICHES / CARTES
+    // ==========================================
+    const grid = document.createElement('div');
+    grid.className = 'items-grid';
+    grid.id = 'maintenanceList';
+    container.appendChild(grid);
+
+    displayedItems.forEach(({ item, due }) => {
+      const card = document.createElement('div');
+      card.className = `item-card item-card-${due.status}`;
+
+      let badgeHtml = '';
+      if (due.status === 'red') {
+        badgeHtml = `<span class="status-badge status-badge-red">🔴 ${due.statusLabel}</span>`;
+      } else if (due.status === 'orange') {
+        badgeHtml = `<span class="status-badge status-badge-orange">🟠 ${due.statusLabel}</span>`;
+      } else if (due.status === 'green') {
+        badgeHtml = `<span class="status-badge status-badge-green">🟢 ${due.statusLabel}</span>`;
+      } else {
+        badgeHtml = `<span class="status-badge status-badge-grey">⚪ ${due.statusLabel}</span>`;
+      }
+
+      let intervalDesc = '';
+      if (item.intervalKm && item.intervalMonths) {
+        intervalDesc = `Tous les ${formatKm(item.intervalKm)} ou ${item.intervalMonths} mois`;
+      } else if (item.intervalKm) {
+        intervalDesc = `Tous les ${formatKm(item.intervalKm)}`;
+      } else if (item.intervalMonths) {
+        intervalDesc = `Tous les ${item.intervalMonths} mois`;
+      } else {
+        intervalDesc = `Intervalle libre`;
+      }
+
+      let dueDateHtml = '';
+      if (due.status === 'grey') {
+        dueDateHtml = `<span class="due-date-value text-muted">À renseigner</span>`;
+      } else if (due.targetDate) {
+        const formattedDate = formatDate(due.targetDate);
+        if (due.isDateEstimated) {
+          dueDateHtml = `<span class="due-date-value">vers le ${formattedDate} <span style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">(estimation)</span></span>`;
+        } else {
+          dueDateHtml = `<span class="due-date-value">le ${formattedDate}</span>`;
+        }
+      } else {
+        dueDateHtml = `<span class="due-date-value text-muted">Estimation indisponible</span>`;
+      }
+
+      let rangeHtml = '';
+      if (due.isDateEstimated && due.rangeStart && due.rangeEnd && due.rangeStart !== due.rangeEnd) {
+        rangeHtml = `
+          <div class="due-range-line">
+            <span>Fourchette :</span>
+            <span class="due-range-badge">entre le ${formatDate(due.rangeStart)} et le ${formatDate(due.rangeEnd)}</span>
+          </div>
+        `;
+      }
+
+      let wearPct = 0;
+      if (item.intervalKm && item.lastKm !== null) {
+        const elapsedKm = Math.max(0, engine.effectiveCurrentKm - item.lastKm);
+        wearPct = Math.min(100, Math.round((elapsedKm / item.intervalKm) * 100));
+      } else if (item.intervalMonths && item.lastDate !== null) {
+        const elapsedDays = Math.max(0, getDaysElapsed(item.lastDate));
+        const totalDays = item.intervalMonths * 30.4375;
+        wearPct = Math.min(100, Math.round((elapsedDays / totalDays) * 100));
+      }
+
+      let progressHtml = '';
+      if (due.status !== 'grey') {
+        progressHtml = `
+          <div class="item-progress-wrapper">
+            <div class="progress-header">
+              <span>Usure / Intervalle parcouru</span>
+              <span>${wearPct}%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar-fill progress-fill-${due.status}" style="width: ${wearPct}%;"></div>
+            </div>
+          </div>
+        `;
+      }
+
+      let metricsHtml = '';
+      if (due.status !== 'grey') {
+        let kmMetricText = '--';
+        let kmMetricClass = '';
+        if (due.remainingKm !== null) {
+          if (due.remainingKm < 0) {
+            kmMetricText = `Dépassé de ${formatKm(Math.abs(due.remainingKm))}`;
+            kmMetricClass = 'metric-danger';
+          } else if (due.remainingKm <= 1000) {
+            kmMetricText = `Reste ${formatKm(due.remainingKm)}`;
+            kmMetricClass = 'metric-warning';
+          } else {
+            kmMetricText = `Reste ${formatKm(due.remainingKm)}`;
+          }
+        } else {
+          kmMetricText = 'Non basé sur km';
+        }
+
+        let daysMetricText = '--';
+        let daysMetricClass = '';
+        if (due.remainingDays !== null) {
+          if (due.remainingDays < 0) {
+            daysMetricText = `Dépassé de ${Math.abs(due.remainingDays)} j`;
+            daysMetricClass = 'metric-danger';
+          } else if (due.remainingDays <= 30) {
+            daysMetricText = `Reste ${due.remainingDays} j`;
+            daysMetricClass = 'metric-warning';
+          } else {
+            daysMetricText = `Reste ${due.remainingDays} j`;
+          }
+        } else {
+          daysMetricText = 'Date non fixée';
+        }
+
+        metricsHtml = `
+          <div class="item-metrics">
+            <div class="metric-pill">
+              <span class="metric-pill-label">Kilomètres</span>
+              <span class="metric-pill-val ${kmMetricClass}">${kmMetricText}</span>
+            </div>
+            <div class="metric-pill">
+              <span class="metric-pill-label">Délai calendaire</span>
+              <span class="metric-pill-val ${daysMetricClass}">${daysMetricText}</span>
+            </div>
+          </div>
+        `;
+      }
+
+      let lastDoneText = 'Non renseigné';
+      if (item.lastKm !== null && item.lastDate) {
+        lastDoneText = `${formatKm(item.lastKm)} le ${formatDate(item.lastDate)}`;
+      } else if (item.lastKm !== null) {
+        lastDoneText = `${formatKm(item.lastKm)}`;
+      } else if (item.lastDate) {
+        lastDoneText = `Le ${formatDate(item.lastDate)}`;
+      }
+
+      card.innerHTML = `
+        <div class="item-card-top">
+          <div class="item-info">
+            <span class="item-name">${item.name}</span>
+            <span class="item-interval">${intervalDesc}</span>
+          </div>
+          ${badgeHtml}
+        </div>
+
+        <div class="item-due-box">
+          <div class="due-primary-line">
+            <span class="due-date-label">Prochaine échéance :</span>
+            ${dueDateHtml}
+          </div>
+          ${rangeHtml}
+        </div>
+
+        ${progressHtml}
+
+        ${metricsHtml}
+
+        <div class="item-card-bottom">
+          <span class="item-last-done-text">Dernier : ${lastDoneText}</span>
+          <div class="item-actions">
+            <button type="button" class="btn-sm btn-export-item-ics" data-id="${item.id}" title="Ajouter cette échéance à mon calendrier (.ics)">📅 Agenda</button>
+            <button type="button" class="btn-sm btn-done-today btn-open-done" data-id="${item.id}">✅ Fait aujourd'hui</button>
+            <button type="button" class="btn-sm btn-edit-maint" data-id="${item.id}">Modifier</button>
           </div>
         </div>
       `;
-    }
 
-    // Dernier entretien
-    let lastDoneText = 'Non renseigné';
-    if (item.lastKm !== null && item.lastDate) {
-      lastDoneText = `${formatKm(item.lastKm)} le ${formatDate(item.lastDate)}`;
-    } else if (item.lastKm !== null) {
-      lastDoneText = `${formatKm(item.lastKm)}`;
-    } else if (item.lastDate) {
-      lastDoneText = `Le ${formatDate(item.lastDate)}`;
-    }
+      grid.appendChild(card);
+    });
+  }
 
-    card.innerHTML = `
-      <div class="item-card-top">
-        <div class="item-info">
-          <span class="item-name">${item.name}</span>
-          <span class="item-interval">${intervalDesc}</span>
-        </div>
-        ${badgeHtml}
-      </div>
-
-      <div class="item-due-box">
-        <div class="due-primary-line">
-          <span class="due-date-label">Prochaine échéance :</span>
-          ${dueDateHtml}
-        </div>
-        ${rangeHtml}
-      </div>
-
-      ${progressHtml}
-
-      ${metricsHtml}
-
-      <div class="item-card-bottom">
-        <span class="item-last-done-text">Dernier : ${lastDoneText}</span>
-        <div class="item-actions">
-          <button type="button" class="btn-sm btn-export-item-ics" data-id="${item.id}" title="Ajouter cette échéance à mon calendrier (.ics)">📅 Agenda</button>
-          <button type="button" class="btn-sm btn-done-today btn-open-done" data-id="${item.id}">✅ Fait aujourd'hui</button>
-          <button type="button" class="btn-sm btn-edit-maint" data-id="${item.id}">Modifier</button>
-        </div>
-      </div>
-    `;
-
-    listEl.appendChild(card);
-  });
-
-  listEl.querySelectorAll('.btn-export-item-ics').forEach(btn => {
+  // Écouteurs d'actions (communs au tableau et aux fiches)
+  container.querySelectorAll('.btn-export-item-ics').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.getAttribute('data-id');
       exportSingleMaintenanceItemIcs(id);
@@ -2284,7 +2487,7 @@ function handleDoneFormSubmit(e) {
 // ============================================================================
 
 function renderHistoryScreen() {
-  const container = document.getElementById('historyList');
+  const container = document.getElementById('historyContainer') || document.getElementById('historyList');
   const selVehicle = document.getElementById('histFilterVehicle');
   const selType = document.getElementById('histFilterType');
   const totalCostEl = document.getElementById('histTotalCost');
@@ -2377,6 +2580,9 @@ function renderHistoryScreen() {
   if (totalCostEl) totalCostEl.textContent = formatCost(totalCost);
   if (totalCountEl) totalCountEl.textContent = `${filtered.length} intervention${filtered.length > 1 ? 's' : ''}`;
 
+  const countBadge = document.getElementById('historyCountBadge');
+  if (countBadge) countBadge.textContent = `${filtered.length} intervention${filtered.length > 1 ? 's' : ''}`;
+
   container.innerHTML = '';
 
   if (filtered.length === 0) {
@@ -2425,54 +2631,130 @@ function renderHistoryScreen() {
     return;
   }
 
-  filtered.forEach(record => {
-    const card = document.createElement('div');
-    card.className = 'history-card';
+  const prefs = getUiPreferences();
+  updateViewToggleButtons('historyViewToggle', prefs.historyViewMode);
 
-    const veh = appState.vehicles.find(v => v.id === record.vehicleId);
-    const vehName = veh ? `${veh.name} (${veh.brand} ${veh.model})` : 'Véhicule';
-
-    const costBadge = (record.cost !== null && record.cost !== undefined)
-      ? `<span class="history-pill history-pill-cost">💰 ${formatCost(record.cost)}</span>`
-      : '';
-
-    const garageHtml = record.garage
-      ? `<span class="history-pill">🏢 ${escapeHtml(record.garage)}</span>`
-      : '';
-
-    const notesHtml = record.notes
-      ? `<div class="history-notes-box">📝 ${escapeHtml(record.notes)}</div>`
-      : '';
-
-    card.innerHTML = `
-      <div class="history-card-header">
-        <div>
-          <span class="history-type-title">${escapeHtml(record.type)}</span>
-          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
-            🚗 ${escapeHtml(vehName)}
-          </div>
-        </div>
-        <span class="history-date-badge">${formatDate(record.date)}</span>
-      </div>
-
-      <div class="history-card-pills">
-        <span class="history-pill">📍 ${formatKm(record.km)}</span>
-        ${costBadge}
-        ${garageHtml}
-      </div>
-
-      ${notesHtml}
-
-      <div class="history-card-footer">
-        <span>Opération effectuée</span>
-        <button type="button" class="btn-sm btn-delete-hist" data-id="${record.id}" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
-          🗑️ Supprimer
-        </button>
+  if (prefs.historyViewMode === 'table') {
+    // ==========================================
+    // AFFICHAGE 1 : TABLEAU GLISSABLE (PAR DÉFAUT)
+    // ==========================================
+    const tableWrap = document.createElement('div');
+    tableWrap.innerHTML = `
+      <div class="table-scroll-hint"><span>👈 Défilement horizontal pour tout voir 👉</span></div>
+      <div class="table-scroll-wrapper">
+        <table class="app-data-table history-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Opération</th>
+              <th>Véhicule</th>
+              <th>Kilométrage</th>
+              <th>Coût</th>
+              <th>Lieu / Garage</th>
+              <th>Notes</th>
+              <th style="text-align: center;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody"></tbody>
+        </table>
       </div>
     `;
+    container.appendChild(tableWrap);
+    const tbody = document.getElementById('historyTableBody');
 
-    container.appendChild(card);
-  });
+    filtered.forEach(record => {
+      const veh = appState.vehicles.find(v => v.id === record.vehicleId);
+      const vehName = veh ? `${veh.name}` : 'Véhicule';
+
+      const costHtml = (record.cost !== null && record.cost !== undefined)
+        ? `<span class="table-cost-pill">💰 ${formatCost(record.cost)}</span>`
+        : `<span style="color:var(--text-muted); font-size:0.8rem;">--</span>`;
+
+      const garageHtml = record.garage
+        ? `<span>🏢 ${escapeHtml(record.garage)}</span>`
+        : `<span style="color:var(--text-muted); font-size:0.8rem;">--</span>`;
+
+      const notesHtml = record.notes
+        ? `<span class="table-col-sub" title="${escapeHtml(record.notes)}">📝 ${escapeHtml(record.notes)}</span>`
+        : `<span style="color:var(--text-muted); font-size:0.8rem;">--</span>`;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${formatDate(record.date)}</strong></td>
+        <td><strong class="table-col-name">${escapeHtml(record.type)}</strong></td>
+        <td><span class="table-col-sub">🚗 ${escapeHtml(vehName)}</span></td>
+        <td><span style="font-weight:700;">📍 ${formatKm(record.km)}</span></td>
+        <td>${costHtml}</td>
+        <td>${garageHtml}</td>
+        <td>${notesHtml}</td>
+        <td>
+          <div class="table-actions-cell" style="justify-content: center;">
+            <button type="button" class="btn-sm btn-delete-hist" data-id="${record.id}" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);" title="Supprimer de l'historique">
+              🗑️
+            </button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } else {
+    // ==========================================
+    // AFFICHAGE 2 : FICHES / CARTES
+    // ==========================================
+    const listDiv = document.createElement('div');
+    listDiv.className = 'history-list';
+    listDiv.id = 'historyList';
+    container.appendChild(listDiv);
+
+    filtered.forEach(record => {
+      const card = document.createElement('div');
+      card.className = 'history-card';
+
+      const veh = appState.vehicles.find(v => v.id === record.vehicleId);
+      const vehName = veh ? `${veh.name} (${veh.brand} ${veh.model})` : 'Véhicule';
+
+      const costBadge = (record.cost !== null && record.cost !== undefined)
+        ? `<span class="history-pill history-pill-cost">💰 ${formatCost(record.cost)}</span>`
+        : '';
+
+      const garageHtml = record.garage
+        ? `<span class="history-pill">🏢 ${escapeHtml(record.garage)}</span>`
+        : '';
+
+      const notesHtml = record.notes
+        ? `<div class="history-notes-box">📝 ${escapeHtml(record.notes)}</div>`
+        : '';
+
+      card.innerHTML = `
+        <div class="history-card-header">
+          <div>
+            <span class="history-type-title">${escapeHtml(record.type)}</span>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+              🚗 ${escapeHtml(vehName)}
+            </div>
+          </div>
+          <span class="history-date-badge">${formatDate(record.date)}</span>
+        </div>
+
+        <div class="history-card-pills">
+          <span class="history-pill">📍 ${formatKm(record.km)}</span>
+          ${costBadge}
+          ${garageHtml}
+        </div>
+
+        ${notesHtml}
+
+        <div class="history-card-footer">
+          <span>Opération effectuée</span>
+          <button type="button" class="btn-sm btn-delete-hist" data-id="${record.id}" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
+            🗑️ Supprimer
+          </button>
+        </div>
+      `;
+
+      listDiv.appendChild(card);
+    });
+  }
 
   // Attacher écouteurs de suppression
   container.querySelectorAll('.btn-delete-hist').forEach(btn => {
@@ -2976,39 +3258,94 @@ function renderSettingsScreen() {
     }
   }
 
-  // 2. Statut réseau
+  // 2. Statut réseau & Synchronisation Cloud
   updateNetworkStatus();
+  if (typeof renderGistSyncSettings === 'function') {
+    renderGistSyncSettings();
+  }
 
-  // 3. Liste des intervalles par défaut
-  if (!listEl) return;
-  listEl.innerHTML = '';
+  // 3. Liste ou Tableau des intervalles par défaut
+  const container = document.getElementById('defaultIntervalsContainer') || document.getElementById('defaultIntervalsList');
+  if (container) {
+    container.innerHTML = '';
+    const prefs = getUiPreferences();
+    updateViewToggleButtons('intervalsViewToggle', prefs.intervalsViewMode);
 
-  const intervals = (appState.settings && appState.settings.defaultIntervals) ? appState.settings.defaultIntervals : DEFAULT_MAINTENANCE_TYPES;
+    const intervals = (appState.settings && appState.settings.defaultIntervals) ? appState.settings.defaultIntervals : DEFAULT_MAINTENANCE_TYPES;
 
-  intervals.forEach((def, index) => {
-    const itemEl = document.createElement('div');
-    itemEl.className = 'default-interval-item';
-    const isDateOnly = def.intervalKm === null;
-
-    itemEl.innerHTML = `
-      <div class="default-interval-header">
-        <span>${escapeHtml(def.name)}</span>
-        <span class="vehicle-meta-badge" style="font-size:0.75rem;">${isDateOnly ? 'Date seule' : 'Km + Mois'}</span>
-      </div>
-      <div class="default-interval-inputs">
-        <div class="form-group" style="flex: 1.2;">
-          <label class="form-label" style="font-size: 0.76rem;" for="defKm_${index}">Km (vide si date seule)</label>
-          <input type="number" id="defKm_${index}" class="form-input def-km-input" data-index="${index}" value="${def.intervalKm !== null ? def.intervalKm : ''}" placeholder="Non applicable" min="500" step="100">
+    if (prefs.intervalsViewMode === 'table') {
+      const tableWrap = document.createElement('div');
+      tableWrap.innerHTML = `
+        <div class="table-scroll-hint"><span>👈 Défilement horizontal pour tout voir 👉</span></div>
+        <div class="table-scroll-wrapper">
+          <table class="app-data-table intervals-table">
+            <thead>
+              <tr>
+                <th>Opération d'entretien</th>
+                <th>Mode</th>
+                <th>Intervalle Kilométrique</th>
+                <th>Intervalle Calendrier</th>
+              </tr>
+            </thead>
+            <tbody id="defaultIntervalsTableBody"></tbody>
+          </table>
         </div>
-        <div class="form-group" style="flex: 1;">
-          <label class="form-label" style="font-size: 0.76rem;" for="defMonths_${index}">Mois</label>
-          <input type="number" id="defMonths_${index}" class="form-input def-months-input" data-index="${index}" value="${def.intervalMonths || 12}" min="1" max="120" required>
-        </div>
-      </div>
-    `;
+      `;
+      container.appendChild(tableWrap);
+      const tbody = document.getElementById('defaultIntervalsTableBody');
+      intervals.forEach((def, index) => {
+        const isDateOnly = def.intervalKm === null;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong class="table-col-name">${escapeHtml(def.name)}</strong></td>
+          <td><span class="vehicle-meta-badge" style="font-size:0.72rem;">${isDateOnly ? 'Date seule' : 'Km + Mois'}</span></td>
+          <td>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <input type="number" id="defKm_${index}" class="table-input-km def-km-input" data-index="${index}" value="${def.intervalKm !== null ? def.intervalKm : ''}" placeholder="Non applicable" min="500" step="100">
+              <span style="font-size:0.78rem; color:var(--text-muted);">km</span>
+            </div>
+          </td>
+          <td>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <input type="number" id="defMonths_${index}" class="table-input-months def-months-input" data-index="${index}" value="${def.intervalMonths || 12}" min="1" max="120" required>
+              <span style="font-size:0.78rem; color:var(--text-muted);">mois</span>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } else {
+      const listEl = document.createElement('div');
+      listEl.className = 'default-intervals-list';
+      listEl.id = 'defaultIntervalsList';
+      container.appendChild(listEl);
 
-    listEl.appendChild(itemEl);
-  });
+      intervals.forEach((def, index) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'default-interval-item';
+        const isDateOnly = def.intervalKm === null;
+
+        itemEl.innerHTML = `
+          <div class="default-interval-header">
+            <span>${escapeHtml(def.name)}</span>
+            <span class="vehicle-meta-badge" style="font-size:0.75rem;">${isDateOnly ? 'Date seule' : 'Km + Mois'}</span>
+          </div>
+          <div class="default-interval-inputs">
+            <div class="form-group" style="flex: 1.2;">
+              <label class="form-label" style="font-size: 0.76rem;" for="defKm_${index}">Km (vide si date seule)</label>
+              <input type="number" id="defKm_${index}" class="form-input def-km-input" data-index="${index}" value="${def.intervalKm !== null ? def.intervalKm : ''}" placeholder="Non applicable" min="500" step="100">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" style="font-size: 0.76rem;" for="defMonths_${index}">Mois</label>
+              <input type="number" id="defMonths_${index}" class="form-input def-months-input" data-index="${index}" value="${def.intervalMonths || 12}" min="1" max="120" required>
+            </div>
+          </div>
+        `;
+
+        listEl.appendChild(itemEl);
+      });
+    }
+  }
 
   // 4. Carte Données de démonstration (Renault Symbol)
   const demoCard = document.getElementById('settingsDemoCard');
@@ -3257,6 +3594,421 @@ function updateNetworkStatus() {
 }
 
 // ============================================================================
+// 12b. SYNCHRONISATION MULTI-APPAREILS (GITHUB GIST)
+// ============================================================================
+
+const GIST_SYNC_KEY = 'carnet_entretien_gist_sync_config';
+const GIST_SYNC_FILENAME = 'carnet_entretien_data.json';
+let gistSyncDebounceTimer = null;
+let isGistSyncing = false;
+
+function getGistSyncConfig() {
+  try {
+    const raw = localStorage.getItem(GIST_SYNC_KEY);
+    if (raw) {
+      const cfg = JSON.parse(raw);
+      if (cfg && cfg.token && cfg.gistId) return cfg;
+    }
+  } catch (e) {}
+  return null;
+}
+
+function saveGistSyncConfig(cfg) {
+  try {
+    localStorage.setItem(GIST_SYNC_KEY, JSON.stringify(cfg));
+  } catch (e) {}
+}
+
+function clearGistSyncConfig() {
+  try {
+    localStorage.removeItem(GIST_SYNC_KEY);
+  } catch (e) {}
+}
+
+function formatSyncRelativeTime(dateStr) {
+  if (!dateStr) return 'Jamais';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return 'Jamais';
+  const now = new Date();
+  const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000);
+  if (diffSec < 30) return "À l'instant";
+  if (diffSec < 60) return "Il y a moins d'une minute";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `Il y a ${diffMin} min`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `Il y a ${diffHours} h`;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const mins = String(d.getMinutes()).padStart(2, '0');
+  return `${day}/${month} à ${hours}:${mins}`;
+}
+
+function updateHeaderSyncUI(status, label) {
+  const headerBtn = document.getElementById('headerSyncStatus');
+  const headerText = document.getElementById('headerSyncText');
+  if (!headerBtn) return;
+
+  headerBtn.className = 'header-sync-status';
+  if (status === 'synced') {
+    headerBtn.classList.add('synced');
+    if (headerText) headerText.textContent = label || 'Sync 🟢';
+  } else if (status === 'syncing') {
+    headerBtn.classList.add('syncing');
+    if (headerText) headerText.textContent = label || 'Sync...';
+  } else if (status === 'error') {
+    headerBtn.classList.add('error');
+    if (headerText) headerText.textContent = label || 'Erreur ⚠️';
+  } else if (status === 'offline') {
+    headerBtn.classList.add('offline');
+    if (headerText) headerText.textContent = label || 'Hors-ligne';
+  } else {
+    if (headerText) headerText.textContent = 'Local';
+  }
+}
+
+function renderGistSyncSettings() {
+  const cfg = getGistSyncConfig();
+  const connectedView = document.getElementById('syncConnectedView');
+  const setupView = document.getElementById('syncSetupView');
+  const badge = document.getElementById('syncStatusBadge');
+  const gistIdShort = document.getElementById('syncGistIdShort');
+  const lastTime = document.getElementById('syncLastTimeDisplay');
+
+  if (cfg && cfg.token && cfg.gistId) {
+    if (connectedView) connectedView.classList.remove('hidden');
+    if (setupView) setupView.classList.add('hidden');
+    if (gistIdShort) {
+      gistIdShort.textContent = cfg.gistId.slice(0, 10) + '...';
+      gistIdShort.title = cfg.gistId;
+    }
+    if (lastTime) {
+      lastTime.textContent = formatSyncRelativeTime(cfg.lastSyncTime);
+    }
+    if (badge) {
+      badge.textContent = "Connecté 🟢";
+      badge.className = "vehicle-meta-badge status-badge-green";
+    }
+    updateHeaderSyncUI('synced', 'Sync 🟢');
+  } else {
+    if (connectedView) connectedView.classList.add('hidden');
+    if (setupView) setupView.classList.remove('hidden');
+    if (badge) {
+      badge.textContent = "Non synchronisé ⚪";
+      badge.className = "vehicle-meta-badge";
+    }
+    updateHeaderSyncUI('disconnected', 'Local');
+  }
+}
+
+async function pushStateToGist(force = false) {
+  const cfg = getGistSyncConfig();
+  if (!cfg || !cfg.token || !cfg.gistId) return;
+
+  if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
+    updateHeaderSyncUI('offline', 'Hors-ligne');
+    return;
+  }
+
+  const payloadString = JSON.stringify(appState, null, 2);
+  if (!force && cfg.lastSyncDataString === payloadString) {
+    return;
+  }
+
+  isGistSyncing = true;
+  updateHeaderSyncUI('syncing', 'Envoi...');
+
+  try {
+    const res = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
+      method: 'PATCH',
+      headers: {
+        'Accept': 'application/vnd.github+json',
+        'Authorization': `Bearer ${cfg.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        description: 'Carnet d\'Entretien Auto - Synchronisation Cloud',
+        files: {
+          [GIST_SYNC_FILENAME]: {
+            content: payloadString
+          }
+        }
+      })
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.message || `Erreur HTTP ${res.status}`);
+    }
+
+    cfg.lastSyncTime = new Date().toISOString();
+    cfg.lastSyncDataString = payloadString;
+    saveGistSyncConfig(cfg);
+
+    updateHeaderSyncUI('synced', 'Sync 🟢');
+    renderGistSyncSettings();
+  } catch (err) {
+    console.error('Erreur push GitHub Gist:', err);
+    updateHeaderSyncUI('error', 'Erreur synchro');
+    const badge = document.getElementById('syncStatusBadge');
+    if (badge) {
+      badge.textContent = "Erreur de synchro ⚠️";
+      badge.className = "vehicle-meta-badge status-badge-orange";
+    }
+  } finally {
+    isGistSyncing = false;
+  }
+}
+
+async function pullStateFromGist(silent = false) {
+  const cfg = getGistSyncConfig();
+  if (!cfg || !cfg.token || !cfg.gistId) return;
+
+  if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
+    updateHeaderSyncUI('offline', 'Hors-ligne');
+    return;
+  }
+
+  isGistSyncing = true;
+  updateHeaderSyncUI('syncing', 'Vérification...');
+
+  try {
+    const res = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/vnd.github+json',
+        'Authorization': `Bearer ${cfg.token}`
+      }
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.message || `Erreur HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const file = data.files && data.files[GIST_SYNC_FILENAME];
+    if (!file || !file.content) {
+      await pushStateToGist(true);
+      return;
+    }
+
+    const remoteContent = file.content.trim();
+    const localContent = JSON.stringify(appState, null, 2);
+
+    if (remoteContent !== localContent && remoteContent !== cfg.lastSyncDataString) {
+      const parsed = JSON.parse(remoteContent);
+      if (parsed && Array.isArray(parsed.vehicles)) {
+        appState = parsed;
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+        } catch (e) {}
+
+        cfg.lastSyncTime = new Date().toISOString();
+        cfg.lastSyncDataString = remoteContent;
+        saveGistSyncConfig(cfg);
+
+        renderApp();
+        if (currentView === 'history') renderHistoryScreen();
+        if (currentView === 'habitudes') renderHabitudes();
+        if (currentView === 'settings') renderSettingsScreen();
+
+        if (!silent) {
+          showToast("☁️ Données synchronisées avec succès depuis votre autre appareil !", "success");
+        }
+      }
+    } else {
+      cfg.lastSyncTime = new Date().toISOString();
+      cfg.lastSyncDataString = remoteContent;
+      saveGistSyncConfig(cfg);
+    }
+
+    updateHeaderSyncUI('synced', 'Sync 🟢');
+    renderGistSyncSettings();
+  } catch (err) {
+    console.error('Erreur pull GitHub Gist:', err);
+    updateHeaderSyncUI('error', 'Erreur synchro');
+    if (!silent) {
+      showToast(`Échec de la synchronisation : ${err.message}`, "error");
+    }
+  } finally {
+    isGistSyncing = false;
+  }
+}
+
+function scheduleAutoSyncPush() {
+  const cfg = getGistSyncConfig();
+  if (!cfg || !cfg.token || !cfg.gistId) return;
+
+  if (gistSyncDebounceTimer) {
+    clearTimeout(gistSyncDebounceTimer);
+  }
+  gistSyncDebounceTimer = setTimeout(() => {
+    pushStateToGist();
+  }, 1200);
+}
+
+async function handleGistSyncFormSubmit(e) {
+  e.preventDefault();
+  const tokenInput = document.getElementById('syncGithubToken');
+  const gistIdInput = document.getElementById('syncGistIdInput');
+  const submitBtn = document.getElementById('btnSubmitGistSync');
+
+  const token = tokenInput ? tokenInput.value.trim() : '';
+  let gistId = gistIdInput ? gistIdInput.value.trim() : '';
+
+  if (!token) {
+    showToast("Veuillez renseigner votre jeton GitHub personnel.", "warning");
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>⏳ Connexion en cours...</span>';
+  }
+
+  try {
+    if (!gistId) {
+      const payloadString = JSON.stringify(appState, null, 2);
+      const createRes = await fetch('https://api.github.com/gists', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/vnd.github+json',
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          description: 'Carnet d\'Entretien Auto - Synchronisation Cloud',
+          public: false,
+          files: {
+            [GIST_SYNC_FILENAME]: {
+              content: payloadString
+            }
+          }
+        })
+      });
+
+      if (!createRes.ok) {
+        const errData = await createRes.json().catch(() => ({}));
+        throw new Error(errData.message || `Impossible de créer le Gist (${createRes.status})`);
+      }
+
+      const createdGist = await createRes.json();
+      gistId = createdGist.id;
+    }
+
+    const cfg = {
+      token: token,
+      gistId: gistId,
+      lastSyncTime: new Date().toISOString(),
+      lastSyncDataString: JSON.stringify(appState, null, 2)
+    };
+    saveGistSyncConfig(cfg);
+
+    await pullStateFromGist(true);
+
+    showToast("🎉 Synchronisation multi-appareils activée avec succès !", "success");
+    renderGistSyncSettings();
+  } catch (err) {
+    console.error('Erreur configuration synchro Gist:', err);
+    showToast(`Erreur : ${err.message}. Vérifiez que le jeton possède la permission 'gist'.`, "error", 6000);
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>🚀 Activer la synchronisation multi-appareils</span>';
+    }
+  }
+}
+
+function handleDisconnectSync() {
+  const confirmDisc = window.confirm("Déconnecter la synchronisation Cloud ? Vos données actuelles resteront enregistrées sur cet appareil.");
+  if (!confirmDisc) return;
+
+  clearGistSyncConfig();
+  renderGistSyncSettings();
+  showToast("Synchronisation Cloud désactivée.", "info");
+}
+
+function getMobileSyncUrl() {
+  const cfg = getGistSyncConfig();
+  if (!cfg) return null;
+  const baseUrl = window.location.origin + window.location.pathname;
+  return `${baseUrl}?syncToken=${encodeURIComponent(cfg.token)}&gistId=${encodeURIComponent(cfg.gistId)}`;
+}
+
+function handleShowQrSync() {
+  const syncUrl = getMobileSyncUrl();
+  if (!syncUrl) {
+    showToast("La synchronisation n'est pas configurée.", "warning");
+    return;
+  }
+
+  const modal = document.getElementById('syncQrModal');
+  const qrImg = document.getElementById('syncQrImage');
+  if (qrImg) {
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(syncUrl)}`;
+  }
+  if (modal) {
+    modal.classList.remove('hidden');
+  }
+}
+
+function handleCloseQrModal() {
+  const modal = document.getElementById('syncQrModal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+function handleCopyMobileLink() {
+  const syncUrl = getMobileSyncUrl();
+  if (!syncUrl) {
+    showToast("La synchronisation n'est pas configurée.", "warning");
+    return;
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(syncUrl)
+      .then(() => showToast("📋 Lien copié ! Ouvrez ce lien sur votre autre appareil pour vous connecter instantanément.", "success", 4500))
+      .catch(() => promptCopyFallback(syncUrl));
+  } else {
+    promptCopyFallback(syncUrl);
+  }
+}
+
+function promptCopyFallback(text) {
+  window.prompt("Copiez ce lien pour ouvrir l'application synchronisée sur un autre appareil :", text);
+}
+
+function handleSyncUrlParams() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const syncToken = urlParams.get('syncToken');
+    const gistId = urlParams.get('gistId');
+
+    if (syncToken && gistId) {
+      const cfg = {
+        token: syncToken,
+        gistId: gistId,
+        lastSyncTime: null,
+        lastSyncDataString: null
+      };
+      saveGistSyncConfig(cfg);
+
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+
+      showToast("🔑 Identifiants de synchronisation configurés !", "info");
+      pullStateFromGist(false);
+      return true;
+    }
+  } catch (e) {
+    console.warn('Erreur analyse URL sync:', e);
+  }
+  return false;
+}
+
+// ============================================================================
 // 13. ENREGISTREMENT DES ÉVÉNEMENTS (LISTENERS)
 // ============================================================================
 
@@ -3411,6 +4163,92 @@ function attachEventListeners() {
   // Bouton suppression Renault Symbol dans Paramètres
   const btnDeleteDemoSettings = document.getElementById('btnDeleteDemoDataSettings');
   if (btnDeleteDemoSettings) btnDeleteDemoSettings.addEventListener('click', handleDeleteDemoData);
+
+  // Bascules d'affichage (Tableau glissable vs Fiches) pour Plan d'entretien, Historique, Intervalles
+  ['maintViewToggle', 'historyViewToggle', 'intervalsViewToggle'].forEach(toggleId => {
+    const el = document.getElementById(toggleId);
+    if (!el) return;
+    el.querySelectorAll('.view-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const mode = e.currentTarget.getAttribute('data-mode');
+        if (toggleId === 'maintViewToggle') {
+          saveUiPreference('maintViewMode', mode);
+          const vehicle = getActiveVehicle();
+          if (vehicle) renderMaintenanceList(vehicle, computePredictionEngine(vehicle));
+        } else if (toggleId === 'historyViewToggle') {
+          saveUiPreference('historyViewMode', mode);
+          renderHistoryScreen();
+        } else if (toggleId === 'intervalsViewToggle') {
+          saveUiPreference('intervalsViewMode', mode);
+          renderSettingsScreen();
+        }
+      });
+    });
+  });
+
+  // Synchronisation Multi-Appareils (GitHub Gist)
+  const gistForm = document.getElementById('gistSyncForm');
+  if (gistForm) gistForm.addEventListener('submit', handleGistSyncFormSubmit);
+
+  const btnSyncNow = document.getElementById('btnSyncNow');
+  if (btnSyncNow) btnSyncNow.addEventListener('click', () => {
+    showToast("Synchronisation en cours...", "info", 1500);
+    pullStateFromGist(false);
+  });
+
+  const btnShowQr = document.getElementById('btnShowQrSync');
+  if (btnShowQr) btnShowQr.addEventListener('click', handleShowQrSync);
+
+  const btnCopyMobLink = document.getElementById('btnCopyMobileLink');
+  if (btnCopyMobLink) btnCopyMobLink.addEventListener('click', handleCopyMobileLink);
+
+  const btnCopyQrLink = document.getElementById('btnCopyQrDirectLink');
+  if (btnCopyQrLink) btnCopyQrLink.addEventListener('click', handleCopyMobileLink);
+
+  const btnDiscSync = document.getElementById('btnDisconnectSync');
+  if (btnDiscSync) btnDiscSync.addEventListener('click', handleDisconnectSync);
+
+  const btnCloseQr = document.getElementById('btnCloseSyncQrModal');
+  if (btnCloseQr) btnCloseQr.addEventListener('click', handleCloseQrModal);
+
+  const btnDismissQr = document.getElementById('btnDismissSyncQrModal');
+  if (btnDismissQr) btnDismissQr.addEventListener('click', handleCloseQrModal);
+
+  const qrModal = document.getElementById('syncQrModal');
+  if (qrModal) {
+    qrModal.addEventListener('click', (e) => {
+      if (e.target === qrModal) handleCloseQrModal();
+    });
+  }
+
+  const btnCopyGist = document.getElementById('btnCopyGistId');
+  if (btnCopyGist) {
+    btnCopyGist.addEventListener('click', () => {
+      const cfg = getGistSyncConfig();
+      if (cfg && cfg.gistId) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(cfg.gistId).then(() => showToast("ID du Gist copié !", "success"));
+        } else {
+          promptCopyFallback(cfg.gistId);
+        }
+      }
+    });
+  }
+
+  // Clic sur l'indicateur de synchronisation dans l'en-tête
+  const headerSync = document.getElementById('headerSyncStatus');
+  if (headerSync) {
+    headerSync.addEventListener('click', () => {
+      switchView('settings');
+      const card = document.getElementById('settingsSyncCard');
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.style.transition = 'outline 0.3s ease';
+        card.style.outline = '2px solid var(--primary)';
+        setTimeout(() => { card.style.outline = 'none'; }, 1500);
+      }
+    });
+  }
 }
 
 // ============================================================================
@@ -3424,11 +4262,46 @@ window.addEventListener('DOMContentLoaded', () => {
     initDemoState();
   }
 
+  // Vérifier la présence de paramètres de synchronisation dans l'URL (?syncToken=...&gistId=...)
+  handleSyncUrlParams();
+
   attachEventListeners();
   renderApp();
 
+  // Si la synchronisation est configurée, vérifier immédiatement les mises à jour distantes
+  const syncCfg = getGistSyncConfig();
+  if (syncCfg) {
+    pullStateFromGist(true);
+  }
+
+  // Synchronisation réactive au focus et au changement de visibilité d'onglet
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && getGistSyncConfig()) {
+      pullStateFromGist(true);
+    }
+  });
+
+  window.addEventListener('focus', () => {
+    if (getGistSyncConfig()) {
+      pullStateFromGist(true);
+    }
+  });
+
+  // Vérification périodique toutes les 45 secondes en arrière-plan
+  setInterval(() => {
+    if (!document.hidden && navigator.onLine && getGistSyncConfig()) {
+      pullStateFromGist(true);
+    }
+  }, 45000);
+
   // Détection connectivité réseau (En ligne / Hors-ligne)
-  window.addEventListener('online', updateNetworkStatus);
+  window.addEventListener('online', () => {
+    updateNetworkStatus();
+    if (getGistSyncConfig()) {
+      pushStateToGist();
+      pullStateFromGist(true);
+    }
+  });
   window.addEventListener('offline', updateNetworkStatus);
   updateNetworkStatus();
 
