@@ -4287,12 +4287,12 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Vérification périodique toutes les 45 secondes en arrière-plan
+  // Vérification périodique automatique toutes les 20 secondes en arrière-plan
   setInterval(() => {
     if (!document.hidden && navigator.onLine && getGistSyncConfig()) {
       pullStateFromGist(true);
     }
-  }, 45000);
+  }, 20000);
 
   // Détection connectivité réseau (En ligne / Hors-ligne)
   window.addEventListener('online', () => {
