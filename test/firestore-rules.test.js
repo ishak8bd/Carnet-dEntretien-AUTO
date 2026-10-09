@@ -12,6 +12,8 @@
  * 5. Expired invite rejected (read & use increment denied).
  * 6. Over-used invite rejected (uses >= maxUses).
  * 7. Append-only protections on kmLogs and activity feeds.
+ * 8. Nullable values validation.
+ * 9. Optional WhatsApp phone number on members and self-update permissions.
  */
 
 const fs = require('fs');
@@ -717,6 +719,87 @@ describe('Family Room Car Maintenance Tracker - Firestore Security Rules', () =>
       await assertFails(writeDoc(approvedDb, 'rooms/room_1/history/hist_bad_cost', {
         ...baseHist,
         cost: 'gratuit'
+      }));
+    });
+  });
+
+  // -------------------------------------------------------------
+  // 9. Member Phone Field and Self-Update Validation
+  // -------------------------------------------------------------
+  describe('9. Member phone field and self-update validation', () => {
+    it('allows member to update their own phone with a valid string (<= 35 chars)', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      await assertSucceeds(patchDoc(approvedDb, 'rooms/room_1/members/user_approved', {
+        phone: '+33612345678',
+      }));
+    });
+
+    it('allows member to set phone to null or clear it', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      await assertSucceeds(patchDoc(approvedDb, 'rooms/room_1/members/user_approved', {
+        phone: null,
+      }));
+    });
+
+    it('rejects member updating phone if length exceeds 35 chars', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      const tooLongPhone = '+123456789012345678901234567890123456'; // 36 chars
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/members/user_approved', {
+        phone: tooLongPhone,
+      }));
+    });
+
+    it('rejects member updating phone if type is non-string and non-null', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/members/user_approved', {
+        phone: 12345678,
+      }));
+    });
+
+    it('rejects member updating phone when attempting to modify protected fields like role or status', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/members/user_approved', {
+        phone: '+33612345678',
+        role: 'owner',
+      }));
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/members/user_approved', {
+        phone: '+33612345678',
+        status: 'pending',
+      }));
+    });
+
+    it('allows room owner to update a member phone and details', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+
+      await assertSucceeds(patchDoc(ownerDb, 'rooms/room_1/members/user_approved', {
+        phone: '+213555123456',
+      }));
+    });
+
+    it('denies a member from updating another member phone', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/members/user_owner', {
+        phone: '+33699999999',
       }));
     });
   });

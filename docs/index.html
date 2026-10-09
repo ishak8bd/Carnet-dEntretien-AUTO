@@ -872,6 +872,12 @@
           <span class="form-help">Visible lors de chaque relevé de compteur ou intervention ajoutée.</span>
         </div>
 
+        <div class="form-group">
+          <label class="form-label" for="createOwnerPhone">Numéro WhatsApp (optionnel)</label>
+          <input type="tel" id="createOwnerPhone" class="form-input" placeholder="Ex: 213555123456 ou +213555123456" maxlength="35">
+          <span class="form-help">Pour recevoir automatiquement les alertes du Bot WhatsApp (relevé tous les 15j et entretiens).</span>
+        </div>
+
         <div style="display: flex; gap: 10px;">
           <div class="form-group" style="flex: 1;">
             <label class="form-label" for="createExpiryHours">Validité du lien</label>
@@ -923,6 +929,12 @@
           <label class="form-label" for="joinMemberName">Votre prénom</label>
           <input type="text" id="joinMemberName" class="form-input" placeholder="Ex: Amine, Maman, Yacine..." required maxlength="100">
           <span class="form-help">Permet à l'administrateur de vous identifier et de valider votre accès.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="joinMemberPhone">Numéro WhatsApp (optionnel)</label>
+          <input type="tel" id="joinMemberPhone" class="form-input" placeholder="Ex: 213555123456 ou +213555123456" maxlength="35">
+          <span class="form-help">Pour recevoir les rappels WhatsApp lorsque votre accès sera approuvé.</span>
         </div>
 
         <div class="form-group">
@@ -1037,6 +1049,41 @@
             Transférer &amp; Quitter le partage
           </button>
           <button type="button" id="btnCancelTransferOwnership" class="btn-secondary">Annuler</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Modifier le profil d'un membre (Nom & Numéro WhatsApp) -->
+  <div id="modalEditMemberProfile" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="editMemberModalTitle">Modifier le profil 👤</h2>
+        <button type="button" class="modal-close" id="btnCloseEditMemberProfile" aria-label="Fermer">✕</button>
+      </div>
+      <p class="card-subtitle" id="editMemberModalSubtitle">
+        Modifiez le prénom et le numéro WhatsApp pour la réception des alertes d'entretien.
+      </p>
+
+      <form id="formEditMemberProfile">
+        <input type="hidden" id="editMemberUid">
+
+        <div class="form-group">
+          <label class="form-label" for="editMemberNameInput">Prénom / Nom</label>
+          <input type="text" id="editMemberNameInput" class="form-input" placeholder="Ex: Karim, Papa..." required maxlength="100">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editMemberPhoneInput">Numéro WhatsApp (avec indicatif pays)</label>
+          <input type="tel" id="editMemberPhoneInput" class="form-input" placeholder="Ex: 213555123456 ou +213555123456" maxlength="35">
+          <span class="form-help">
+            Ce numéro recevra les alertes du bot WhatsApp (relevé tous les 15 jours et entretiens proches).
+          </span>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 16px;">
+          <button type="submit" id="btnSubmitEditMemberProfile" class="btn-primary" style="flex: 1;">Enregistrer</button>
+          <button type="button" id="btnCancelEditMemberProfile" class="btn-secondary">Annuler</button>
         </div>
       </form>
     </div>

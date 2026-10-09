@@ -256,11 +256,13 @@ async function getTrackerData() {
   }
   const items = await fetchFirestoreCollection('items');
   const kmLogs = await fetchFirestoreCollection('kmLogs');
+  const members = await fetchFirestoreCollection('members');
 
   return {
     vehicles: Array.isArray(vehicles) ? vehicles : [],
     items: Array.isArray(items) ? items : [],
-    kmLogs: Array.isArray(kmLogs) ? kmLogs : []
+    kmLogs: Array.isArray(kmLogs) ? kmLogs : [],
+    members: Array.isArray(members) ? members : []
   };
 }
 
@@ -287,9 +289,9 @@ function getSelfJid() {
 }
 
 /**
- * Retourne la liste unique de TOUS les destinataires (hôte WhatsApp, numéros configurés, abonnés)
+ * Retourne la liste unique de TOUS les destinataires (hôte WhatsApp, membres Firestore avec numéro, numéros configurés, abonnés)
  */
-function getAllTargetJids() {
+function getAllTargetJids(firestoreMembers = []) {
   const cfg = loadConfig();
   const jids = new Set();
 
@@ -297,13 +299,23 @@ function getAllTargetJids() {
   const self = getSelfJid();
   if (self) jids.add(self);
 
-  // 2. Numéro unique configuré (s'il y en a un)
+  // 2. Membres enregistrés dans Firestore ayant renseigné leur numéro WhatsApp dans l'app
+  if (Array.isArray(firestoreMembers)) {
+    for (const m of firestoreMembers) {
+      if (m.phone && (m.status === 'approved' || m.role === 'owner')) {
+        const j = formatPhoneJid(m.phone);
+        if (j) jids.add(j);
+      }
+    }
+  }
+
+  // 3. Numéro unique configuré (s'il y en a un)
   if (cfg.targetPhone) {
     const j = formatPhoneJid(cfg.targetPhone);
     if (j) jids.add(j);
   }
 
-  // 3. Liste de tous les numéros supplémentaires (famille, conducteurs)
+  // 4. Liste de tous les numéros supplémentaires (famille, conducteurs)
   if (Array.isArray(cfg.targetPhones)) {
     for (const p of cfg.targetPhones) {
       const j = formatPhoneJid(p);
@@ -311,7 +323,7 @@ function getAllTargetJids() {
     }
   }
 
-  // 4. Liste des utilisateurs abonnés (!rejoindre)
+  // 5. Liste des utilisateurs abonnés (!rejoindre)
   if (Array.isArray(cfg.subscribers)) {
     for (const s of cfg.subscribers) {
       const j = formatPhoneJid(s);
@@ -347,8 +359,8 @@ async function sendWhatsAppMessage(jid, text) {
 /**
  * Diffuse un message à TOUS les utilisateurs enregistrés avec temporisation anti-spam
  */
-async function broadcastMessage(text, excludeJid = null) {
-  const targets = getAllTargetJids().filter(j => j !== excludeJid);
+async function broadcastMessage(text, excludeJid = null, firestoreMembers = []) {
+  const targets = getAllTargetJids(firestoreMembers).filter(j => j !== excludeJid);
   if (targets.length === 0) {
     console.warn("⚠️ Aucun destinataire disponible pour la diffusion.");
     return { total: 0, sent: 0, failed: 0, recipients: [] };
@@ -385,12 +397,6 @@ async function broadcastMessage(text, excludeJid = null) {
 
 async function runReminderChecks() {
   console.log(`\n🔍 [${new Date().toLocaleString('fr-FR')}] Vérification des rappels...`);
-  const allTargets = getAllTargetJids();
-  if (allTargets.length === 0) {
-    console.warn("⚠️ Aucun numéro de destination configuré.");
-    return;
-  }
-
   const cfg = loadConfig();
   if (!cfg.roomId) {
     console.warn("⚠️ Salle Firestore non définie. Tapez !room <votre_room_id> pour démarrer.");
@@ -405,6 +411,12 @@ async function runReminderChecks() {
       `*« 🔔 1 en attente : Bot WhatsApp (Baileys) »*\n` +
       `Cliquez sur *"Accepter"*, puis renvoyez *!verif* sur WhatsApp !`;
     await broadcastMessage(msg);
+    return;
+  }
+
+  const allTargets = getAllTargetJids(data.members || []);
+  if (allTargets.length === 0) {
+    console.warn("⚠️ Aucun numéro de destination configuré (ni dans le bot, ni dans les membres de la salle).");
     return;
   }
 
@@ -442,7 +454,7 @@ async function runReminderChecks() {
             `📊 Dernier kilométrage enregistré : *${currentKm.toLocaleString('fr-FR')} km*\n\n` +
             `➡️ Pensez à relever votre compteur et à l'actualiser dans l'application pour maintenir la fiabilité de vos échéances d'entretien !`;
 
-          const res = await broadcastMessage(msg);
+          const res = await broadcastMessage(msg, null, data.members || []);
           if (res.sent > 0) {
             history.mileage[vehId] = now;
             saveNotificationHistory(history);
@@ -554,7 +566,7 @@ async function runReminderChecks() {
             `Rappel automatique programmé.`;
         }
 
-        const res = await broadcastMessage(msg);
+        const res = await broadcastMessage(msg, null, data.members || []);
         if (res.sent > 0) {
           history.items[itemId] = { lastSent: now, level };
           saveNotificationHistory(history);
@@ -676,14 +688,15 @@ async function handleIncomingMessage(msg) {
   // --------------------------------------------------------------------------
   if (cmd === '!test' || cmd === '!testall' || cmd === '!tester' || cmd === '!testnotif') {
     const cfg = loadConfig();
-    const allTargets = getAllTargetJids();
+    const data = await getTrackerData();
+    const members = (data && Array.isArray(data.members)) ? data.members : [];
+    const allTargets = getAllTargetJids(members);
 
     const senderJid = formatPhoneJid(sender);
     if (senderJid && !allTargets.includes(senderJid)) {
       allTargets.push(senderJid);
     }
 
-    const data = await getTrackerData();
     const veh = (data.vehicles && data.vehicles.length > 0) ? data.vehicles[0] : null;
     const currentKm = veh ? (veh.currentKm || 0) : 250000;
     const vehName = veh ? (veh.name || `${veh.brand || ''} ${veh.model || ''}`.trim()) : "Renault Symbol";
@@ -713,14 +726,21 @@ async function handleIncomingMessage(msg) {
       `_Envoyé le ${new Date().toLocaleString('fr-FR')}_`;
 
     await sendWhatsAppMessage(sender, `⏳ Envoi du test de diffusion à *${allTargets.length}* destinataire(s)...`);
-    const res = await broadcastMessage(testBroadcastMsg);
+    const res = await broadcastMessage(testBroadcastMsg, null, members);
 
-    const recipientListStr = allTargets.map(j => `• +${j.replace('@s.whatsapp.net', '')}`).join('\n');
+    const recipientListStr = allTargets.map(j => {
+      const cleanNum = j.replace('@s.whatsapp.net', '');
+      const appMember = members.find(m => formatPhoneJid(m.phone) === j);
+      const label = appMember ? ` (${appMember.name})` : '';
+      return `• +${cleanNum}${label}`;
+    }).join('\n');
+
     await sendWhatsAppMessage(sender,
       `✅ *Test terminé !*\n\n` +
       `📊 *Résultat :* ${res.sent}/${res.total} message(s) délivré(s) avec succès.\n\n` +
       `📱 *Destinataires notifiés :*\n${recipientListStr}\n\n` +
-      `💡 Pour ajouter un autre proche : *!ajouter <numéro>*\n` +
+      `💡 Les numéros sont modifiables directement dans l'application Web (Paramètres > Partage).\n` +
+      `💡 Pour ajouter un numéro via WhatsApp : *!ajouter <numéro>*\n` +
       `💡 Pour voir la liste complète : *!destinataires*`
     );
     return;
@@ -780,19 +800,27 @@ async function handleIncomingMessage(msg) {
   // COMMANDE 5 : !destinataires / !users / !membres / !liste
   // --------------------------------------------------------------------------
   if (cmd === '!destinataires' || cmd === '!users' || cmd === '!membres' || cmd === '!liste') {
-    const targets = getAllTargetJids();
+    const data = await getTrackerData();
+    const members = (data && Array.isArray(data.members)) ? data.members : [];
+    const targets = getAllTargetJids(members);
     const self = getSelfJid();
 
     let text = `👥 *Destinataires des alertes WhatsApp* (${targets.length}) :\n\n`;
     targets.forEach((j, idx) => {
       const num = j.replace('@s.whatsapp.net', '');
-      const isSelf = j === self ? ' 👑 (Bot / Vous)' : '';
-      text += `${idx + 1}. *+${num}*${isSelf}\n`;
+      const isSelf = j === self ? ' 🤖 (Bot WhatsApp)' : '';
+      const appMember = members.find(m => formatPhoneJid(m.phone) === j);
+      let memberLabel = '';
+      if (appMember) {
+        memberLabel = ` 👤 (${appMember.name}${appMember.role === 'owner' ? ' - Gestionnaire' : ''})`;
+      }
+      text += `${idx + 1}. *+${num}*${isSelf || memberLabel}\n`;
     });
 
-    text += `\n👉 Pour ajouter un proche : *!ajouter <numéro>*\n` +
-            `👉 Pour retirer un numéro : *!retirer <numéro>*\n` +
-            `👉 Ou demandez-lui d'envoyer *!rejoindre* directement au bot !`;
+    text += `\n👉 *Depuis l'application Web* : chaque membre peut modifier son nom et son numéro WhatsApp dans les Paramètres.\n` +
+            `👉 L'administrateur peut modifier le profil de tous les membres directement depuis l'application Web.\n` +
+            `👉 Pour ajouter un numéro depuis WhatsApp : *!ajouter <numéro>*\n` +
+            `👉 Pour retirer un numéro : *!retirer <numéro>*`;
     await sendWhatsAppMessage(sender, text);
     return;
   }
@@ -826,8 +854,10 @@ async function handleIncomingMessage(msg) {
       await sendWhatsAppMessage(sender, "⚠️ Veuillez écrire le message à diffuser. Exemple : *!broadcast Pensez à relever les compteurs ce soir !*");
       return;
     }
+    const data = await getTrackerData();
+    const members = (data && Array.isArray(data.members)) ? data.members : [];
     const fullMsg = `📢 *MESSAGE DU CARNET D'ENTRETIEN*\n\n${bcastText}\n\n_Envoyé à tous les membres_`;
-    const res = await broadcastMessage(fullMsg);
+    const res = await broadcastMessage(fullMsg, null, members);
     await sendWhatsAppMessage(sender, `✅ Message diffusé à *${res.sent}/${res.total}* utilisateur(s).`);
     return;
   }
@@ -877,10 +907,16 @@ async function handleIncomingMessage(msg) {
       return;
     }
 
-    const targets = getAllTargetJids();
+    const members = (data && Array.isArray(data.members)) ? data.members : [];
+    const targets = getAllTargetJids(members);
     let report = `📋 *État de votre Carnet d'Entretien* :\n\n`;
     report += `• Salle active : *${cfg.roomId}*\n`;
-    report += `• Destinataires notifiés : *${targets.length}*\n\n`;
+    report += `• Destinataires notifiés : *${targets.length}*\n`;
+    if (members.length > 0) {
+      const withPhone = members.filter(m => m.phone && (m.status === 'approved' || m.role === 'owner'));
+      report += `• Membres configurés : ${withPhone.length}/${members.length} avec numéro WhatsApp\n`;
+    }
+    report += `\n`;
 
     for (const v of data.vehicles) {
       report += `🚗 *${v.name || v.brand + ' ' + v.model}* (${(v.currentKm || 0).toLocaleString('fr-FR')} km)\n`;
@@ -943,7 +979,8 @@ async function startWhatsAppBot() {
       console.log('\n✅ Connecté avec succès à WhatsApp ! Le bot est opérationnel.');
 
       const cfg = loadConfig();
-      const allTargets = getAllTargetJids();
+      const initialData = await getTrackerData();
+      const allTargets = getAllTargetJids(initialData.members || []);
       console.log(`[WhatsApp] Destinataires des alertes configurés (${allTargets.length}) : ${allTargets.join(', ')}`);
 
       // Première vérification après 3 secondes si une salle est déjà configurée

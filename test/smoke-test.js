@@ -485,7 +485,10 @@ try {
     'renderActivityFeed',
     'updateSyncIndicatorBadge',
     'initFamilyRoom',
-    'renderSettingsRoomSection'
+    'renderSettingsRoomSection',
+    'updateMemberProfile',
+    'showEditMemberModal',
+    'hideEditMemberModal'
   ];
 
   // Extraire le bloc window.FamilyRoom = { ... };
@@ -503,7 +506,15 @@ try {
     );
   }
 
-  console.log('✅ TOUS LES TESTS DU SMOKE TEST (19/19) ONT RÉUSSI SANS AUCUNE ERREUR !');
+  console.log('20. Vérification des éléments de profil membre et numéros WhatsApp dans le DOM');
+  assert(document.getElementById('modalEditMemberProfile'), 'Modale modalEditMemberProfile présente');
+  assert(document.getElementById('editMemberUid'), 'Input editMemberUid présent');
+  assert(document.getElementById('editMemberNameInput'), 'Input editMemberNameInput présent');
+  assert(document.getElementById('editMemberPhoneInput'), 'Input editMemberPhoneInput présent');
+  assert(document.getElementById('createOwnerPhone'), 'Input createOwnerPhone présent');
+  assert(document.getElementById('joinMemberPhone'), 'Input joinMemberPhone présent');
+
+  console.log('✅ TOUS LES TESTS DU SMOKE TEST (20/20) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
 } catch (err) {
   console.error('❌ Échec du smoke test:', err);

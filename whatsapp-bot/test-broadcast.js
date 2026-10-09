@@ -37,20 +37,41 @@ function loadConfig() {
 async function getTrackerData() {
   const cfg = loadConfig();
   try {
-    if (!fs.existsSync(AUTH_CACHE_FILE)) return null;
+    if (!fs.existsSync(AUTH_CACHE_FILE)) return { vehicles: [], members: [] };
     const auth = JSON.parse(fs.readFileSync(AUTH_CACHE_FILE, 'utf-8'));
-    const url = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/rooms/${cfg.roomId}/vehicles`;
-    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${auth.idToken}` } });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return (data.documents || []).map(d => ({
-      name: d.fields?.name?.stringValue || 'Véhicule',
-      brand: d.fields?.brand?.stringValue || '',
-      model: d.fields?.model?.stringValue || '',
-      currentKm: parseInt(d.fields?.currentKm?.integerValue || '0', 10)
-    }));
+    
+    // Véhicules
+    const vehUrl = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/rooms/${cfg.roomId}/vehicles`;
+    const vehRes = await fetch(vehUrl, { headers: { 'Authorization': `Bearer ${auth.idToken}` } });
+    let vehicles = [];
+    if (vehRes.ok) {
+      const data = await vehRes.json();
+      vehicles = (data.documents || []).map(d => ({
+        name: d.fields?.name?.stringValue || 'Véhicule',
+        brand: d.fields?.brand?.stringValue || '',
+        model: d.fields?.model?.stringValue || '',
+        currentKm: parseInt(d.fields?.currentKm?.integerValue || '0', 10)
+      }));
+    }
+
+    // Membres
+    const memUrl = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/rooms/${cfg.roomId}/members`;
+    const memRes = await fetch(memUrl, { headers: { 'Authorization': `Bearer ${auth.idToken}` } });
+    let members = [];
+    if (memRes.ok) {
+      const data = await memRes.json();
+      members = (data.documents || []).map(d => ({
+        id: d.name.split('/').pop(),
+        name: d.fields?.name?.stringValue || 'Membre',
+        role: d.fields?.role?.stringValue || 'member',
+        status: d.fields?.status?.stringValue || 'pending',
+        phone: d.fields?.phone?.stringValue || null
+      }));
+    }
+
+    return { vehicles, members };
   } catch (e) {
-    return null;
+    return { vehicles: [], members: [] };
   }
 }
 
@@ -91,12 +112,25 @@ async function run() {
     if (connection === 'open') {
       console.log("✅ Connecté à WhatsApp !");
 
+      const trackerData = await getTrackerData();
+      const members = trackerData.members || [];
+      const vehicles = trackerData.vehicles || [];
+
       // Construire la liste de tous les destinataires
       const targets = new Set();
       if (sock.user && sock.user.id) {
         const selfNum = sock.user.id.split(':')[0].replace(/[^0-9]/g, '');
         targets.add(`${selfNum}@s.whatsapp.net`);
       }
+
+      // Membres Firestore avec téléphone
+      members.forEach(m => {
+        if (m.phone && (m.status === 'approved' || m.role === 'owner')) {
+          const clean = m.phone.replace(/[^0-9]/g, '');
+          if (clean) targets.add(`${clean}@s.whatsapp.net`);
+        }
+      });
+
       if (cfg.targetPhone) {
         targets.add(`${cfg.targetPhone.replace(/[^0-9]/g, '')}@s.whatsapp.net`);
       }
@@ -108,11 +142,14 @@ async function run() {
       }
 
       const targetList = Array.from(targets);
-      console.log(`📱 Destinataires détectés (${targetList.length}) :`, targetList.map(j => '+' + j.replace('@s.whatsapp.net', '')).join(', '));
+      console.log(`📱 Destinataires détectés (${targetList.length}) :`, targetList.map(j => {
+        const num = '+' + j.replace('@s.whatsapp.net', '');
+        const mem = members.find(m => m.phone && m.phone.replace(/[^0-9]/g, '') === j.replace('@s.whatsapp.net', ''));
+        return mem ? `${num} (${mem.name})` : num;
+      }).join(', '));
 
       // Données du véhicule
-      const vehicles = await getTrackerData();
-      const veh = vehicles && vehicles.length > 0 ? vehicles[0] : { name: 'Renault Symbol', currentKm: 250000 };
+      const veh = vehicles.length > 0 ? vehicles[0] : { name: 'Renault Symbol', currentKm: 250000 };
 
       const testMsg =
         `🚗 *TEST DE NOTIFICATION WHATSAPP - Carnet d'Entretien*\n\n` +

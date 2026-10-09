@@ -168,7 +168,7 @@ export async function pingRoomActivity(roomId) {
 /**
  * Crée une nouvelle salle familiale avec son premier lien d'invitation
  */
-export async function createFamilyRoom({ roomName, ownerName, expiryHours = 24, maxUses = 5, migrateLocal = false }) {
+export async function createFamilyRoom({ roomName, ownerName, ownerPhone = '', expiryHours = 24, maxUses = 5, migrateLocal = false }) {
   const finalRoomName = (roomName && roomName.trim()) ? roomName.trim() : "Multi-utilisateurs";
   if (!ownerName || !ownerName.trim()) throw new Error("Votre prénom est obligatoire.");
 
@@ -192,8 +192,10 @@ export async function createFamilyRoom({ roomName, ownerName, expiryHours = 24, 
 
   // 2. Document Membre Propriétaire (automatiquement approuvé)
   const memberRef = doc(db, 'rooms', roomId, 'members', uid);
+  const cleanPhone = ownerPhone && ownerPhone.trim() ? ownerPhone.trim() : null;
   batch.set(memberRef, {
     name: ownerName.trim(),
+    phone: cleanPhone,
     role: 'owner',
     status: 'approved',
     joinedAt: serverTimestamp(),
@@ -218,6 +220,7 @@ export async function createFamilyRoom({ roomName, ownerName, expiryHours = 24, 
     roomId,
     roomName: finalRoomName,
     myName: ownerName.trim(),
+    myPhone: cleanPhone || '',
     myUid: uid,
     role: 'owner',
     status: 'approved'
@@ -271,7 +274,7 @@ export async function createAdditionalInvite(roomId, { expiryHours = 24, maxUses
 /**
  * Demande à rejoindre une salle avec un code d'invitation
  */
-export async function joinFamilyRoom({ inviteInput, memberName }) {
+export async function joinFamilyRoom({ inviteInput, memberName, memberPhone = '' }) {
   if (!memberName || !memberName.trim()) throw new Error("Votre prénom est obligatoire.");
   const parsed = parseInviteToken(inviteInput);
   if (!parsed) throw new Error("Code ou lien d'invitation invalide.");
@@ -310,8 +313,10 @@ export async function joinFamilyRoom({ inviteInput, memberName }) {
 
   // 3. Créer le document membre en statut 'pending'
   const memberRef = doc(db, 'rooms', roomId, 'members', uid);
+  const cleanPhone = memberPhone && memberPhone.trim() ? memberPhone.trim() : null;
   await setDoc(memberRef, {
     name: memberName.trim(),
+    phone: cleanPhone,
     role: 'member',
     status: 'pending',
     joinedAt: serverTimestamp(),
@@ -330,6 +335,7 @@ export async function joinFamilyRoom({ inviteInput, memberName }) {
     roomId,
     roomName,
     myName: memberName.trim(),
+    myPhone: cleanPhone || '',
     myUid: uid,
     role: 'member',
     status: 'pending'
@@ -431,6 +437,89 @@ export async function removeMember(roomId, memberUid) {
   // Journaliser l'activité
   await addRoomActivity(roomId, `${profile.myName} a retiré un utilisateur du partage.`);
   if (window.showToast) window.showToast("Utilisateur retiré du partage.", "info");
+}
+
+/**
+ * Met à jour le profil (nom et numéro WhatsApp) :
+ * - Chaque utilisateur peut modifier son propre prénom et son numéro WhatsApp.
+ * - L'administrateur (gestionnaire) peut modifier TOUS les membres.
+ */
+export async function updateMemberProfile(memberUid, { name, phone }) {
+  const profile = getStoredRoomProfile();
+  if (!profile || !profile.roomId) throw new Error("Aucun partage actif.");
+  if (!name || !name.trim()) throw new Error("Le prénom / nom est obligatoire.");
+
+  const isSelf = (profile.myUid === memberUid);
+  const isOwner = (profile.role === 'owner');
+
+  if (!isSelf && !isOwner) {
+    throw new Error("Seul l'administrateur peut modifier les informations des autres membres.");
+  }
+
+  const memberRef = doc(db, 'rooms', profile.roomId, 'members', memberUid);
+  const cleanPhone = phone && phone.trim() ? phone.trim() : null;
+
+  await updateDoc(memberRef, {
+    name: name.trim(),
+    phone: cleanPhone,
+    lastSeenAt: serverTimestamp()
+  });
+
+  // Si c'est l'utilisateur lui-même qui s'est modifié, mettre à jour le profil local
+  if (isSelf) {
+    profile.myName = name.trim();
+    profile.myPhone = cleanPhone || '';
+    saveStoredRoomProfile(profile);
+  }
+
+  const actText = isSelf
+    ? `${name.trim()} a mis à jour son profil${cleanPhone ? ' (WhatsApp configuré)' : ''}.`
+    : `L'administrateur a mis à jour le profil de ${name.trim()}${cleanPhone ? ' (WhatsApp: ' + cleanPhone + ')' : ''}.`;
+
+  try {
+    await addRoomActivity(profile.roomId, actText);
+  } catch (e) {}
+
+  pingRoomActivity(profile.roomId);
+  renderSettingsRoomSection();
+  if (window.renderApp) window.renderApp();
+}
+
+/**
+ * Affiche la modale de modification du profil / membre
+ */
+export function showEditMemberModal({ uid, name, phone, isSelf }) {
+  const modal = document.getElementById('modalEditMemberProfile');
+  if (!modal) return;
+  const uidInp = document.getElementById('editMemberUid');
+  const nameInp = document.getElementById('editMemberNameInput');
+  const phoneInp = document.getElementById('editMemberPhoneInput');
+  const titleEl = document.getElementById('editMemberModalTitle');
+  const subtitleEl = document.getElementById('editMemberModalSubtitle');
+
+  if (uidInp) uidInp.value = uid || '';
+  if (nameInp) nameInp.value = name || '';
+  if (phoneInp) phoneInp.value = phone || '';
+
+  if (titleEl) {
+    titleEl.textContent = isSelf ? "Mon profil (Conducteur) 👤" : `Modifier le membre : ${name || ''} ✏️`;
+  }
+  if (subtitleEl) {
+    subtitleEl.textContent = isSelf
+      ? "Modifiez votre prénom et votre numéro WhatsApp pour recevoir les alertes d'entretien."
+      : "En tant que gestionnaire, vous pouvez corriger le nom et le numéro WhatsApp de ce membre.";
+  }
+
+  modal.classList.remove('hidden');
+  setTimeout(() => nameInp?.focus(), 50);
+}
+
+/**
+ * Ferme la modale de modification de profil / membre
+ */
+export function hideEditMemberModal() {
+  const modal = document.getElementById('modalEditMemberProfile');
+  if (modal) modal.classList.add('hidden');
 }
 
 /**
@@ -1467,53 +1556,87 @@ export function renderSettingsRoomSection() {
   const isOwner = profile.role === 'owner';
   const isPending = profile.status === 'pending';
 
+  const myMember = roomMembersList.find(m => m.uid === profile.myUid);
+  const myDisplayName = myMember?.name || profile.myName;
+  const myDisplayPhone = myMember?.phone || profile.myPhone || '';
+
   container.innerHTML = `
     <div class="card" style="margin-top: 15px; border-left: 4px solid var(--primary);">
       <div class="card-header" style="margin-bottom: 10px;">
         <div class="card-icon">👥</div>
         <div>
           <h3 class="card-title">Multi-utilisateurs (multi-appareils)</h3>
-          <p class="card-subtitle">Connecté en tant que <strong>${escapeHtml(profile.myName)}</strong> (${isOwner ? '👑 Gestionnaire' : (isPending ? '⏳ En attente' : '✅ Utilisateur')})</p>
+          <p class="card-subtitle">Connecté en tant que <strong>${escapeHtml(myDisplayName)}</strong> (${isOwner ? '👑 Gestionnaire' : (isPending ? '⏳ En attente' : '✅ Utilisateur')})</p>
+        </div>
+      </div>
+
+      <!-- CARTE : Mon Profil Personnel (Conducteur) -->
+      <div style="background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong style="font-size: 0.88rem; color: var(--text-main);">👤 Mon Profil (Conducteur)</strong>
+          <button type="button" id="btnEditMySelfProfile" class="btn-secondary btn-xs">
+            ✏️ Modifier mon profil
+          </button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.84rem;">
+          <div>
+            <span style="color: var(--text-muted);">Prénom : </span>
+            <strong style="color: var(--text-main);">${escapeHtml(myDisplayName)}</strong>
+          </div>
+          <div>
+            <span style="color: var(--text-muted);">Numéro WhatsApp : </span>
+            ${myDisplayPhone ? `📱 <strong style="color: var(--text-main);">${escapeHtml(myDisplayPhone)}</strong>` : `<span style="color: var(--text-muted); font-style: italic;">Non configuré (cliquez sur Modifier pour l'ajouter)</span>`}
+          </div>
         </div>
       </div>
 
       <!-- Liste des membres connectés -->
       <div style="margin-top: 14px; border-top: 1px solid var(--border-color); padding-top: 12px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <strong style="font-size: 0.88rem; color: var(--text-main);">Utilisateurs connectés (${roomMembersList.length || 1})</strong>
+          <strong style="font-size: 0.88rem; color: var(--text-main);">Membres du partage (${roomMembersList.length || 1})</strong>
+          ${isOwner ? `<span style="font-size: 0.74rem; color: var(--text-muted);">💡 L'administrateur peut modifier tous les membres</span>` : ''}
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
-          ${(roomMembersList.length > 0 ? roomMembersList : [{ uid: profile.myUid, name: profile.myName, role: profile.role, status: profile.status }]).map(m => `
-            <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-input); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+          ${(roomMembersList.length > 0 ? roomMembersList : [{ uid: profile.myUid, name: myDisplayName, phone: myDisplayPhone, role: profile.role, status: profile.status }]).map(m => `
+            <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-input); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); flex-wrap: wrap; gap: 8px;">
               <div>
-                <span style="font-weight: 600; font-size: 0.86rem; color: var(--text-main);">👤 ${escapeHtml(m.name)}</span>
-                <span style="font-size: 0.74rem; color: var(--text-muted); margin-left: 6px;">
-                  ${m.role === 'owner' ? '👑 Gestionnaire' : (m.status === 'pending' ? '⏳ En attente' : '✅ Utilisateur')}
-                </span>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-weight: 600; font-size: 0.86rem; color: var(--text-main);">👤 ${escapeHtml(m.name)}</span>
+                  <span style="font-size: 0.74rem; color: var(--text-muted);">
+                    ${m.role === 'owner' ? '👑 Gestionnaire' : (m.status === 'pending' ? '⏳ En attente' : '✅ Utilisateur')}
+                  </span>
+                  ${m.uid === profile.myUid ? `<span style="font-size: 0.72rem; color: var(--primary); font-weight: 600;">(Vous)</span>` : ''}
+                </div>
+                <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 3px;">
+                  ${m.phone ? `📱 WhatsApp : <strong style="color: var(--text-main);">${escapeHtml(m.phone)}</strong>` : `<span style="font-style: italic;">Pas de numéro WhatsApp</span>`}
+                </div>
               </div>
-              ${(isOwner && m.uid !== profile.myUid && m.status === 'approved') ? `
-                <div style="display: flex; gap: 6px; align-items: center;">
+              <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                ${(isOwner || m.uid === profile.myUid) ? `
+                  <button type="button" class="btn-secondary btn-xs btn-edit-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}" data-phone="${escapeHtml(m.phone || '')}" data-self="${m.uid === profile.myUid ? '1' : '0'}" title="Modifier le nom et numéro WhatsApp">
+                    ✏️ Modifier
+                  </button>
+                ` : ''}
+                ${(isOwner && m.uid !== profile.myUid && m.status === 'approved') ? `
                   <button type="button" class="btn-secondary btn-xs btn-transfer-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}" title="Transférer la gestion à cet utilisateur">
                     👑 Transférer gestion
                   </button>
                   <button type="button" class="btn-reject btn-xs btn-remove-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}">
                     Retirer
                   </button>
-                </div>
-              ` : ((isOwner && m.uid !== profile.myUid && m.status === 'pending') ? `
-                <div style="display: flex; gap: 6px; align-items: center;">
+                ` : ((isOwner && m.uid !== profile.myUid && m.status === 'pending') ? `
                   <button type="button" class="btn-approve btn-xs btn-approve-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}">
                     Accepter
                   </button>
                   <button type="button" class="btn-reject btn-xs btn-remove-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}">
                     Refuser
                   </button>
-                </div>
-              ` : ((isOwner && m.uid !== profile.myUid) ? `
-                <button type="button" class="btn-reject btn-xs btn-remove-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}">
-                  Retirer
-                </button>
-              ` : ''))}
+                ` : ((isOwner && m.uid !== profile.myUid) ? `
+                  <button type="button" class="btn-reject btn-xs btn-remove-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}">
+                    Retirer
+                  </button>
+                ` : ''))}
+              </div>
             </div>
           `).join('')}
         </div>
@@ -1552,6 +1675,28 @@ export function renderSettingsRoomSection() {
       ` : ''}
     </div>
   `;
+
+  // Bouton modifier mon propre profil
+  document.getElementById('btnEditMySelfProfile')?.addEventListener('click', () => {
+    showEditMemberModal({
+      uid: profile.myUid,
+      name: myDisplayName,
+      phone: myDisplayPhone,
+      isSelf: true
+    });
+  });
+
+  // Boutons Modifier sur chaque membre
+  container.querySelectorAll('.btn-edit-member').forEach(btn => {
+    btn.onclick = () => {
+      showEditMemberModal({
+        uid: btn.dataset.uid,
+        name: btn.dataset.name,
+        phone: btn.dataset.phone,
+        isSelf: btn.dataset.self === '1'
+      });
+    };
+  });
 
   // Gestion des transferts de gestion directs depuis la liste des membres
   container.querySelectorAll('.btn-transfer-member').forEach(btn => {
@@ -1802,6 +1947,37 @@ export async function initFamilyRoom() {
     }
   });
 
+  // Écouteurs de la modale de modification de profil / membre
+  document.getElementById('btnCloseEditMemberProfile')?.addEventListener('click', hideEditMemberModal);
+  document.getElementById('btnCancelEditMemberProfile')?.addEventListener('click', hideEditMemberModal);
+  document.getElementById('formEditMemberProfile')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const uid = document.getElementById('editMemberUid')?.value;
+    const name = document.getElementById('editMemberNameInput')?.value;
+    const phone = document.getElementById('editMemberPhoneInput')?.value;
+    if (!uid || !name || !name.trim()) return;
+
+    const btnSubmit = document.getElementById('btnSubmitEditMemberProfile');
+    if (btnSubmit) {
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = "Enregistrement...";
+    }
+
+    try {
+      await updateMemberProfile(uid, { name, phone });
+      hideEditMemberModal();
+      if (window.showToast) window.showToast("Profil mis à jour avec succès !", "success");
+    } catch (err) {
+      console.error("Erreur modification profil:", err);
+      if (window.showToast) window.showToast("Erreur: " + err.message, "error");
+    } finally {
+      if (btnSubmit) {
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = "Enregistrer";
+      }
+    }
+  });
+
   window.addEventListener('online', () => {
     if (isRoomActive()) updateSyncIndicatorBadge('online', 'En ligne (Synchronisé)');
   });
@@ -1818,6 +1994,9 @@ window.FamilyRoom = {
   approveMember,
   rejectMember,
   removeMember,
+  updateMemberProfile,
+  showEditMemberModal,
+  hideEditMemberModal,
   transferOwnershipAndLeave,
   showTransferOwnershipModal,
   hideTransferOwnershipModal,
