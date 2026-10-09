@@ -27,18 +27,19 @@ jobs:
           cache: 'npm'
 
       - name: Installation des dépendances
-        run: npm install nodemailer
+        run: npm install nodemailer firebase-admin
 
       - name: Vérification des échéances et envoi des e-mails
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           FIREBASE_ROOM_ID: ${{ secrets.FIREBASE_ROOM_ID || 'roommv13dgxrc6c448ac3b69' }}
           FIREBASE_PROJECT_ID: 'entretien-auto-tracker'
           APP_URL: 'https://ishak8bd.github.io/Carnet-dEntretien-AUTO/'
         run: |
           if [ "${{ inputs.test_mode }}" = "true" ]; then
-            node scripts/send-email-reminders.js --test
+            node scripts/send-email-reminders.mjs --test
           else
-            node scripts/send-email-reminders.js
+            node scripts/send-email-reminders.mjs
           fi
