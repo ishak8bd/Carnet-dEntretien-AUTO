@@ -10,6 +10,7 @@
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.12",
     "dotenv": "^16.4.5",
+    "firebase-admin": "^14.5.0",
     "node-cron": "^3.0.3",
     "pino": "^9.0.0",
     "qrcode-terminal": "^0.12.0"

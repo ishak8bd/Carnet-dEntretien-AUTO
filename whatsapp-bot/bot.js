@@ -5,8 +5,11 @@
 // 2. Rappel d'entretiens proches avec cadence d'envoi progressive (escalade) :
 //    - J-15 à J-8 : rappel tous les 4 jours.
 //    - J-7 à J-3  : rappel tous les 2 jours.
-//    - J-2 à retard : rappel QUOTIDIEN (chaque jour), répété jusqu'à ce que l'utilisateur clique sur "Fait" dans l'application.
+//    - J-2 à retard : rappel QUOTIDIEN (chaque jour), répété jusqu'à validation "Fait".
 // 3. Commandes interactives WhatsApp (!statut, !aide, !verif, !room <id>, !tel <numero>).
+// 4. Double mode de connexion Firestore :
+//    - Admin SDK (si serviceAccountKey.json présent)
+//    - OU Firebase Auth REST (avec demande d'approbation automatique 'Bot WhatsApp')
 
 import makeWASocket, {
   DisconnectReason,
@@ -28,8 +31,10 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 
 const CONFIG_FILE = path.join(__dirname, 'config.json');
 const HISTORY_FILE = path.join(__dirname, 'notification_history.json');
+const SERVICE_ACCOUNT_FILE = path.join(__dirname, 'serviceAccountKey.json');
+const BOT_AUTH_CACHE_FILE = path.join(__dirname, 'bot_firebase_auth.json');
 
-// Configuration dynamique (mélange .env et config.json sauvegardé par commandes)
+// Configuration dynamique
 function loadConfig() {
   let cfg = {
     targetPhone: process.env.TARGET_WHATSAPP_PHONE || '',
@@ -60,30 +65,188 @@ function saveConfig(updated) {
   }
 }
 
-// Gestionnaire d'historique des notifications pour éviter le spam et gérer l'escalade
 function loadNotificationHistory() {
   try {
     if (fs.existsSync(HISTORY_FILE)) {
       return JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf-8'));
     }
-  } catch (e) {
-    console.warn("Échec lecture historique notifications:", e.message);
-  }
+  } catch (e) {}
   return { mileage: {}, items: {} };
 }
 
 function saveNotificationHistory(hist) {
   try {
     fs.writeFileSync(HISTORY_FILE, JSON.stringify(hist, null, 2), 'utf-8');
-  } catch (e) {
-    console.warn("Échec sauvegarde historique notifications:", e.message);
-  }
+  } catch (e) {}
 }
 
 let sock = null;
+let adminDb = null;
+
+// Initialiser Firebase Admin si la clé de compte de service est présente
+async function initFirebaseAdminIfAvailable() {
+  if (fs.existsSync(SERVICE_ACCOUNT_FILE)) {
+    try {
+      const { initializeApp, cert } = await import('firebase-admin/app');
+      const { getFirestore } = await import('firebase-admin/firestore');
+      const serviceAccount = JSON.parse(fs.readFileSync(SERVICE_ACCOUNT_FILE, 'utf-8'));
+      const app = initializeApp({
+        credential: cert(serviceAccount)
+      });
+      adminDb = getFirestore(app);
+      console.log("🔑 [Firebase] Mode Administrateur activé via serviceAccountKey.json");
+    } catch (err) {
+      console.warn("Échec init Firebase Admin:", err.message);
+    }
+  }
+}
+
+// Authentification REST Firebase pour le Bot (si pas de service account)
+async function getBotFirebaseAuth() {
+  const cfg = loadConfig();
+  try {
+    if (fs.existsSync(BOT_AUTH_CACHE_FILE)) {
+      const cached = JSON.parse(fs.readFileSync(BOT_AUTH_CACHE_FILE, 'utf-8'));
+      if (cached.expiresAt && Date.now() < cached.expiresAt) {
+        return cached;
+      }
+    }
+  } catch (e) {}
+
+  const url = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${cfg.apiKey}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ returnSecureToken: true })
+  });
+
+  if (!res.ok) {
+    throw new Error(`Échec Auth Firebase (${res.status})`);
+  }
+
+  const authData = await res.json();
+  const tokenObj = {
+    idToken: authData.idToken,
+    localId: authData.localId,
+    refreshToken: authData.refreshToken,
+    expiresAt: Date.now() + (parseInt(authData.expiresIn || '3600', 10) - 300) * 1000
+  };
+
+  try {
+    fs.writeFileSync(BOT_AUTH_CACHE_FILE, JSON.stringify(tokenObj, null, 2), 'utf-8');
+  } catch (e) {}
+
+  return tokenObj;
+}
 
 // ============================================================================
-// 1. GESTION DES IDENTIFIANTS WHATSAPP
+// 1. RÉCUPÉRATION DES DONNÉES FIRESTORE
+// ============================================================================
+
+async function fetchFirestoreCollection(subcollection) {
+  const cfg = loadConfig();
+  if (!cfg.roomId) {
+    console.warn("⚠️ FIREBASE_ROOM_ID non configuré. Tapez !room <id> sur WhatsApp.");
+    return [];
+  }
+
+  // 1. Si Firebase Admin est connecté, lire directement sans restriction
+  if (adminDb) {
+    try {
+      const snap = await adminDb.collection('rooms').doc(cfg.roomId).collection(subcollection).get();
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (e) {
+      console.error(`Erreur Firebase Admin sur ${subcollection}:`, e.message);
+    }
+  }
+
+  // 2. Sinon, utiliser l'API REST avec jeton d'authentification du bot
+  try {
+    const auth = await getBotFirebaseAuth();
+    const url = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/rooms/${cfg.roomId}/${subcollection}`;
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${auth.idToken}` }
+    });
+
+    if (res.status === 403) {
+      console.warn(`[Firestore] Permission refusée pour le Bot sur ${subcollection}.`);
+      // Vérifier si le membre est en attente ou s'il faut créer une demande d'accès
+      await ensureBotMemberRequest(cfg.roomId, auth);
+      return { status: 403, error: 'permission_denied' };
+    }
+
+    if (!res.ok) {
+      console.warn(`Erreur HTTP Firestore (${res.status}) sur ${subcollection}`);
+      return [];
+    }
+
+    const data = await res.json();
+    if (!data.documents) return [];
+
+    return data.documents.map(doc => {
+      const fields = doc.fields || {};
+      const out = { id: doc.name.split('/').pop() };
+      for (const [k, v] of Object.entries(fields)) {
+        if ('stringValue' in v) out[k] = v.stringValue;
+        else if ('integerValue' in v) out[k] = parseInt(v.integerValue, 10);
+        else if ('doubleValue' in v) out[k] = parseFloat(v.doubleValue);
+        else if ('booleanValue' in v) out[k] = v.booleanValue;
+        else if ('timestampValue' in v) out[k] = v.timestampValue;
+        else if ('nullValue' in v) out[k] = null;
+      }
+      return out;
+    });
+  } catch (err) {
+    console.error(`Erreur réseau Firestore pour ${subcollection}:`, err.message);
+    return [];
+  }
+}
+
+// Crée une demande d'accès "Bot WhatsApp" dans la salle pour que le propriétaire puisse l'approuver
+async function ensureBotMemberRequest(roomId, auth) {
+  const cfg = loadConfig();
+  const docUrl = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/rooms/${roomId}/members/${auth.localId}`;
+
+  // Vérifier si la demande existe déjà
+  const getRes = await fetch(docUrl, {
+    headers: { 'Authorization': `Bearer ${auth.idToken}` }
+  });
+
+  if (getRes.status === 404) {
+    console.log(`[Firestore] Création de la demande d'accès pour le Bot dans la salle ${roomId}...`);
+    await fetch(docUrl, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${auth.idToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        fields: {
+          name: { stringValue: 'Bot WhatsApp (Baileys)' },
+          role: { stringValue: 'member' },
+          status: { stringValue: 'pending' },
+          joinedAt: { timestampValue: new Date().toISOString() },
+          lastSeenAt: { timestampValue: new Date().toISOString() }
+        }
+      })
+    });
+    console.log(`[Firestore] Demande d'accès envoyée. Le propriétaire doit l'approuver dans l'app Web.`);
+  }
+}
+
+async function getTrackerData() {
+  const vehicles = await fetchFirestoreCollection('vehicles');
+  if (vehicles && vehicles.status === 403) {
+    return { error: 'permission_denied' };
+  }
+  const items = await fetchFirestoreCollection('items');
+  const kmLogs = await fetchFirestoreCollection('kmLogs');
+
+  return { vehicles: Array.isArray(vehicles) ? vehicles : [], items: Array.isArray(items) ? items : [], kmLogs: Array.isArray(kmLogs) ? kmLogs : [] };
+}
+
+// ============================================================================
+// 2. GESTION DES IDENTIFIANTS WHATSAPP
 // ============================================================================
 
 function formatPhoneJid(phone) {
@@ -99,7 +262,6 @@ function getTargetJid() {
   if (cfg.targetPhone) {
     return formatPhoneJid(cfg.targetPhone);
   }
-  // Si aucun numéro spécifié, utiliser le compte connecté lui-même (message à soi-même)
   if (sock && sock.user && sock.user.id) {
     const selfNumber = sock.user.id.split(':')[0].replace(/[^0-9]/g, '');
     return `${selfNumber}@s.whatsapp.net`;
@@ -123,75 +285,34 @@ async function sendWhatsAppMessage(jid, text) {
 }
 
 // ============================================================================
-// 2. RÉCUPÉRATION DES DONNÉES FIRESTORE
-// ============================================================================
-
-async function fetchFirestoreCollection(subcollection) {
-  const cfg = loadConfig();
-  if (!cfg.roomId) {
-    console.warn("⚠️ FIREBASE_ROOM_ID non configuré. Tapez !room <id> sur WhatsApp ou éditez .env");
-    return [];
-  }
-
-  const url = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/rooms/${cfg.roomId}/${subcollection}?key=${cfg.apiKey}`;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.warn(`Erreur HTTP Firestore (${res.status}) sur ${subcollection}`);
-      return [];
-    }
-    const data = await res.json();
-    if (!data.documents) return [];
-
-    return data.documents.map(doc => {
-      const fields = doc.fields || {};
-      const out = { id: doc.name.split('/').pop() };
-      for (const [k, v] of Object.entries(fields)) {
-        if ('stringValue' in v) out[k] = v.stringValue;
-        else if ('integerValue' in v) out[k] = parseInt(v.integerValue, 10);
-        else if ('doubleValue' in v) out[k] = parseFloat(v.doubleValue);
-        else if ('booleanValue' in v) out[k] = v.booleanValue;
-        else if ('timestampValue' in v) out[k] = v.timestampValue;
-        else if ('nullValue' in v) out[k] = null;
-      }
-      return out;
-    });
-  } catch (err) {
-    console.error(`Erreur réseau Firestore pour ${subcollection}:`, err.message);
-    return [];
-  }
-}
-
-async function getTrackerData() {
-  const vehicles = await fetchFirestoreCollection('vehicles');
-  const items = await fetchFirestoreCollection('items');
-  const kmLogs = await fetchFirestoreCollection('kmLogs');
-
-  return { vehicles, items, kmLogs };
-}
-
-// ============================================================================
 // 3. LOGIQUE MÉTIER & VÉRIFICATION DES ÉCHÉANCES
 // ============================================================================
 
-/**
- * Vérifie le kilométrage (tous les 15 jours) et les entretiens (escalade progressive)
- */
 async function runReminderChecks() {
   console.log(`\n🔍 [${new Date().toLocaleString('fr-FR')}] Vérification des rappels...`);
   const jid = getTargetJid();
   if (!jid) {
-    console.warn("⚠️ Numéro de destination introuvable. Vérification reportée.");
+    console.warn("⚠️ Numéro de destination introuvable.");
     return;
   }
 
   const cfg = loadConfig();
   if (!cfg.roomId) {
-    console.warn("⚠️ Salle Firestore non définie. Tapez !room <votre_room_id> pour démarrer la synchronisation.");
+    console.warn("⚠️ Salle Firestore non définie. Tapez !room <votre_room_id> pour démarrer.");
     return;
   }
 
   const data = await getTrackerData();
+  if (data.error === 'permission_denied') {
+    const msg = `🔔 *Demande d'accès envoyée pour votre Bot WhatsApp !*\n\n` +
+      `Le bot a demandé l'accès à la salle *${cfg.roomId}*.\n\n` +
+      `👉 *Action requise :* Ouvrez votre carnet d'entretien Web. Une bannière orange en haut de l'écran indique :\n` +
+      `*« 🔔 1 en attente : Bot WhatsApp (Baileys) »*\n` +
+      `Cliquez sur *"Accepter"*, puis renvoyez *!verif* sur WhatsApp !`;
+    await sendWhatsAppMessage(jid, msg);
+    return;
+  }
+
   const history = loadNotificationHistory();
   const now = Date.now();
 
@@ -216,12 +337,10 @@ async function runReminderChecks() {
       const lastLogDate = new Date(lastLog.date).getTime();
       const daysElapsed = Math.floor((now - lastLogDate) / (1000 * 60 * 60 * 24));
 
-      // Rappel déclenché dès 15 jours sans relevé
       if (daysElapsed >= 15) {
         const lastSent = history.mileage[vehId] || 0;
         const hoursSinceLastNotification = (now - lastSent) / (1000 * 60 * 60);
 
-        // Envoyer au maximum 1 fois toutes les 48 heures pour éviter le spam
         if (hoursSinceLastNotification >= 48) {
           const msg = `🚗 *RAPPEL KILOMÉTRAGE - Carnet d'Entretien*\n\n` +
             `Bonjour ! Votre dernier relevé de compteur pour *${veh.name || 'votre véhicule'}* (${veh.brand} ${veh.model}) date d'il y a *${daysElapsed} jours* (le ${lastLog.date}).\n\n` +
@@ -235,14 +354,12 @@ async function runReminderChecks() {
           }
         }
       } else {
-        // Si le kilométrage a été mis à jour récemment, réinitialiser la date d'envoi
         delete history.mileage[vehId];
         saveNotificationHistory(history);
       }
     }
 
-    // Calcul du rythme journalier estimé pour les calculs d'entretien
-    let dailyRate = 35; // Rythme moyen par défaut (~13 000 km/an)
+    let dailyRate = 35;
     if (vehLogs.length >= 2) {
       const first = vehLogs[0];
       const last = vehLogs[vehLogs.length - 1];
@@ -260,21 +377,18 @@ async function runReminderChecks() {
 
     for (const item of vehItems) {
       const itemId = item.id;
-      // Si non renseigné, ignorer les calculs d'échéance
       if (item.lastDate === null && item.lastKm === null) continue;
 
       let remainingKm = null;
       let remainingDaysByKm = null;
       let remainingDaysByDate = null;
 
-      // Calcul restant par kilométrage
       if (item.intervalKm && item.lastKm !== null) {
         const dueKm = item.lastKm + item.intervalKm;
         remainingKm = dueKm - currentKm;
         remainingDaysByKm = Math.round(remainingKm / dailyRate);
       }
 
-      // Calcul restant par date calendaire
       if (item.intervalMonths && item.lastDate) {
         const lastD = new Date(item.lastDate);
         const targetDate = new Date(lastD);
@@ -282,7 +396,6 @@ async function runReminderChecks() {
         remainingDaysByDate = Math.round((targetDate.getTime() - now) / (1000 * 60 * 60 * 24));
       }
 
-      // Prendre le premier des deux critères qui arrive à échéance
       let effectiveRemainingDays = 999;
       if (remainingDaysByKm !== null && remainingDaysByDate !== null) {
         effectiveRemainingDays = Math.min(remainingDaysByKm, remainingDaysByDate);
@@ -292,7 +405,6 @@ async function runReminderChecks() {
         effectiveRemainingDays = remainingDaysByDate;
       }
 
-      // Si l'entretien est fait récemment et loin de l'échéance, nettoyer l'historique
       if (effectiveRemainingDays > 15 && (remainingKm === null || remainingKm > 500)) {
         if (history.items[itemId]) {
           delete history.items[itemId];
@@ -301,16 +413,12 @@ async function runReminderChecks() {
         continue;
       }
 
-      // DÉTERMINATION DU NIVEAU D'ESCALADE :
-      // - Niveau 1 (Approche : J-15 à J-8 ou reste 250-500 km) -> rappel tous les 4 jours (96h)
-      // - Niveau 2 (Très proche : J-7 à J-3 ou reste 100-250 km) -> rappel tous les 2 jours (48h)
-      // - Niveau 3 (Imminent / Retard : J-2 à retard ou reste < 100 km) -> rappel QUOTIDIEN (24h)
       let level = 1;
       let cooldownHours = 96;
 
       if (effectiveRemainingDays <= 2 || (remainingKm !== null && remainingKm <= 100)) {
         level = 3;
-        cooldownHours = 24; // Tous les jours jusqu'à validation "Fait" !
+        cooldownHours = 24; // Quotidien
       } else if (effectiveRemainingDays <= 7 || (remainingKm !== null && remainingKm <= 250)) {
         level = 2;
         cooldownHours = 48; // Tous les 2 jours
@@ -321,8 +429,6 @@ async function runReminderChecks() {
 
       const itemHist = history.items[itemId] || { lastSent: 0, level: 0 };
       const hoursSinceLast = (now - itemHist.lastSent) / (1000 * 60 * 60);
-
-      // Si le niveau d'urgence a augmenté (ex: passage à niveau 3), on alerte sans attendre
       const urgencyIncreased = level > itemHist.level;
 
       if (hoursSinceLast >= cooldownHours || urgencyIncreased) {
@@ -332,7 +438,6 @@ async function runReminderChecks() {
           : '';
 
         if (level === 3) {
-          // Niveau 3 : Urgent / Quotidien
           const isOverdue = effectiveRemainingDays <= 0 || (remainingKm !== null && remainingKm <= 0);
           msg = `🚨 *ALERTE ENTRETIEN URGENT - Carnet d'Entretien*\n\n` +
             `Véhicule : *${veh.name || 'Votre véhicule'}*\n` +
@@ -341,14 +446,12 @@ async function runReminderChecks() {
             `🔔 _Ce rappel restera actif et envoyé chaque jour jusqu'à ce que l'intervention soit réalisée._\n\n` +
             `➡️ Une fois l'opération effectuée, rendez-vous dans l'application et cliquez sur *"Fait"* pour clore ce rappel.`;
         } else if (level === 2) {
-          // Niveau 2 : Très proche (tous les 2 jours)
           msg = `⚠️ *ENTRETIEN IMMINENT - Carnet d'Entretien*\n\n` +
             `Véhicule : *${veh.name || 'Votre véhicule'}*\n` +
             `Intervention : 🔧 *${item.name}*\n` +
             `Échéance prévue : dans environ *${effectiveRemainingDays} jours* ${kmInfo ? `(${kmInfo})` : ''}.\n\n` +
             `Pensez à planifier votre intervention ou votre rendez-vous garage.`;
         } else {
-          // Niveau 1 : Approche (tous les 4 jours)
           msg = `ℹ️ *ENTRETIEN À PRÉVOIR - Carnet d'Entretien*\n\n` +
             `Véhicule : *${veh.name || 'Votre véhicule'}*\n` +
             `Intervention : 🔧 *${item.name}*\n` +
@@ -375,40 +478,44 @@ async function runReminderChecks() {
 async function handleIncomingMessage(msg) {
   if (!msg.message) return;
 
+  const rawText = (
+    msg.message.conversation ||
+    msg.message.extendedTextMessage?.text ||
+    msg.message.imageMessage?.caption ||
+    ''
+  ).trim();
+
+  if (!rawText) return;
+
   const sender = msg.key.remoteJid;
-  const selfJid = sock?.user?.id ? `${sock.user.id.split(':')[0]}@s.whatsapp.net` : '';
-  const isSelf = msg.key.fromMe && (sender === selfJid || sender?.includes(sock?.user?.id?.split(':')[0]));
+  console.log(`[WhatsApp] Message reçu de ${sender} (fromMe: ${msg.key.fromMe}): "${rawText}"`);
 
-  // Ignorer les messages envoyés par le bot SAUF si c'est l'utilisateur qui s'écrit à lui-même
-  if (msg.key.fromMe && !isSelf) return;
-
-  const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || '').trim();
-  if (!text.startsWith('!')) return;
-
-  console.log(`[WhatsApp] Commande reçue de ${sender}: "${text}"`);
-  const parts = text.split(' ');
+  const parts = rawText.split(' ');
   const cmd = parts[0].toLowerCase();
+
+  // Détection souple : soit !room <id>, soit room_xxxx, soit chaîne longue sans espace
+  let candidateRoom = null;
+  if (cmd === '!room' && parts[1]) {
+    candidateRoom = parts[1].trim();
+  } else if (rawText.startsWith('room_') || (rawText.includes('_') && rawText.length >= 10 && !rawText.includes(' '))) {
+    candidateRoom = rawText.trim();
+  }
+
+  if (candidateRoom) {
+    saveConfig({ roomId: candidateRoom });
+    await sendWhatsAppMessage(sender, `✅ Salle enregistrée : *${candidateRoom}*\n🔍 Recherche des véhicules en cours...`);
+    await runReminderChecks();
+    return;
+  }
 
   if (cmd === '!aide' || cmd === '!help') {
     const help = `🤖 *Commandes du Bot Carnet d'Entretien* :\n\n` +
       `• *!statut* : Affiche vos véhicules et l'état de synchronisation.\n` +
-      `• *!room <id>* : Définit la salle partagée à surveiller.\n` +
-      `• *!tel <numero>* : Définit le numéro qui reçoit les alertes (format ex: 213555123456).\n` +
+      `• *!room <id>* : Définit la salle à surveiller.\n` +
+      `• *!tel <numero>* : Définit le numéro qui reçoit les alertes.\n` +
       `• *!verif* : Déclenche immédiatement une vérification des rappels.\n` +
       `• *!aide* : Affiche ce menu d'aide.`;
     await sendWhatsAppMessage(sender, help);
-    return;
-  }
-
-  if (cmd === '!room') {
-    const newRoomId = parts[1]?.trim();
-    if (!newRoomId) {
-      await sendWhatsAppMessage(sender, "⚠️ Format incorrect. Tapez : *!room <id_de_la_salle>*");
-      return;
-    }
-    saveConfig({ roomId: newRoomId });
-    await sendWhatsAppMessage(sender, `✅ Salle enregistrée : *${newRoomId}*\nVérification des véhicules en cours...`);
-    await runReminderChecks();
     return;
   }
 
@@ -438,6 +545,11 @@ async function handleIncomingMessage(msg) {
     }
 
     const data = await getTrackerData();
+    if (data.error === 'permission_denied') {
+      await sendWhatsAppMessage(sender, `⏳ Demande d'accès en attente d'approbation sur l'application Web pour la salle *${cfg.roomId}*.`);
+      return;
+    }
+
     if (!data.vehicles || data.vehicles.length === 0) {
       await sendWhatsAppMessage(sender, `ℹ️ Connecté à la salle *${cfg.roomId}*, mais aucun véhicule n'a été trouvé.`);
       return;
@@ -455,6 +567,11 @@ async function handleIncomingMessage(msg) {
     await sendWhatsAppMessage(sender, report);
     return;
   }
+
+  // Réponse automatique amicale si commande inconnue
+  if (rawText.startsWith('!')) {
+    await sendWhatsAppMessage(sender, `🤖 Commande inconnue. Tapez *!aide* pour voir les commandes disponibles.`);
+  }
 }
 
 // ============================================================================
@@ -462,6 +579,8 @@ async function handleIncomingMessage(msg) {
 // ============================================================================
 
 async function startWhatsAppBot() {
+  await initFirebaseAdminIfAvailable();
+
   const authPath = path.join(__dirname, 'auth_info_baileys');
   const { state, saveCreds } = await useMultiFileAuthState(authPath);
   const { version } = await fetchLatestBaileysVersion();
@@ -505,10 +624,12 @@ async function startWhatsAppBot() {
         console.log(`[WhatsApp] Destinataire des alertes configuré : ${targetJid}`);
       }
 
-      // Exécuter une première vérification après 5 secondes
-      setTimeout(() => {
-        runReminderChecks();
-      }, 5000);
+      // Première vérification après 3 secondes si une salle est déjà configurée
+      if (cfg.roomId) {
+        setTimeout(() => {
+          runReminderChecks();
+        }, 3000);
+      }
 
       // Programmer la vérification récurrente (toutes les X heures)
       const cronExpr = `0 */${cfg.checkHours} * * *`;
@@ -521,11 +642,10 @@ async function startWhatsAppBot() {
 
   sock.ev.on('creds.update', saveCreds);
 
-  sock.ev.on('messages.upsert', async ({ messages, type }) => {
-    if (type === 'notify') {
-      for (const m of messages) {
-        await handleIncomingMessage(m);
-      }
+  // Écoute de tous les messages entrants (y compris messages à soi-même)
+  sock.ev.on('messages.upsert', async ({ messages }) => {
+    for (const m of messages) {
+      await handleIncomingMessage(m);
     }
   });
 }
