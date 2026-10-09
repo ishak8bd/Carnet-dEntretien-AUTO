@@ -251,7 +251,10 @@ service cloud.firestore {
       );
 
       // Delete: only room owner
-      allow delete: if isRoomOwner(roomId);
+      allow delete: if isAuthenticated() && (
+        request.auth.uid == resource.data.ownerUid ||
+        isRoomOwner(roomId)
+      );
 
       // -------------------------------------------------------------
       // Subcollection: members

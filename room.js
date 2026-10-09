@@ -69,6 +69,35 @@ export async function ensureAuth() {
   if (auth.currentUser) {
     return auth.currentUser;
   }
+
+  // 1. Attendre la restauration de la session persistante
+  if (typeof auth.authStateReady === 'function') {
+    try {
+      await auth.authStateReady();
+      if (auth.currentUser) {
+        return auth.currentUser;
+      }
+    } catch (e) {
+      console.warn("auth.authStateReady a échoué:", e);
+    }
+  } else {
+    await new Promise((resolve) => {
+      let done = false;
+      const unsub = onAuthStateChanged(auth, (u) => {
+        if (!done) { done = true; unsub(); resolve(u); }
+      }, () => {
+        if (!done) { done = true; resolve(null); }
+      });
+      setTimeout(() => {
+        if (!done) { done = true; try { unsub(); } catch (e) {} resolve(null); }
+      }, 1200);
+    });
+    if (auth.currentUser) {
+      return auth.currentUser;
+    }
+  }
+
+  // 2. Si aucune session n'est présente, nouvelle connexion anonyme
   const credential = await signInAnonymously(auth);
   return credential.user;
 }
@@ -874,35 +903,68 @@ export async function clearAllRoomData(roomId) {
     throw new Error("Seul l'administrateur (propriétaire) peut supprimer toutes les données de la salle.");
   }
 
-  const subcollections = ['vehicles', 'kmLogs', 'items', 'history', 'activity'];
-  const batch = writeBatch(db);
+  const user = await ensureAuth();
+  if (!user) {
+    throw new Error("Vous n'êtes pas connecté à Firebase.");
+  }
+
+  // 1. Vérifier la propriété de la salle dans Firestore
+  try {
+    const roomSnap = await getDoc(doc(db, 'rooms', roomId));
+    if (roomSnap.exists()) {
+      const roomData = roomSnap.data();
+      if (roomData.ownerUid && roomData.ownerUid !== user.uid) {
+        throw new Error(`Droits insuffisants : Votre session actuelle (${user.uid.substring(0, 6)}...) ne correspond pas au créateur de la salle (${roomData.ownerUid.substring(0, 6)}...).`);
+      }
+    }
+  } catch (checkErr) {
+    if (checkErr.message && checkErr.message.includes('Droits insuffisants')) {
+      throw checkErr;
+    }
+    console.warn("Note vérification propriétaire:", checkErr);
+  }
+
+  // 2. Supprimer les sous-collections métier (véhicules, relevés, entretiens, historique)
+  const subcollections = ['vehicles', 'kmLogs', 'items', 'history'];
   let deletedCount = 0;
 
   for (const sub of subcollections) {
     try {
       const snap = await getDocs(collection(db, 'rooms', roomId, sub));
-      snap.forEach((d) => {
-        batch.delete(d.ref);
-        deletedCount++;
-      });
+      if (!snap.empty) {
+        const batch = writeBatch(db);
+        snap.forEach((d) => {
+          batch.delete(d.ref);
+          deletedCount++;
+        });
+        await batch.commit();
+      }
     } catch (e) {
-      console.warn(`Erreur lors de la lecture de la sous-collection ${sub}:`, e);
+      console.warn(`Erreur lors de la suppression de la sous-collection ${sub}:`, e);
+      throw new Error(`Erreur lors de la suppression de ${sub}: ${e.message}`);
     }
   }
 
-  // Ajouter une entrée d'activité annonçant la réinitialisation
-  const actId = `act_${Date.now()}`;
-  const actRef = doc(db, 'rooms', roomId, 'activity', actId);
-  batch.set(actRef, {
-    text: `${profile.myName} (Admin) a effacé toutes les données de la salle`,
-    authorUid: profile.myUid,
-    authorName: profile.myName,
-    createdAt: serverTimestamp()
-  });
+  // 3. Nettoyage de l'activité (isolé pour ne pas bloquer si les règles en ligne interdisent la suppression d'activités)
+  try {
+    const actSnap = await getDocs(collection(db, 'rooms', roomId, 'activity'));
+    if (!actSnap.empty) {
+      const actBatch = writeBatch(db);
+      actSnap.forEach((d) => actBatch.delete(d.ref));
+      await actBatch.commit();
+    }
+  } catch (actErr) {
+    console.warn("Note: Les anciennes activités n'ont pas pu être supprimées (règles append-only actives):", actErr);
+  }
 
-  await batch.commit();
+  // 4. Ajouter une entrée d'activité annonçant la réinitialisation
+  try {
+    await addRoomActivity(roomId, `${profile.myName} (Admin) a effacé toutes les données de la salle`);
+  } catch (e) {
+    console.warn("Échec d'ajout au fil d'activité après réinitialisation:", e);
+  }
 
-  // Vider les caches mémoire locaux
+  // 5. Vider les caches mémoire locaux
   roomVehiclesMap.clear();
   roomKmLogsMap.clear();
   roomItemsMap.clear();
@@ -934,27 +996,76 @@ export async function deleteEntireRoom(roomId) {
     throw new Error("Seul l'administrateur (propriétaire) peut supprimer définitivement la salle.");
   }
 
-  const subcollections = ['vehicles', 'kmLogs', 'items', 'history', 'activity', 'invites', 'members'];
-  const batch = writeBatch(db);
+  const user = await ensureAuth();
+  if (!user) {
+    throw new Error("Vous n'êtes pas connecté à Firebase.");
+  }
 
-  for (const sub of subcollections) {
+  // 1. Vérifier la propriété de la salle
+  try {
+    const roomSnap = await getDoc(doc(db, 'rooms', roomId));
+    if (roomSnap.exists()) {
+      const roomData = roomSnap.data();
+      if (roomData.ownerUid && roomData.ownerUid !== user.uid) {
+        throw new Error(`Droits insuffisants : Votre session actuelle (${user.uid.substring(0, 6)}...) ne correspond pas au créateur de la salle (${roomData.ownerUid.substring(0, 6)}...).`);
+      }
+    }
+  } catch (checkErr) {
+    if (checkErr.message && checkErr.message.includes('Droits insuffisants')) {
+      throw checkErr;
+    }
+    console.warn("Note vérification propriétaire:", checkErr);
+  }
+
+  // 2. Supprimer d'abord les sous-collections de données
+  const dataSubs = ['vehicles', 'kmLogs', 'items', 'history', 'invites'];
+  for (const sub of dataSubs) {
     try {
       const snap = await getDocs(collection(db, 'rooms', roomId, sub));
-      snap.forEach((d) => {
-        batch.delete(d.ref);
-      });
+      if (!snap.empty) {
+        const batch = writeBatch(db);
+        snap.forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
     } catch (e) {
-      console.warn(`Erreur lors de la suppression de la sous-collection ${sub}:`, e);
+      console.warn(`Erreur lors de la suppression de ${sub}:`, e);
     }
   }
 
-  // Supprimer le document de la salle lui-même
-  const roomRef = doc(db, 'rooms', roomId);
-  batch.delete(roomRef);
+  // 3. Supprimer les activités (isolé pour ne pas faire échouer la suppression globale)
+  try {
+    const actSnap = await getDocs(collection(db, 'rooms', roomId, 'activity'));
+    if (!actSnap.empty) {
+      const actBatch = writeBatch(db);
+      actSnap.forEach((d) => actBatch.delete(d.ref));
+      await actBatch.commit();
+    }
+  } catch (e) {
+    console.warn("Note: Activités non supprimées:", e);
+  }
 
-  await batch.commit();
+  // 4. Supprimer les membres
+  try {
+    const memSnap = await getDocs(collection(db, 'rooms', roomId, 'members'));
+    if (!memSnap.empty) {
+      const batch = writeBatch(db);
+      memSnap.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+  } catch (e) {
+    console.warn("Erreur suppression membres:", e);
+  }
 
-  // Nettoyage local et arrêt de la synchronisation
+  // 5. Supprimer le document de la salle EN DERNIER
+  try {
+    const roomRef = doc(db, 'rooms', roomId);
+    await deleteDoc(roomRef);
+  } catch (err) {
+    console.warn("Erreur suppression document salle:", err);
+    throw new Error("Erreur suppression de la salle: " + err.message);
+  }
+
+  // 6. Nettoyage local et arrêt de la synchronisation
   stopRoomSynchronization();
   if (activeMemberStatusUnsubscribe) {
     activeMemberStatusUnsubscribe();
@@ -1402,6 +1513,12 @@ export async function initFamilyRoom() {
 
   // 2. Si une salle est déjà enregistrée sur ce téléphone
   if (profile && profile.roomId && profile.myUid) {
+    try {
+      await ensureAuth();
+    } catch (e) {
+      console.warn("Échec ensureAuth dans initFamilyRoom:", e);
+    }
+
     if (profile.status === 'pending') {
       showPendingApprovalModal(profile.roomName, profile.myName);
       setupMemberStatusListener(profile.roomId, profile.myUid);
