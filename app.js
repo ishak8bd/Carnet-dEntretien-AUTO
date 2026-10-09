@@ -3919,10 +3919,10 @@ function attachEventListeners() {
     formCreate.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!window.FamilyRoom) {
-        showToast("Le module Salle Familiale est en cours d'initialisation...", "warning");
+        showToast("Le module Multi-utilisateurs est en cours d'initialisation...", "warning");
         return;
       }
-      const roomName = document.getElementById('createRoomName').value.trim();
+      const roomName = document.getElementById('createRoomName')?.value.trim() || "Multi-utilisateurs";
       const ownerName = document.getElementById('createOwnerName').value.trim();
       const expiryHours = parseInt(document.getElementById('createExpiryHours').value, 10) || 24;
       const maxUses = parseInt(document.getElementById('createMaxUses').value, 10) || 5;
@@ -3946,25 +3946,25 @@ function attachEventListeners() {
           inviteCode: res.inviteCode,
           roomName: res.profile.roomName
         });
-        showToast("Salle familiale créée avec succès !", "success");
+        showToast("Multi-utilisateurs (multi-appareils) activé avec succès !", "success");
         renderApp();
         window.FamilyRoom.renderSettingsRoomSection();
       } catch (err) {
         showToast("Erreur lors de la création : " + err.message, "error");
       } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = "Créer & Inviter";
+        submitBtn.textContent = "Activer & Inviter";
       }
     });
   }
 
-  // Formulaire Rejoindre une salle
+  // Formulaire Rejoindre en multi-utilisateurs
   const formJoin = document.getElementById('formJoinRoom');
   if (formJoin) {
     formJoin.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!window.FamilyRoom) {
-        showToast("Le module Salle Familiale est en cours d'initialisation...", "warning");
+        showToast("Le module Multi-utilisateurs est en cours d'initialisation...", "warning");
         return;
       }
       const memberName = document.getElementById('joinMemberName').value.trim();
@@ -3981,7 +3981,7 @@ function attachEventListeners() {
         });
         document.getElementById('modalJoinRoom')?.classList.add('hidden');
         window.FamilyRoom.showPendingApprovalModal(res.roomName, res.profile.myName);
-        showToast("Demande d'accès envoyée au propriétaire !", "info");
+        showToast("Demande d'accès envoyée à l'administrateur !", "info");
       } catch (err) {
         showToast("Erreur d'accès : " + err.message, "error");
       } finally {

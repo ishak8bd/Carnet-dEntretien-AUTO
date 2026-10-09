@@ -157,22 +157,22 @@
       <section class="maintenance-section" id="maintenanceSection">
         <div class="section-header">
           <div class="section-title">
-            <span>🛠️ Plan d'entretien</span>
+            <span class="maint-section-heading">🛠️ Suivre ton plan d’entretien</span>
             <span class="vehicle-meta-badge" id="maintenanceCountBadge">0 élément</span>
           </div>
           <div class="section-actions">
-            <div class="view-mode-toggle" id="maintViewToggle" role="group" aria-label="Mode d'affichage">
-              <button type="button" class="view-toggle-btn active" data-mode="table" title="Affichage tableau glissable">📋 Tableau</button>
-              <button type="button" class="view-toggle-btn" data-mode="cards" title="Affichage fiches">🗂️ Fiches</button>
-            </div>
-            <button type="button" class="btn-sm btn-secondary" id="btnExportAllIcs" title="Tout exporter vers le calendrier (.ics)">
-              <span>📅</span>
-              <span>Tout exporter</span>
-            </button>
             <button type="button" class="btn-sm" id="btnAddMaintenanceItem">
               <span>➕</span>
               <span>Ajouter</span>
             </button>
+            <button type="button" class="btn-sm btn-secondary" id="btnExportAllIcs" title="Tout exporter vers le calendrier (.ics)">
+              <span>📅</span>
+              <span>Tout exporter</span>
+            </button>
+            <div class="view-mode-toggle" id="maintViewToggle" role="group" aria-label="Mode d'affichage">
+              <button type="button" class="view-toggle-btn active" data-mode="table" title="Affichage tableau glissable">📋 Tableau</button>
+              <button type="button" class="view-toggle-btn" data-mode="cards" title="Affichage fiches">🗂️ Fiches</button>
+            </div>
           </div>
         </div>
 
@@ -431,8 +431,43 @@
         </p>
       </div>
 
-      <!-- SECTION SALLE FAMILIALE & SYNCHRONISATION MULTI-APPAREILS -->
+      <!-- SECTION MULTI-UTILISATEURS & SYNCHRONISATION MULTI-APPAREILS -->
       <div id="settingsRoomContainer"></div>
+
+      <!-- CARTE : Intervalles par défaut (Settings) -->
+      <section class="card settings-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>🛠️ Intervalles par défaut</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <div class="view-mode-toggle" id="intervalsViewToggle" role="group" aria-label="Mode d'affichage des intervalles">
+              <button type="button" class="view-toggle-btn active" data-mode="table" title="Affichage tableau glissable">📋 Tableau</button>
+              <button type="button" class="view-toggle-btn" data-mode="cards" title="Affichage fiches">🗂️ Fiches</button>
+            </div>
+            <button type="button" id="btnResetDefaultIntervals" class="btn-sm btn-secondary" title="Rétablir les intervalles standards">
+              ↺ Rétablir
+            </button>
+          </div>
+        </div>
+        <p class="card-subtitle">
+          Ces intervalles pré-remplissent automatiquement les entretiens lors de l'ajout d'un nouveau véhicule.
+        </p>
+
+        <form id="defaultIntervalsForm">
+          <!-- Conteneur d'affichage des intervalles (Tableau glissable ou Grille de fiches) -->
+          <div id="defaultIntervalsContainer">
+            <div class="default-intervals-list" id="defaultIntervalsList">
+              <!-- Rempli dynamiquement en JS -->
+            </div>
+          </div>
+          <div style="margin-top: 14px;">
+            <button type="submit" class="btn-primary" style="width: 100%;">
+              💾 Enregistrer les intervalles par défaut
+            </button>
+          </div>
+        </form>
+      </section>
 
       <!-- CARTE 1 : Sauvegarde & Restauration JSON -->
       <section class="card settings-card">
@@ -522,41 +557,6 @@
             <span>Supprimer toutes les données de la Renault Symbol</span>
           </button>
         </div>
-      </section>
-
-      <!-- CARTE 3 : Intervalles par défaut (Settings) -->
-      <section class="card settings-card">
-        <div class="card-header">
-          <div class="card-title">
-            <span>🛠️ Intervalles par défaut</span>
-          </div>
-          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <div class="view-mode-toggle" id="intervalsViewToggle" role="group" aria-label="Mode d'affichage des intervalles">
-              <button type="button" class="view-toggle-btn active" data-mode="table" title="Affichage tableau glissable">📋 Tableau</button>
-              <button type="button" class="view-toggle-btn" data-mode="cards" title="Affichage fiches">🗂️ Fiches</button>
-            </div>
-            <button type="button" id="btnResetDefaultIntervals" class="btn-sm btn-secondary" title="Rétablir les intervalles standards">
-              ↺ Rétablir
-            </button>
-          </div>
-        </div>
-        <p class="card-subtitle">
-          Ces intervalles pré-remplissent automatiquement les entretiens lors de l'ajout d'un nouveau véhicule.
-        </p>
-
-        <form id="defaultIntervalsForm">
-          <!-- Conteneur d'affichage des intervalles (Tableau glissable ou Grille de fiches) -->
-          <div id="defaultIntervalsContainer">
-            <div class="default-intervals-list" id="defaultIntervalsList">
-              <!-- Rempli dynamiquement en JS -->
-            </div>
-          </div>
-          <div style="margin-top: 14px;">
-            <button type="submit" class="btn-primary" style="width: 100%;">
-              💾 Enregistrer les intervalles par défaut
-            </button>
-          </div>
-        </form>
       </section>
     </div> <!-- /viewSettings -->
 
@@ -756,25 +756,25 @@
 
         <div class="onboarding-choice-grid">
           <button type="button" id="btnChoiceCreateRoom" class="onboarding-choice-card">
-            <span class="onboarding-choice-icon">🏠</span>
+            <span class="onboarding-choice-icon">👥</span>
             <div>
-              <div class="onboarding-choice-title">Créer une salle familiale</div>
-              <div class="onboarding-choice-desc">Partagez vos véhicules avec vos proches (père, frères, mère...), synchronisé en direct sans mot de passe.</div>
+              <div class="onboarding-choice-title">Multi-utilisateurs (multi-appareils)</div>
+              <div class="onboarding-choice-desc">Synchronisez vos véhicules en direct entre plusieurs téléphones sans mot de passe.</div>
             </div>
           </button>
 
           <button type="button" id="btnChoiceJoinRoom" class="onboarding-choice-card">
             <span class="onboarding-choice-icon">🔗</span>
             <div>
-              <div class="onboarding-choice-title">Rejoindre une salle existante</div>
-              <div class="onboarding-choice-desc">Vous avez reçu un code ou un lien WhatsApp ? Rejoignez la salle de votre famille en 1 clic.</div>
+              <div class="onboarding-choice-title">Rejoindre en multi-utilisateurs</div>
+              <div class="onboarding-choice-desc">Vous avez reçu un code ou un lien WhatsApp ? Rejoignez le partage en 1 clic.</div>
             </div>
           </button>
 
           <button type="button" id="btnChoiceSolo" class="onboarding-choice-card">
             <span class="onboarding-choice-icon">👤</span>
             <div>
-              <div class="onboarding-choice-title">Utiliser seul (sans salle)</div>
+              <div class="onboarding-choice-title">Utiliser seul (mode solo)</div>
               <div class="onboarding-choice-desc">Mode local 100% autonome sur cet appareil uniquement.</div>
             </div>
           </button>
@@ -852,27 +852,22 @@
     </div>
   </div>
 
-  <!-- MODAL: Créer une salle familiale -->
+  <!-- MODAL: Multi-utilisateurs (multi-appareils) -->
   <div id="modalCreateRoom" class="modal-overlay hidden" role="dialog" aria-modal="true">
     <div class="modal-content">
       <div class="modal-header">
-        <h2 class="modal-title">Créer une salle familiale 🏠</h2>
+        <h2 class="modal-title">Multi-utilisateurs (multi-appareils) 👥</h2>
         <button type="button" class="modal-close" id="btnCloseCreateRoom" aria-label="Fermer">✕</button>
       </div>
       <p class="card-subtitle">
-        Créez votre espace partagé pour synchroniser vos véhicules entre proches sans mot de passe.
+        Activez la synchronisation en direct entre plusieurs téléphones sans mot de passe.
       </p>
 
       <form id="formCreateRoom">
         <div class="form-group">
-          <label class="form-label" for="createRoomName">Nom de la salle</label>
-          <input type="text" id="createRoomName" class="form-input" placeholder="Ex: Famille Benali, Maison..." required maxlength="100">
-        </div>
-
-        <div class="form-group">
           <label class="form-label" for="createOwnerName">Votre prénom</label>
           <input type="text" id="createOwnerName" class="form-input" placeholder="Ex: Karim, Papa..." required maxlength="100">
-          <span class="form-help">Visible par tous les membres lorsqu'un relevé ou entretien est ajouté.</span>
+          <span class="form-help">Visible lors de chaque relevé de compteur ou intervention ajoutée.</span>
         </div>
 
         <div style="display: flex; gap: 10px;">
@@ -898,34 +893,34 @@
         <div id="createMigrateGroup" style="display: none; align-items: center; gap: 8px; font-size: 0.86rem; color: var(--text-main); margin: 10px 0; background: var(--bg-input); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
           <input type="checkbox" id="createMigrateLocal" style="accent-color: var(--primary); width: 16px; height: 16px;" checked>
           <label for="createMigrateLocal" style="cursor: pointer;">
-            Importer mes véhicules locaux actuels dans cette salle partagée (sauvegarde automatique incluse)
+            Importer mes véhicules locaux actuels dans le partage (sauvegarde automatique incluse)
           </label>
         </div>
 
         <div class="modal-actions" style="margin-top: 16px;">
-          <button type="submit" class="btn-primary" style="flex: 1;">Créer &amp; Inviter</button>
+          <button type="submit" class="btn-primary" style="flex: 1;">Activer &amp; Inviter</button>
           <button type="button" id="btnCancelCreateRoom" class="btn-secondary">Annuler</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- MODAL: Rejoindre une salle -->
+  <!-- MODAL: Rejoindre en multi-utilisateurs -->
   <div id="modalJoinRoom" class="modal-overlay hidden" role="dialog" aria-modal="true">
     <div class="modal-content">
       <div class="modal-header">
-        <h2 class="modal-title">Rejoindre une salle familiale 🔗</h2>
+        <h2 class="modal-title">Rejoindre en multi-utilisateurs 🔗</h2>
         <button type="button" class="modal-close" id="btnCloseJoinRoom" aria-label="Fermer">✕</button>
       </div>
       <p class="card-subtitle">
-        Entrez votre prénom et le code d'invitation (ou lien WhatsApp) pour demander l'accès à la salle.
+        Entrez votre prénom et le code d'invitation (ou lien WhatsApp) pour demander l'accès au partage.
       </p>
 
       <form id="formJoinRoom">
         <div class="form-group">
           <label class="form-label" for="joinMemberName">Votre prénom</label>
           <input type="text" id="joinMemberName" class="form-input" placeholder="Ex: Amine, Maman, Yacine..." required maxlength="100">
-          <span class="form-help">Ce prénom permettra au propriétaire de vous identifier et de valider votre demande.</span>
+          <span class="form-help">Permet à l'administrateur de vous identifier et de valider votre accès.</span>
         </div>
 
         <div class="form-group">
@@ -949,12 +944,13 @@
         <div>
           <h2 class="modal-title" style="margin-bottom: 6px;">Demande transmise ! ⏳</h2>
           <p class="card-subtitle">
-            Vous avez demandé à rejoindre la salle <strong id="pendingRoomName" style="color: var(--primary);">Salle Familiale</strong> avec le prénom <strong id="pendingMemberName" style="color: var(--text-main);">Membre</strong>.
+            Demande envoyée pour <strong id="pendingMemberName" style="color: var(--text-main);">Membre</strong>.
+            <span id="pendingRoomName" style="display: none;"></span>
           </p>
         </div>
 
         <div class="waiting-info-card">
-          Le propriétaire de la salle a reçu votre demande sur son téléphone. Dès qu'il clique sur <strong>Accepter</strong>, votre application se mettra à jour automatiquement avec tous les véhicules de la famille.
+          L'administrateur a reçu votre demande sur son téléphone. Dès qu'il clique sur <strong>Accepter</strong>, votre application se synchronisera automatiquement avec tous les véhicules partagés.
         </div>
 
         <div style="width: 100%; margin-top: 8px;">
@@ -970,12 +966,12 @@
   <div id="modalShareInvite" class="modal-overlay hidden" role="dialog" aria-modal="true">
     <div class="modal-content">
       <div class="modal-header">
-        <h2 class="modal-title">Inviter vos proches 📲</h2>
+        <h2 class="modal-title">Inviter un appareil / utilisateur 📲</h2>
         <button type="button" class="modal-close" id="btnCloseShareInvite" aria-label="Fermer">✕</button>
       </div>
       <p class="card-subtitle">
-        Salle : <strong id="shareInviteRoomTitle" style="color: var(--primary);">Famille</strong><br>
-        Envoyez ce lien à vos proches. Ils n'auront qu'à entrer leur prénom pour demander l'accès.
+        Envoyez ce lien à vos proches ou sur vos autres appareils. Ils n'auront qu'à entrer leur prénom pour demander l'accès.
+        <span id="shareInviteRoomTitle" style="display: none;"></span>
       </p>
 
       <div class="share-invite-box">
@@ -999,7 +995,7 @@
           </div>
         </div>
 
-        <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; background: var(--bg-input); padding: 8px 10px; border-radius: var(--radius-sm);">
+        <div style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.4; background: var(--bg-input); padding: 8px 10px; border-radius: var(--radius-sm);">
           🔒 <strong>Sécurité renforcée :</strong> Ce lien expire dans 24h et nécessite votre approbation personnelle avant d'ouvrir l'accès aux véhicules.
         </div>
       </div>
@@ -1010,7 +1006,7 @@
     </div>
   </div>
 
-  <!-- MODAL: Transférer la gestion de la salle (Passation obligatoire avant départ de l'admin) -->
+  <!-- MODAL: Transférer la gestion (Passation obligatoire avant départ de l'admin) -->
   <div id="modalTransferOwnership" class="modal-overlay hidden" role="dialog" aria-modal="true">
     <div class="modal-content">
       <div class="modal-header">
@@ -1018,25 +1014,25 @@
         <button type="button" class="modal-close" id="btnCloseTransferOwnership" aria-label="Fermer">✕</button>
       </div>
       <p class="card-subtitle">
-        En tant que propriétaire, vous devez désigner un nouveau gestionnaire parmi les membres de la salle avant de la quitter.
+        En tant qu'administrateur, vous devez désigner un nouveau gestionnaire parmi les utilisateurs avant de quitter le partage.
       </p>
 
       <form id="formTransferOwnership">
         <div class="form-group">
-          <label class="form-label" for="transferSuccessorSelect">Nouveau propriétaire</label>
+          <label class="form-label" for="transferSuccessorSelect">Nouveau gestionnaire</label>
           <select id="transferSuccessorSelect" class="form-select" required>
             <!-- Options insérées dynamiquement -->
           </select>
-          <span class="form-help">Ce membre aura le contrôle total de la salle (gestion des membres, invitations, suppression).</span>
+          <span class="form-help">Ce membre aura le contrôle total du partage (gestion des membres, invitations, suppression).</span>
         </div>
 
-        <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; background: rgba(239, 68, 68, 0.08); border-left: 3px solid var(--danger); padding: 8px 12px; border-radius: var(--radius-sm); margin-bottom: 12px;">
-          ⚠️ <strong>Attention :</strong> Une fois le transfert validé, vous quitterez immédiatement la salle et votre application repassera en mode solo.
+        <div style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.4; background: rgba(239, 68, 68, 0.08); border-left: 3px solid var(--danger); padding: 8px 12px; border-radius: var(--radius-sm); margin-bottom: 12px;">
+          ⚠️ <strong>Attention :</strong> Une fois le transfert validé, vous quitterez le partage et votre application repassera en mode solo.
         </div>
 
         <div class="modal-actions" style="margin-top: 14px;">
           <button type="submit" id="btnConfirmTransferOwnership" class="btn-primary" style="flex: 1;">
-            Transférer &amp; Quitter la salle
+            Transférer &amp; Quitter le partage
           </button>
           <button type="button" id="btnCancelTransferOwnership" class="btn-secondary">Annuler</button>
         </div>

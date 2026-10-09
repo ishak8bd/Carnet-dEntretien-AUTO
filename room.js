@@ -169,7 +169,7 @@ export async function pingRoomActivity(roomId) {
  * Crée une nouvelle salle familiale avec son premier lien d'invitation
  */
 export async function createFamilyRoom({ roomName, ownerName, expiryHours = 24, maxUses = 5, migrateLocal = false }) {
-  if (!roomName || !roomName.trim()) throw new Error("Le nom de la salle est obligatoire.");
+  const finalRoomName = (roomName && roomName.trim()) ? roomName.trim() : "Multi-utilisateurs";
   if (!ownerName || !ownerName.trim()) throw new Error("Votre prénom est obligatoire.");
 
   const user = await ensureAuth();
@@ -183,7 +183,7 @@ export async function createFamilyRoom({ roomName, ownerName, expiryHours = 24, 
   // 1. Document Salle
   const roomRef = doc(db, 'rooms', roomId);
   batch.set(roomRef, {
-    name: roomName.trim(),
+    name: finalRoomName,
     ownerUid: uid,
     createdAt: serverTimestamp(),
     lastActivityAt: serverTimestamp(),
@@ -216,7 +216,7 @@ export async function createFamilyRoom({ roomName, ownerName, expiryHours = 24, 
 
   const roomProfile = {
     roomId,
-    roomName: roomName.trim(),
+    roomName: finalRoomName,
     myName: ownerName.trim(),
     myUid: uid,
     role: 'owner',
@@ -318,7 +318,7 @@ export async function joinFamilyRoom({ inviteInput, memberName }) {
     lastSeenAt: serverTimestamp()
   });
 
-  let roomName = 'Salle Familiale';
+  let roomName = 'Multi-utilisateurs';
   try {
     const roomSnap = await getDoc(doc(db, 'rooms', roomId));
     if (roomSnap.exists()) {
@@ -359,7 +359,7 @@ export function setupMemberStatusListener(roomId, uid, onApprovedCallback) {
         saveStoredRoomProfile(null);
         stopRoomSynchronization();
         if (window.showToast) {
-          window.showToast("Vous avez été retiré de la salle familiale par le propriétaire.", "warning", 6000);
+          window.showToast("Vous avez été retiré du partage par le propriétaire.", "warning", 6000);
         }
         hidePendingApprovalModal();
         if (window.renderApp) window.renderApp();
@@ -381,9 +381,9 @@ export function setupMemberStatusListener(roomId, uid, onApprovedCallback) {
       hidePendingApprovalModal();
 
       if (wasPending && window.showToast) {
-        window.showToast("🎉 Votre accès a été validé par le propriétaire ! Bienvenue dans la salle.", "success", 5000);
+        window.showToast("🎉 Votre accès a été validé par le propriétaire ! Bienvenue dans le partage.", "success", 5000);
       } else if (wasMember && current.role === 'owner' && window.showToast) {
-        window.showToast("👑 Vous êtes désormais le gestionnaire / propriétaire de la salle familiale !", "success", 6000);
+        window.showToast("👑 Vous êtes désormais le gestionnaire du partage multi-utilisateurs !", "success", 6000);
       }
 
       // Lancer la synchronisation temps réel
@@ -393,7 +393,7 @@ export function setupMemberStatusListener(roomId, uid, onApprovedCallback) {
         onApprovedCallback(data);
       }
     } else {
-      showPendingApprovalModal(current ? current.roomName : 'Salle Familiale', data.name);
+      showPendingApprovalModal(current ? current.roomName : 'Multi-utilisateurs', data.name);
     }
   }, (err) => {
     console.warn("Écoute du statut membre Firestore:", err);
@@ -423,23 +423,23 @@ export async function rejectMember(roomId, memberUid) {
 export async function removeMember(roomId, memberUid) {
   const profile = getStoredRoomProfile();
   if (!profile || profile.role !== 'owner') {
-    throw new Error("Seul le propriétaire peut retirer un membre de la salle.");
+    throw new Error("Seul le gestionnaire peut retirer un membre du partage.");
   }
   const memberRef = doc(db, 'rooms', roomId, 'members', memberUid);
   await deleteDoc(memberRef);
 
   // Journaliser l'activité
-  await addRoomActivity(roomId, `${profile.myName} a retiré un membre de la salle.`);
-  if (window.showToast) window.showToast("Membre retiré de la salle familiale.", "info");
+  await addRoomActivity(roomId, `${profile.myName} a retiré un utilisateur du partage.`);
+  if (window.showToast) window.showToast("Utilisateur retiré du partage.", "info");
 }
 
 /**
- * Transfère la gestion de la salle à un autre membre approuvé et quitte la salle (Succession obligatoire de l'admin)
+ * Transfère la gestion du partage à un autre membre approuvé et quitte le partage (Succession obligatoire de l'admin)
  */
 export async function transferOwnershipAndLeave(roomId, successorUid, successorName) {
   const profile = getStoredRoomProfile();
   if (!profile || profile.role !== 'owner') {
-    throw new Error("Seul le propriétaire actuel peut transférer la gestion de la salle.");
+    throw new Error("Seul le gestionnaire actuel peut transférer la gestion du partage.");
   }
   const user = await ensureAuth();
 
@@ -459,7 +459,7 @@ export async function transferOwnershipAndLeave(roomId, successorUid, successorN
 
   // 3. Journaliser le transfert dans l'activité
   try {
-    await addRoomActivity(roomId, `${profile.myName} a transmis la gestion de la salle à ${successorName} et a quitté la salle.`);
+    await addRoomActivity(roomId, `${profile.myName} a transmis la gestion à ${successorName} et a quitté le partage.`);
   } catch (e) {
     console.warn("Échec log activité passation:", e);
   }
@@ -498,7 +498,7 @@ export async function transferOwnershipAndLeave(roomId, successorUid, successorN
   }
 
   if (window.showToast) {
-    window.showToast(`Vous avez confié la gestion à ${successorName} et quitté la salle.`, "success", 5000);
+    window.showToast(`Vous avez confié la gestion à ${successorName} et quitté le partage.`, "success", 5000);
   }
   if (window.renderApp) window.renderApp();
   renderSettingsRoomSection();
@@ -533,14 +533,14 @@ export function hideTransferOwnershipModal() {
   if (modal) modal.classList.add('hidden');
 }
 
-/** Quitter la salle partagée (Membre standard ou départ sans transfert si autorisé) */
+/** Quitter le partage (Membre standard ou départ sans transfert si autorisé) */
 export async function leaveRoom() {
   const profile = getStoredRoomProfile();
   if (profile && profile.roomId && profile.myUid) {
     try {
       // 1. Ajouter l'activité avant suppression du document membre
       try {
-        await addRoomActivity(profile.roomId, `${profile.myName} a quitté la salle familiale.`);
+        await addRoomActivity(profile.roomId, `${profile.myName} a quitté le partage.`);
       } catch (e) {
         console.warn("Échec log activité départ:", e);
       }
@@ -582,7 +582,7 @@ export async function leaveRoom() {
     window.loadState();
   }
 
-  if (window.showToast) window.showToast("Vous avez quitté la salle familiale.", "info");
+  if (window.showToast) window.showToast("Vous avez quitté le partage multi-utilisateurs.", "info");
   if (window.renderApp) window.renderApp();
   renderSettingsRoomSection();
   updateSyncIndicatorBadge('offline', 'Mode solo local');
@@ -686,7 +686,7 @@ export async function migrateLocalDataToRoom(roomId, ownerUid, ownerName) {
     const actId = `act_${Date.now()}`;
     const actRef = doc(db, 'rooms', roomId, 'activity', actId);
     batch.set(actRef, {
-      text: `${ownerName} a créé la salle et importé les véhicules`,
+      text: `${ownerName} a activé le partage et importé les véhicules`,
       authorUid: ownerUid,
       authorName: ownerName,
       createdAt: serverTimestamp()
@@ -1124,7 +1124,7 @@ export async function clearAllRoomData(roomId) {
   if (typeof window.renderApp === 'function') window.renderApp();
 
   if (window.showToast) {
-    window.showToast("Toutes les données de la salle ont été effacées avec succès.", "success", 5000);
+    window.showToast("Toutes les données du partage ont été effacées avec succès.", "success", 5000);
   }
 
   return { deletedCount };
@@ -1228,7 +1228,7 @@ export async function deleteEntireRoom(roomId) {
   updateSyncIndicatorBadge('offline', 'Mode solo local');
 
   if (window.showToast) {
-    window.showToast("La salle familiale et toutes ses données ont été supprimées définitivement.", "info", 5000);
+    window.showToast("Le partage multi-utilisateurs et toutes ses données ont été supprimés définitivement.", "info", 5000);
   }
 }
 
@@ -1334,7 +1334,7 @@ export function showPendingApprovalModal(roomName, memberName) {
   if (!modal) return;
   const rn = document.getElementById('pendingRoomName');
   const mn = document.getElementById('pendingMemberName');
-  if (rn) rn.textContent = roomName || 'Salle Familiale';
+  if (rn) rn.textContent = roomName || 'Multi-utilisateurs';
   if (mn) mn.textContent = memberName || 'Membre';
   modal.classList.remove('hidden');
 }
@@ -1382,7 +1382,7 @@ export function renderOwnerPendingBanner(pendingList, roomId) {
     <div class="pending-banner-content">
       <div class="pending-banner-text">
         <span class="pending-badge">🔔 ${pendingList.length} en attente</span>
-        <span>Demande(s) d'accès à valider pour votre salle :</span>
+        <span>Demande(s) d'accès à valider pour le partage :</span>
       </div>
       <div class="pending-banner-list">
         ${pendingList.map(m => `
@@ -1434,21 +1434,21 @@ export function renderSettingsRoomSection() {
     container.innerHTML = `
       <div class="card" style="margin-top: 15px;">
         <div class="card-header">
-          <div class="card-icon">🏠</div>
+          <div class="card-icon">👥</div>
           <div>
-            <h3 class="card-title">Salle Familiale Partagée</h3>
-            <p class="card-subtitle">Partagez l'entretien avec vos proches (père, frères, mère...)</p>
+            <h3 class="card-title">Multi-utilisateurs (multi-appareils)</h3>
+            <p class="card-subtitle">Synchronisez l'entretien entre plusieurs téléphones ou conducteurs</p>
           </div>
         </div>
         <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 15px;">
-          Actuellement en <strong>Mode Local Solo</strong>. Créez une salle pour synchroniser vos véhicules en temps réel entre plusieurs téléphones sans mot de passe.
+          Actuellement en <strong>Mode Local Solo</strong>. Activez le multi-utilisateurs pour synchroniser vos véhicules en temps réel entre plusieurs téléphones sans mot de passe.
         </p>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
           <button type="button" id="btnOpenCreateRoomModal" class="btn-primary" style="flex: 1; min-width: 140px;">
-            🏠 Créer une salle
+            👥 Activer le multi-utilisateurs
           </button>
           <button type="button" id="btnOpenJoinRoomModal" class="btn-secondary" style="flex: 1; min-width: 140px;">
-            🔗 Rejoindre une salle
+            🔗 Rejoindre un partage
           </button>
         </div>
       </div>
@@ -1463,24 +1463,24 @@ export function renderSettingsRoomSection() {
     return;
   }
 
-  // Utilisateur actuellement dans une salle
+  // Utilisateur actuellement dans un partage
   const isOwner = profile.role === 'owner';
   const isPending = profile.status === 'pending';
 
   container.innerHTML = `
     <div class="card" style="margin-top: 15px; border-left: 4px solid var(--primary);">
       <div class="card-header" style="margin-bottom: 10px;">
-        <div class="card-icon">🏠</div>
+        <div class="card-icon">👥</div>
         <div>
-          <h3 class="card-title">${escapeHtml(profile.roomName || 'Salle Familiale')}</h3>
-          <p class="card-subtitle">Connecté en tant que <strong>${escapeHtml(profile.myName)}</strong> (${isOwner ? '👑 Propriétaire' : (isPending ? '⏳ En attente' : '✅ Membre')})</p>
+          <h3 class="card-title">Multi-utilisateurs (multi-appareils)</h3>
+          <p class="card-subtitle">Connecté en tant que <strong>${escapeHtml(profile.myName)}</strong> (${isOwner ? '👑 Gestionnaire' : (isPending ? '⏳ En attente' : '✅ Utilisateur')})</p>
         </div>
       </div>
 
-      <!-- Liste des membres de la salle -->
+      <!-- Liste des membres connectés -->
       <div style="margin-top: 14px; border-top: 1px solid var(--border-color); padding-top: 12px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <strong style="font-size: 0.88rem; color: var(--text-main);">Membres de la salle (${roomMembersList.length || 1})</strong>
+          <strong style="font-size: 0.88rem; color: var(--text-main);">Utilisateurs connectés (${roomMembersList.length || 1})</strong>
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
           ${(roomMembersList.length > 0 ? roomMembersList : [{ uid: profile.myUid, name: profile.myName, role: profile.role, status: profile.status }]).map(m => `
@@ -1488,12 +1488,12 @@ export function renderSettingsRoomSection() {
               <div>
                 <span style="font-weight: 600; font-size: 0.86rem; color: var(--text-main);">👤 ${escapeHtml(m.name)}</span>
                 <span style="font-size: 0.74rem; color: var(--text-muted); margin-left: 6px;">
-                  ${m.role === 'owner' ? '👑 Propriétaire' : (m.status === 'pending' ? '⏳ En attente' : '✅ Membre')}
+                  ${m.role === 'owner' ? '👑 Gestionnaire' : (m.status === 'pending' ? '⏳ En attente' : '✅ Utilisateur')}
                 </span>
               </div>
               ${(isOwner && m.uid !== profile.myUid && m.status === 'approved') ? `
                 <div style="display: flex; gap: 6px; align-items: center;">
-                  <button type="button" class="btn-secondary btn-xs btn-transfer-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}" title="Transférer la gestion de la salle à ce membre">
+                  <button type="button" class="btn-secondary btn-xs btn-transfer-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}" title="Transférer la gestion à cet utilisateur">
                     👑 Transférer gestion
                   </button>
                   <button type="button" class="btn-reject btn-xs btn-remove-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}">
@@ -1513,11 +1513,11 @@ export function renderSettingsRoomSection() {
       <div style="display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap;">
         ${isOwner ? `
           <button type="button" id="btnCreateNewInvite" class="btn-primary" style="flex: 1; min-width: 150px;">
-            📲 Inviter un membre
+            📲 Inviter un utilisateur
           </button>
         ` : ''}
         <button type="button" id="btnLeaveRoom" class="btn-secondary" style="flex: 1; min-width: 120px;">
-          🚪 Quitter la salle
+          🚪 Quitter le partage
         </button>
       </div>
 
@@ -1529,14 +1529,14 @@ export function renderSettingsRoomSection() {
             <strong style="color: var(--danger); font-size: 0.88rem;">Zone Administrateur</strong>
           </div>
           <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
-            En tant que propriétaire, vous avez le contrôle total sur la gestion et la suppression des données partagées.
+            En tant que gestionnaire, vous avez le contrôle total sur la gestion et la suppression des données partagées.
           </p>
           <div style="display: flex; gap: 10px; flex-wrap: wrap;">
             <button type="button" id="btnAdminClearRoomData" class="btn-danger btn-sm" style="flex: 1; min-width: 180px;">
               🗑️ Effacer toutes les données
             </button>
             <button type="button" id="btnAdminDeleteRoom" class="btn-danger btn-sm" style="flex: 1; min-width: 180px; background: #991b1b; border-color: #7f1d1d;">
-              💥 Supprimer la salle
+              💥 Supprimer le partage
             </button>
           </div>
         </div>
@@ -1561,7 +1561,7 @@ export function renderSettingsRoomSection() {
     btn.onclick = async () => {
       const uid = btn.dataset.uid;
       const name = btn.dataset.name;
-      if (confirm(`Voulez-vous vraiment retirer ${name} de la salle familiale ?`)) {
+      if (confirm(`Voulez-vous vraiment retirer ${name} du partage ?`)) {
         btn.disabled = true;
         try {
           await removeMember(profile.roomId, uid);
@@ -1587,7 +1587,7 @@ export function renderSettingsRoomSection() {
 
   document.getElementById('btnLeaveRoom')?.addEventListener('click', async () => {
     if (isOwner) {
-      // Filtrer les autres membres approuvés dans la salle
+      // Filtrer les autres membres approuvés
       const otherApprovedMembers = roomMembersList.filter(
         m => m.uid !== profile.myUid && m.status === 'approved'
       );
@@ -1598,20 +1598,20 @@ export function renderSettingsRoomSection() {
       } else {
         // Cas 2 : Propriétaire seul (ou aucun autre membre approuvé)
         const c = confirm(
-          "Vous êtes le seul gestionnaire de cette salle.\n\nEn la quittant, la salle sera définitivement supprimée. Voulez-vous supprimer la salle et revenir en mode solo ?"
+          "Vous êtes le seul gestionnaire de ce partage.\n\nEn le quittant, le partage sera définitivement supprimé. Voulez-vous supprimer le partage et revenir en mode solo ?"
         );
         if (c) {
           try {
             await deleteEntireRoom(profile.roomId);
           } catch (e) {
-            console.error("Erreur suppression de la salle lors du départ:", e);
+            console.error("Erreur suppression du partage lors du départ:", e);
             if (window.showToast) window.showToast("Erreur: " + e.message, "error");
           }
         }
       }
     } else {
       // Membre standard : confirmation et sortie
-      if (confirm("Voulez-vous vraiment quitter cette salle partagée et revenir en mode autonome ?")) {
+      if (confirm("Voulez-vous vraiment quitter ce partage et revenir en mode autonome ?")) {
         try {
           await leaveRoom();
         } catch (e) {
@@ -1625,11 +1625,11 @@ export function renderSettingsRoomSection() {
   // Actions d'administration de la salle
   document.getElementById('btnAdminClearRoomData')?.addEventListener('click', async () => {
     const c1 = window.confirm(
-      "⚠️ ATTENTION : Vous êtes sur le point de supprimer TOUS les véhicules, relevés de compteur, entretiens et historiques de cette salle.\n\nCette action effacera les données pour TOUS les membres de la famille.\n\nVoulez-vous continuer ?"
+      "⚠️ ATTENTION : Vous êtes sur le point de supprimer TOUS les véhicules, relevés de compteur, entretiens et historiques de ce partage.\n\nCette action effacera les données pour TOUS les utilisateurs connectés.\n\nVoulez-vous continuer ?"
     );
     if (!c1) return;
 
-    const c2 = window.prompt("Pour confirmer l'effacement complet des données de la salle, tapez SUPPRIMER ci-dessous :");
+    const c2 = window.prompt("Pour confirmer l'effacement complet des données du partage, tapez SUPPRIMER ci-dessous :");
     if (c2 !== "SUPPRIMER") {
       if (window.showToast) window.showToast("Suppression annulée.", "info");
       return;
@@ -1645,11 +1645,11 @@ export function renderSettingsRoomSection() {
 
   document.getElementById('btnAdminDeleteRoom')?.addEventListener('click', async () => {
     const c1 = window.confirm(
-      "⚠️ ATTENTION : Vous êtes sur le point de DISSOUDRE et SUPPRIMER DÉFINITIVEMENT cette salle familiale.\n\nToutes les données du cloud seront effacées et tous les membres retourneront en mode solo.\n\nVoulez-vous continuer ?"
+      "⚠️ ATTENTION : Vous êtes sur le point de DISSOUDRE et SUPPRIMER DÉFINITIVEMENT ce partage multi-utilisateurs.\n\nToutes les données du cloud seront effacées et tous les utilisateurs retourneront en mode solo.\n\nVoulez-vous continuer ?"
     );
     if (!c1) return;
 
-    const c2 = window.prompt("Pour confirmer la suppression définitive de la salle, tapez DISSOUDRE ci-dessous :");
+    const c2 = window.prompt("Pour confirmer la suppression définitive du partage, tapez DISSOUDRE ci-dessous :");
     if (c2 !== "DISSOUDRE") {
       if (window.showToast) window.showToast("Suppression annulée.", "info");
       return;
@@ -1671,11 +1671,11 @@ function escapeHtml(str) {
 
 /** Partage de lien via l'API Web Share ou WhatsApp */
 export async function shareInviteLink(inviteUrl, roomName) {
-  const shareText = `Rejoins le carnet d'entretien de notre véhicule sur la salle "${roomName || 'Famille'}" ! Clique ici : ${inviteUrl}`;
+  const shareText = `Rejoins le carnet d'entretien de notre véhicule en mode multi-utilisateurs ! Clique ici : ${inviteUrl}`;
   if (navigator.share) {
     try {
       await navigator.share({
-        title: "Carnet d'Entretien - Salle Familiale",
+        title: "Carnet d'Entretien - Multi-utilisateurs",
         text: shareText,
         url: inviteUrl
       });
@@ -1741,7 +1741,7 @@ export async function initFamilyRoom() {
     const candidate = roomMembersList.find(m => m.uid === successorUid);
     const successorName = candidate ? candidate.name : 'le nouveau propriétaire';
 
-    const ok = confirm(`Confirmez-vous le transfert de la gestion à ${successorName} ? Vous quitterez ensuite la salle partagée.`);
+    const ok = confirm(`Confirmez-vous le transfert de la gestion à ${successorName} ? Vous quitterez ensuite le partage.`);
     if (!ok) return;
 
     const btnSubmit = document.getElementById('btnConfirmTransferOwnership');

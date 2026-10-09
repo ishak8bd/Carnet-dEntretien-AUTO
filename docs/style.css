@@ -377,7 +377,8 @@ body {
 }
 
 .card-subtitle {
-  font-size: 0.82rem;
+  font-size: 0.74rem;
+  line-height: 1.35;
   color: var(--text-muted);
 }
 
@@ -702,7 +703,8 @@ body {
 }
 
 .form-help {
-  font-size: 0.75rem;
+  font-size: 0.69rem;
+  line-height: 1.35;
   color: var(--text-muted);
 }
 
@@ -928,6 +930,13 @@ body {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.maint-section-heading {
+  font-size: 1.32rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.015em;
 }
 
 .section-actions {
@@ -2263,7 +2272,7 @@ body {
 }
 
 .onboarding-choice-desc {
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   color: var(--text-muted);
   line-height: 1.35;
 }
