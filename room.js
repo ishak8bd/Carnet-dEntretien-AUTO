@@ -1188,9 +1188,6 @@ export async function saveExternalContact({ id, name, email, phone }) {
   if (!profile || profile.status !== 'approved') {
     throw new Error("Action impossible : vous n'êtes pas connecté à un partage actif.");
   }
-  if (profile.role !== 'owner') {
-    throw new Error("Seul le gestionnaire du partage peut ajouter des destinataires supplémentaires.");
-  }
   const user = await ensureAuth();
 
   const cleanName = (name || '').trim();
@@ -1229,15 +1226,12 @@ export async function saveExternalContact({ id, name, email, phone }) {
 }
 
 /**
- * Supprime un contact externe dans Firestore (Réservé au gestionnaire de la salle)
+ * Supprime un contact externe dans Firestore (Membres approuvés de la salle)
  */
 export async function deleteExternalContact(contactId) {
   const profile = getStoredRoomProfile();
   if (!profile || profile.status !== 'approved') {
     throw new Error("Action impossible : vous n'êtes pas connecté à un partage actif.");
-  }
-  if (profile.role !== 'owner') {
-    throw new Error("Seul le gestionnaire du partage peut supprimer des destinataires d'alertes.");
   }
 
   const contact = roomContactsMap.get(contactId);

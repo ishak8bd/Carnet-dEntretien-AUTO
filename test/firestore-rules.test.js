@@ -994,37 +994,50 @@ describe('Family Room Car Maintenance Tracker - Firestore Security Rules', () =>
       await assertSucceeds(readDoc(approvedDb, 'rooms/room_1/contacts/contact_1'));
     });
 
-    it('denies approved non-owner member from creating, updating, or deleting contacts', async () => {
+    it('allows approved member to create, update, and delete contacts', async () => {
       if (!testEnv) return;
       await seedRoomFixtures();
-      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
-      const createdDate = new Date();
-      await writeDoc(ownerDb, 'rooms/room_1/contacts/contact_1', {
-        name: 'Grandpa Joe',
-        email: 'grandpa@example.com',
-        phone: '+213555987654',
-        createdAt: createdDate,
-        createdBy: 'user_owner',
-      });
-
       const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
 
-      // Deny create
-      await assertFails(writeDoc(approvedDb, 'rooms/room_1/contacts/contact_2', {
-        name: 'Member Trying Create',
+      // Approved member create
+      await assertSucceeds(writeDoc(approvedDb, 'rooms/room_1/contacts/contact_2', {
+        name: 'Member Added Contact',
         email: 'test@example.com',
         phone: null,
         createdAt: new Date(),
         createdBy: 'user_approved',
       }));
 
-      // Deny update
-      await assertFails(patchDoc(approvedDb, 'rooms/room_1/contacts/contact_1', {
-        name: 'Hacked Name',
+      // Approved member update
+      await assertSucceeds(patchDoc(approvedDb, 'rooms/room_1/contacts/contact_2', {
+        name: 'Member Updated Name',
       }));
 
-      // Deny delete
-      await assertFails(removeDoc(approvedDb, 'rooms/room_1/contacts/contact_1'));
+      // Approved member delete
+      await assertSucceeds(removeDoc(approvedDb, 'rooms/room_1/contacts/contact_2'));
+    });
+
+    it('denies pending member from reading or writing contacts', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+      await writeDoc(ownerDb, 'rooms/room_1/contacts/contact_1', {
+        name: 'Grandpa Joe',
+        email: 'grandpa@example.com',
+        phone: '+213555987654',
+        createdAt: new Date(),
+        createdBy: 'user_owner',
+      });
+
+      const pendingDb = testEnv.authenticatedContext('user_pending').firestore();
+      await assertFails(readDoc(pendingDb, 'rooms/room_1/contacts/contact_1'));
+      await assertFails(writeDoc(pendingDb, 'rooms/room_1/contacts/contact_pending', {
+        name: 'Pending Contact',
+        email: 'pending@example.com',
+        phone: null,
+        createdAt: new Date(),
+        createdBy: 'user_pending',
+      }));
     });
 
     it('denies non-member or unauthenticated user from reading or writing contacts', async () => {

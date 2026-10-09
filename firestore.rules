@@ -457,16 +457,16 @@ service cloud.firestore {
       match /contacts/{contactId} {
         allow read: if isApprovedMember(roomId);
 
-        allow create: if isRoomOwner(roomId) &&
+        allow create: if isApprovedMember(roomId) &&
                          isValidContact(request.resource.data) &&
                          request.resource.data.createdBy == request.auth.uid;
 
-        allow update: if isRoomOwner(roomId) &&
+        allow update: if isApprovedMember(roomId) &&
                          isValidContact(request.resource.data) &&
                          request.resource.data.createdBy == resource.data.createdBy &&
                          request.resource.data.createdAt == resource.data.createdAt;
 
-        allow delete: if isRoomOwner(roomId);
+        allow delete: if isApprovedMember(roomId);
       }
     }
   }

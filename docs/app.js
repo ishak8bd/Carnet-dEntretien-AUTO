@@ -4024,10 +4024,10 @@ function renderExternalContactsList() {
 
   const isRoom = Boolean(window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive());
   const profile = (isRoom && typeof window.FamilyRoom.getStoredRoomProfile === 'function') ? window.FamilyRoom.getStoredRoomProfile() : null;
-  const isOwner = isRoom ? (profile && profile.role === 'owner') : true;
+  const canManage = isRoom ? (profile && profile.status === 'approved') : true;
 
   if (addBtn) {
-    if (isRoom && !isOwner) {
+    if (isRoom && !canManage) {
       addBtn.style.display = 'none';
     } else {
       addBtn.style.display = 'inline-flex';
@@ -4047,7 +4047,7 @@ function renderExternalContactsList() {
     container.innerHTML = `
       <div style="text-align: center; color: var(--text-muted); padding: 16px 12px; font-size: 0.85rem; background: var(--bg-input); border-radius: var(--radius-sm); border: 1px dashed var(--border-color);">
         Aucun destinataire supplémentaire configuré.<br>
-        <span style="font-size: 0.78rem;">${isOwner ? "Cliquez sur <strong>➕ Ajouter</strong> pour renseigner une adresse e-mail ou un numéro WhatsApp." : "Seul le gestionnaire du partage peut ajouter des destinataires."}</span>
+        <span style="font-size: 0.78rem;">${canManage ? "Cliquez sur <strong>➕ Ajouter</strong> pour renseigner une adresse e-mail ou un numéro WhatsApp." : "Seuls les membres approuvés du partage peuvent ajouter des destinataires."}</span>
       </div>
     `;
     return;
@@ -4069,7 +4069,7 @@ function renderExternalContactsList() {
           ${c.email ? `<span>📧 <strong class="contact-val">${escapeHtml(c.email)}</strong></span>` : `<span style="font-style: italic; color: var(--text-muted);">Pas d'e-mail</span>`}
         </div>
       </div>
-      ${isOwner ? `
+      ${canManage ? `
         <div class="room-member-actions">
           <button type="button" class="btn-secondary btn-xs btn-edit-contact" data-id="${escapeHtml(c.id)}" title="Modifier">
             ✏️ Modifier
@@ -4081,7 +4081,7 @@ function renderExternalContactsList() {
       ` : ''}
     `;
 
-    if (isOwner) {
+    if (canManage) {
       row.querySelector('.btn-edit-contact')?.addEventListener('click', () => {
         openAddContactModal(c);
       });
