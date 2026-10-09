@@ -450,7 +450,60 @@ try {
   assert.strictEqual(selectSuccessor.children.length, 1, 'Option ajoutée dans le sélecteur');
   assert.strictEqual(selectSuccessor.options[0].value, 'uid_brother', 'L\'option pointe bien vers le successeur Karim');
 
-  console.log('✅ TOUS LES TESTS DU SMOKE TEST (18/18) ONT RÉUSSI SANS AUCUNE ERREUR !');
+  console.log('19. Vérification des fonctions exportées sur window.FamilyRoom dans room.js');
+  const roomJsContent = fs.readFileSync(path.join(__dirname, '..', 'room.js'), 'utf8');
+  const expectedFamilyRoomMethods = [
+    'createFamilyRoom',
+    'joinFamilyRoom',
+    'createAdditionalInvite',
+    'approveMember',
+    'rejectMember',
+    'removeMember',
+    'transferOwnershipAndLeave',
+    'showTransferOwnershipModal',
+    'hideTransferOwnershipModal',
+    'showShareInviteModal',
+    'hideShareInviteModal',
+    'showPendingApprovalModal',
+    'hidePendingApprovalModal',
+    'leaveRoom',
+    'clearAllRoomData',
+    'deleteEntireRoom',
+    'shareInviteLink',
+    'getStoredRoomProfile',
+    'saveStoredRoomProfile',
+    'isRoomActive',
+    'recordKmReading',
+    'recordHistoryEntry',
+    'saveVehicle',
+    'deleteVehicle',
+    'saveMaintenanceItem',
+    'deleteMaintenanceItem',
+    'deleteHistoryEntry',
+    'startRoomSynchronization',
+    'stopRoomSynchronization',
+    'renderActivityFeed',
+    'updateSyncIndicatorBadge',
+    'initFamilyRoom',
+    'renderSettingsRoomSection'
+  ];
+
+  // Extraire le bloc window.FamilyRoom = { ... };
+  const familyRoomBlockMatch = roomJsContent.match(/window\.FamilyRoom\s*=\s*\{([\s\S]*?)\};/);
+  assert(familyRoomBlockMatch, 'Bloc window.FamilyRoom présent dans room.js');
+  const exportedIdentifiers = familyRoomBlockMatch[1]
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  for (const method of expectedFamilyRoomMethods) {
+    assert(
+      exportedIdentifiers.includes(method),
+      `Méthode obligatoire "${method}" absente de window.FamilyRoom dans room.js`
+    );
+  }
+
+  console.log('✅ TOUS LES TESTS DU SMOKE TEST (19/19) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
 } catch (err) {
   console.error('❌ Échec du smoke test:', err);

@@ -1798,11 +1798,16 @@ window.FamilyRoom = {
   transferOwnershipAndLeave,
   showTransferOwnershipModal,
   hideTransferOwnershipModal,
+  showShareInviteModal,
+  hideShareInviteModal,
+  showPendingApprovalModal,
+  hidePendingApprovalModal,
   leaveRoom,
   clearAllRoomData,
   deleteEntireRoom,
   shareInviteLink,
   getStoredRoomProfile,
+  saveStoredRoomProfile,
   isRoomActive,
   recordKmReading,
   recordHistoryEntry,
@@ -1816,7 +1821,13 @@ window.FamilyRoom = {
   renderActivityFeed,
   updateSyncIndicatorBadge,
   initFamilyRoom,
-  renderSettingsRoomSection
+  renderSettingsRoomSection,
+  setupMemberStatusListener,
+  renderOwnerPendingBanner,
+  migrateLocalDataToRoom,
+  parseInviteToken,
+  generateSecureToken,
+  ensureAuth
 };
 
 if (document.readyState === 'loading') {
