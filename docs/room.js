@@ -1021,19 +1021,34 @@ export async function recordHistoryEntry(record, updatedItem) {
     garage: record.garage || '',
     notes: record.notes || '',
     authorUid: user.uid,
-    authorName: profile.myName,
+    authorName: (profile && profile.myName) ? profile.myName : 'Membre',
     createdAt: serverTimestamp()
   });
 
   // 2. Mise à jour de l'élément d'entretien
   if (updatedItem && updatedItem.id) {
     const itemRef = doc(db, 'rooms', profile.roomId, 'items', updatedItem.id);
-    batch.update(itemRef, {
-      lastDate: updatedItem.lastDate || null,
-      lastKm: (updatedItem.lastKm !== null && updatedItem.lastKm !== undefined && !isNaN(Number(updatedItem.lastKm))) ? Number(updatedItem.lastKm) : null,
-      updatedAt: serverTimestamp(),
-      updatedBy: user.uid
-    });
+    const existing = roomItemsMap.get(updatedItem.id);
+    if (existing) {
+      batch.update(itemRef, {
+        lastDate: updatedItem.lastDate || null,
+        lastKm: (updatedItem.lastKm !== null && updatedItem.lastKm !== undefined && !isNaN(Number(updatedItem.lastKm))) ? Number(updatedItem.lastKm) : null,
+        updatedAt: serverTimestamp(),
+        updatedBy: user.uid
+      });
+    } else {
+      batch.set(itemRef, {
+        vehicleId: record.vehicleId,
+        name: updatedItem.name,
+        intervalKm: (updatedItem.intervalKm && Number(updatedItem.intervalKm) > 0) ? Number(updatedItem.intervalKm) : null,
+        intervalMonths: Number(updatedItem.intervalMonths) || 12,
+        lastDate: updatedItem.lastDate || null,
+        lastKm: (updatedItem.lastKm !== null && updatedItem.lastKm !== undefined && !isNaN(Number(updatedItem.lastKm))) ? Number(updatedItem.lastKm) : null,
+        updatedAt: serverTimestamp(),
+        updatedBy: user.uid,
+        deleted: false
+      });
+    }
   }
 
   // 3. Mise à jour de l'odomètre du véhicule si supérieur
@@ -1348,7 +1363,7 @@ export async function addRoomActivity(roomId, text) {
     await setDoc(actRef, {
       text,
       authorUid: user.uid,
-      authorName: profile ? profile.myName : 'Membre',
+      authorName: (profile && profile.myName && profile.myName.trim()) ? profile.myName.trim() : 'Membre',
       createdAt: serverTimestamp()
     });
   } catch (err) {

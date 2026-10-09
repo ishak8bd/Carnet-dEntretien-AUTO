@@ -775,7 +775,7 @@
         <div class="form-group">
           <label class="form-label" for="addHistTypeSelect">Type d'opération</label>
           <select id="addHistTypeSelect" class="form-input" required></select>
-          <input type="text" id="addHistCustomType" class="form-input hidden" style="margin-top: 8px;" placeholder="Précisez le type d'intervention personnalisé...">
+          <input type="text" id="addHistCustomType" class="form-input hidden" style="margin-top: 8px;" placeholder="Précisez le type d'intervention personnalisé..." maxlength="50">
         </div>
 
         <!-- Date & Kilométrage -->
@@ -821,10 +821,13 @@
           </label>
         </div>
 
-        <div class="modal-actions" style="margin-top: 14px;">
+        <div class="modal-actions" style="margin-top: 14px; gap: 8px; flex-wrap: wrap;">
           <button type="button" id="btnCancelAddHistoryModal" class="btn-secondary">Annuler</button>
-          <button type="submit" class="btn-primary" style="flex: 1;">
-            💾 Enregistrer dans l'historique
+          <button type="button" id="btnAddAnotherHistoryEntry" class="btn-secondary" style="font-size: 0.84rem;">
+            ➕ Enregistrer &amp; en ajouter une autre
+          </button>
+          <button type="submit" class="btn-primary" id="btnSubmitAddHistoryEntry" style="flex: 1; min-width: 140px;">
+            💾 Enregistrer
           </button>
         </div>
       </form>

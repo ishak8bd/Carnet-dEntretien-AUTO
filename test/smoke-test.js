@@ -559,6 +559,22 @@ try {
   assert.strictEqual(addedRecord.cost, 6500, 'Coût conforme');
   assert(modalAddHist.classList.contains('hidden'), 'La modale doit être fermée après enregistrement');
 
+  // Vérifier qu'on peut ajouter plus de 3 interventions (4ème, 5ème, 6ème...) sans limitation
+  const btnAddAnother = document.getElementById('btnAddAnotherHistoryEntry');
+  assert(btnAddAnother, 'Bouton btnAddAnotherHistoryEntry présent dans la modale');
+
+  window.openAddHistoryModal();
+  for (let step = 2; step <= 5; step++) {
+    selTypeHist.value = 'Filtre à air';
+    dateInputHist.value = new Date(Date.now() - (150 - step * 10) * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    kmInputHist.value = String(testPastKm + step * 1000);
+    const keepOpen = step < 5;
+    window.handleAddHistorySubmit(new window.Event('submit', { cancelable: true }), keepOpen);
+  }
+
+  assert(window.appState.history.length >= 5, `Doit contenir au moins 5 interventions (actuel : ${window.appState.history.length})`);
+  assert(modalAddHist.classList.contains('hidden'), 'La modale doit être fermée après la 5ème intervention');
+
   console.log('✅ TOUS LES TESTS DU SMOKE TEST (21/21) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
 } catch (err) {

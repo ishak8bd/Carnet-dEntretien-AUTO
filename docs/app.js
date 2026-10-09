@@ -3133,11 +3133,7 @@ function updateAddHistoryModalTypes() {
   }
 
   if (dateInput) {
-    if (veh && veh.year) {
-      dateInput.min = `${veh.year}-01-01`;
-    } else {
-      dateInput.removeAttribute('min');
-    }
+    dateInput.min = '1980-01-01';
   }
 }
 
@@ -3175,6 +3171,7 @@ function openAddHistoryModal(defaultVehicleId) {
   if (dateInput) {
     dateInput.value = '';
     dateInput.max = todayIso;
+    dateInput.min = '1980-01-01';
   }
   if (kmInput) kmInput.value = '';
   if (costInput) costInput.value = '';
@@ -3198,8 +3195,8 @@ function closeAddHistoryModal() {
   if (modal) modal.classList.add('hidden');
 }
 
-function handleAddHistorySubmit(e) {
-  e.preventDefault();
+async function handleAddHistorySubmit(e, keepOpen = false) {
+  if (e && typeof e.preventDefault === 'function') e.preventDefault();
   const selVeh = document.getElementById('addHistVehicleSelect');
   const selType = document.getElementById('addHistTypeSelect');
   const customInput = document.getElementById('addHistCustomType');
@@ -3221,12 +3218,14 @@ function handleAddHistorySubmit(e) {
 
   let typeVal = selType.value;
   if (typeVal === 'custom') {
-    typeVal = String(customInput ? customInput.value : '').trim();
+    typeVal = String(customInput ? customInput.value : '').trim().slice(0, 50);
     if (!typeVal) {
       showToast("Veuillez préciser le nom de l'intervention personnalisée.", 'warning');
       if (customInput) customInput.focus();
       return;
     }
+  } else {
+    typeVal = typeVal.slice(0, 50);
   }
 
   const dateVal = String(dateInput.value || '').trim();
@@ -3247,8 +3246,8 @@ function handleAddHistorySubmit(e) {
     return;
   }
 
-  if (vehicle.year && parseInt(dateVal.split('-')[0], 10) < vehicle.year) {
-    showToast(`La date ne peut pas être antérieure à l'année du véhicule (${vehicle.year}).`, 'warning');
+  if (dateVal < '1980-01-01') {
+    showToast("La date d'intervention ne peut pas être antérieure à 1980.", 'warning');
     return;
   }
 
@@ -3271,10 +3270,12 @@ function handleAddHistorySubmit(e) {
   const currentProfile = (window.FamilyRoom && typeof window.FamilyRoom.getStoredRoomProfile === 'function')
     ? window.FamilyRoom.getStoredRoomProfile()
     : null;
-  const currentAuthorName = (currentProfile && currentProfile.myName) ? currentProfile.myName : null;
+  const currentAuthorName = (currentProfile && currentProfile.myName && currentProfile.myName.trim())
+    ? currentProfile.myName.trim()
+    : null;
 
   const record = {
-    id: 'hist_' + Date.now(),
+    id: 'hist_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
     vehicleId: vehicle.id,
     type: typeVal,
     date: dateVal,
@@ -3323,13 +3324,41 @@ function handleAddHistorySubmit(e) {
   saveState();
 
   if (window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive()) {
-    window.FamilyRoom.recordHistoryEntry(record, updatedItem).catch(err => {
+    try {
+      await window.FamilyRoom.recordHistoryEntry(record, updatedItem);
+    } catch (err) {
       console.warn("Erreur synchronisation intervention salle:", err);
-    });
+    }
   }
 
-  closeAddHistoryModal();
-  showToast(`✅ Intervention "${typeVal}" enregistrée ! Le modèle d'IA a actualisé ses prédictions.`, 'success');
+  // Réinitialiser les filtres pour que la nouvelle intervention soit visible immédiatement
+  const selFilterVeh = document.getElementById('histFilterVehicle');
+  const selFilterType = document.getElementById('histFilterType');
+  if (selFilterVeh && selFilterVeh.value !== 'all' && selFilterVeh.value !== vehicle.id) {
+    selFilterVeh.value = 'all';
+  }
+  if (selFilterType && selFilterType.value !== 'all' && selFilterType.value !== typeVal) {
+    selFilterType.value = 'all';
+  }
+
+  if (keepOpen) {
+    dateInput.value = '';
+    kmInput.value = '';
+    if (costInput) costInput.value = '';
+    if (garageInput) garageInput.value = '';
+    if (notesInput) notesInput.value = '';
+    if (customInput) {
+      customInput.value = '';
+      customInput.classList.add('hidden');
+      customInput.required = false;
+    }
+    selType.selectedIndex = 0;
+    setTimeout(() => dateInput.focus(), 50);
+    showToast(`✅ Intervention "${typeVal}" enregistrée ! Prêt pour la suivante.`, 'success');
+  } else {
+    closeAddHistoryModal();
+    showToast(`✅ Intervention "${typeVal}" enregistrée dans l'historique ! Le modèle d'IA a actualisé ses prédictions.`, 'success');
+  }
 
   renderApp();
   renderHistoryScreen();
@@ -4345,7 +4374,11 @@ function attachEventListeners() {
   const btnCancelAddHist = document.getElementById('btnCancelAddHistoryModal');
   if (btnCancelAddHist) btnCancelAddHist.addEventListener('click', closeAddHistoryModal);
   const formAddHist = document.getElementById('formAddHistoryEntry');
-  if (formAddHist) formAddHist.addEventListener('submit', handleAddHistorySubmit);
+  if (formAddHist) formAddHist.addEventListener('submit', (e) => handleAddHistorySubmit(e, false));
+  const btnAddAnotherHist = document.getElementById('btnAddAnotherHistoryEntry');
+  if (btnAddAnotherHist) {
+    btnAddAnotherHist.addEventListener('click', (e) => handleAddHistorySubmit(e, true));
+  }
 
   const selAddHistType = document.getElementById('addHistTypeSelect');
   if (selAddHistType) {
