@@ -610,6 +610,7 @@
           <label class="form-label" for="vehFrequency">Fréquence des rappels de relevé</label>
           <div style="display: flex; gap: 8px;">
             <select id="vehFrequency" class="form-select" style="flex: 1;">
+              <option value="biweekly">Tous les 15 jours (recommandé)</option>
               <option value="weekly">Hebdomadaire (tous les 7 jours)</option>
               <option value="daily">Quotidienne (chaque jour)</option>
             </select>
@@ -822,8 +823,9 @@
           <div class="form-group">
             <label class="form-label" for="onboardFrequency">Fréquence des rappels</label>
             <select id="onboardFrequency" class="form-select">
-              <option value="weekly">Hebdomadaire (recommandé)</option>
-              <option value="daily">Quotidienne</option>
+              <option value="biweekly">Tous les 15 jours (recommandé)</option>
+              <option value="weekly">Hebdomadaire (7 jours)</option>
+              <option value="daily">Quotidienne (chaque jour)</option>
             </select>
           </div>
 

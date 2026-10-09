@@ -5,3 +5,8 @@ Thumbs.db
 .vscode/
 .idea/
 node_modules/
+
+# WhatsApp Bot (Baileys)
+whatsapp-bot/.env
+whatsapp-bot/auth_info_baileys/
+whatsapp-bot/notification_history.json

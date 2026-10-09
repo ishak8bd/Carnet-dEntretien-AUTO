@@ -342,7 +342,7 @@ function createSeedVehicle() {
     year: 2015,
     plate: '12345 115 16',
     currentKm: 118000,
-    updateFrequency: 'weekly', // Rappel hebdomadaire
+    updateFrequency: 'biweekly', // Rappel tous les 15 jours
     isDemo: true,
     kmLog: logs,
     maintenanceItems: maintenanceItems
@@ -1134,7 +1134,7 @@ function openEditVehicleModal() {
   document.getElementById('vehPlate').value = vehicle.plate || '';
   document.getElementById('vehCurrentKm').value = vehicle.currentKm;
   document.getElementById('vehCurrentKmGroup').classList.add('hidden'); // Modifié via quick update
-  document.getElementById('vehFrequency').value = vehicle.updateFrequency || 'weekly';
+  document.getElementById('vehFrequency').value = vehicle.updateFrequency || 'biweekly';
 
   document.getElementById('btnDeleteVehicle').classList.remove('hidden');
   document.getElementById('vehicleModal').classList.remove('hidden');
@@ -1405,7 +1405,14 @@ function updateStaleBanner(vehicle) {
 
   const lastLog = vehicle.kmLog[vehicle.kmLog.length - 1];
   const daysElapsed = getDaysElapsed(lastLog.date);
-  const threshold = vehicle.updateFrequency === 'daily' ? 1 : 7;
+  let threshold = 15;
+  if (vehicle.updateFrequency === 'daily') {
+    threshold = 1;
+  } else if (vehicle.updateFrequency === 'weekly') {
+    threshold = 7;
+  } else {
+    threshold = 15; // Par défaut tous les 15 jours
+  }
 
   if (daysElapsed >= threshold) {
     staleBanner.classList.remove('hidden');
@@ -3080,8 +3087,16 @@ function generateRecurringReminderIcs(vehicle) {
   const dtEnd = formatIcsDate(addDaysToDate(todayIso, 1));
   const uid = `rappel-km-${vehicle.id}@carnet-entretien`;
 
-  const freq = vehicle.updateFrequency === 'daily' ? 'DAILY' : 'WEEKLY';
-  const freqLabel = vehicle.updateFrequency === 'daily' ? 'quotidien' : 'hebdomadaire';
+  let freq = 'DAILY';
+  let freqLabel = 'tous les 15 jours';
+  let rrule = 'RRULE:FREQ=DAILY;INTERVAL=15';
+  if (vehicle.updateFrequency === 'daily') {
+    freqLabel = 'quotidien';
+    rrule = 'RRULE:FREQ=DAILY';
+  } else if (vehicle.updateFrequency === 'weekly') {
+    freqLabel = 'hebdomadaire';
+    rrule = 'RRULE:FREQ=WEEKLY';
+  }
 
   const summary = `Mettre à jour le kilométrage - ${vehicle.name}`;
   const description = `Pensez à relever le compteur de votre véhicule ${vehicle.name} (${vehicle.brand} ${vehicle.model}) et à mettre à jour votre Carnet d'Entretien pour recalibrer vos échéances.\n\nRappel ${freqLabel} configuré depuis Carnet d'Entretien.`;
@@ -3097,7 +3112,7 @@ function generateRecurringReminderIcs(vehicle) {
     `DTSTAMP:${dtStamp}`,
     `DTSTART;VALUE=DATE:${dtStart}`,
     `DTEND;VALUE=DATE:${dtEnd}`,
-    `RRULE:FREQ=${freq}`,
+    rrule,
     `SUMMARY:${escapeIcsText(summary)}`,
     `DESCRIPTION:${escapeIcsText(description)}`,
     'STATUS:CONFIRMED',
@@ -3188,7 +3203,8 @@ function exportRecurringReminderIcs() {
   const safeVeh = (vehicle.name || 'vehicule').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
   const filename = `rappel_kilometrage_${safeVeh}.ics`;
   downloadIcsFile(filename, ics);
-  showToast(`Rappel ${vehicle.updateFrequency === 'daily' ? 'quotidien' : 'hebdomadaire'} exporté vers votre calendrier (.ics) !`, 'success');
+  const freqLabel = vehicle.updateFrequency === 'daily' ? 'quotidien' : (vehicle.updateFrequency === 'weekly' ? 'hebdomadaire' : 'tous les 15 jours');
+  showToast(`Rappel ${freqLabel} exporté vers votre calendrier (.ics) !`, 'success');
 }
 
 function updateCalendarShiftBanner(shiftedItems) {
