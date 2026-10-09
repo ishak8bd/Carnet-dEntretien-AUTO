@@ -159,11 +159,64 @@ async function ensureBotMemberRequest(roomId, auth, cfg) {
 }
 
 let hasPermissionDenied = false;
+let adminDb = null;
+
+/**
+ * Initialise Firebase Admin si la clé Google serviceAccountKey.json ou la variable d'environnement existe
+ */
+async function initFirebaseAdminIfAvailable() {
+  if (adminDb) return;
+  const possiblePaths = [
+    path.join(__dirname, '..', 'serviceAccountKey.json'),
+    path.join(__dirname, 'serviceAccountKey.json'),
+    path.join(__dirname, '..', 'whatsapp-bot', 'serviceAccountKey.json')
+  ];
+
+  let saData = null;
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      try {
+        saData = JSON.parse(fs.readFileSync(p, 'utf-8'));
+        break;
+      } catch (e) {}
+    }
+  }
+
+  if (!saData && process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      saData = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } catch (e) {}
+  }
+
+  if (saData) {
+    try {
+      const { initializeApp, cert, getApps } = await import('firebase-admin/app');
+      const { getFirestore } = await import('firebase-admin/firestore');
+      const existing = getApps();
+      const app = existing.length > 0 ? existing[0] : initializeApp({ credential: cert(saData) }, 'admin-email-app');
+      adminDb = getFirestore(app);
+      console.log("🔑 [Firebase Admin] Mode Administrateur Google Cloud activé ! Lecture directe sans intermédiaire.");
+    } catch (err) {
+      console.warn("Échec init Firebase Admin:", err.message);
+    }
+  }
+}
 
 /**
  * Récupère une sous-collection Firestore sous rooms/{roomId}/{subcollection}
  */
 async function fetchFirestoreCollection(subcollection, auth, cfg) {
+  // 1. Si Firebase Admin est connecté, lecture directe sans restriction de règles
+  if (adminDb) {
+    try {
+      const snap = await adminDb.collection('rooms').doc(cfg.roomId).collection(subcollection).get();
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (e) {
+      console.warn(`Erreur Firebase Admin sur ${subcollection}:`, e.message);
+    }
+  }
+
+  // 2. Sinon, API REST avec authentification du script
   try {
     const url = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/rooms/${cfg.roomId}/${subcollection}`;
     const headers = {};
@@ -446,8 +499,9 @@ export async function runEmailReminders({ isTest = false, isDryRun = false } = {
   console.log(`📧 Expéditeur configuré : ${cfg.gmailUser}`);
   console.log(`🏠 Salle Firestore : ${cfg.roomId}`);
 
+  await initFirebaseAdminIfAvailable();
   hasPermissionDenied = false;
-  const auth = await getFirebaseAuthToken(cfg);
+  const auth = !adminDb ? await getFirebaseAuthToken(cfg) : null;
   const vehicles = await fetchFirestoreCollection('vehicles', auth, cfg);
   const items = await fetchFirestoreCollection('items', auth, cfg);
   const kmLogs = await fetchFirestoreCollection('kmLogs', auth, cfg);
