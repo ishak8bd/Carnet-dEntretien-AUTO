@@ -64,7 +64,7 @@ async function getFirebaseAuthToken(cfg) {
     if (fs.existsSync(BOT_AUTH_CACHE)) {
       cached = JSON.parse(fs.readFileSync(BOT_AUTH_CACHE, 'utf-8'));
       if (cached.expiresAt && Date.now() < cached.expiresAt - 60000 && cached.idToken) {
-        return cached.idToken;
+        return { idToken: cached.idToken, localId: cached.localId };
       }
     }
   } catch (e) {}
@@ -89,7 +89,7 @@ async function getFirebaseAuthToken(cfg) {
         try {
           fs.writeFileSync(BOT_AUTH_CACHE, JSON.stringify(updated, null, 2), 'utf-8');
         } catch (e) {}
-        return updated.idToken;
+        return { idToken: updated.idToken, localId: updated.localId };
       }
     } catch (err) {
       console.warn("Échec rafraîchissement jeton Firebase:", err.message);
@@ -115,25 +115,66 @@ async function getFirebaseAuthToken(cfg) {
       try {
         fs.writeFileSync(BOT_AUTH_CACHE, JSON.stringify(tokenObj, null, 2), 'utf-8');
       } catch (e) {}
-      return tokenObj.idToken;
+      return { idToken: tokenObj.idToken, localId: tokenObj.localId };
     }
   } catch (e) {
     console.warn("Échec d'authentification REST Firebase:", e.message);
   }
 
-  return null;
+  return { idToken: null, localId: null };
 }
+
+// Crée une demande d'accès "Bot WhatsApp" dans la salle pour que le propriétaire puisse l'approuver
+async function ensureBotMemberRequest(roomId, auth, cfg) {
+  if (!auth || !auth.idToken || !auth.localId) return;
+  try {
+    const docUrl = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/rooms/${roomId}/members/${auth.localId}`;
+    const getRes = await fetch(docUrl, {
+      headers: { 'Authorization': `Bearer ${auth.idToken}` }
+    });
+
+    if (getRes.status === 404) {
+      console.log(`[Firestore] Création de la demande d'accès pour le Bot/script dans la salle ${roomId}...`);
+      const now = new Date().toISOString();
+      await fetch(docUrl, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${auth.idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          fields: {
+            name: { stringValue: 'Bot WhatsApp (Baileys)' },
+            role: { stringValue: 'member' },
+            status: { stringValue: 'pending' },
+            joinedAt: { timestampValue: now },
+            lastSeenAt: { timestampValue: now }
+          }
+        })
+      });
+    }
+  } catch (e) {
+    console.warn("Erreur ensureBotMemberRequest:", e.message);
+  }
+}
+
+let hasPermissionDenied = false;
 
 /**
  * Récupère une sous-collection Firestore sous rooms/{roomId}/{subcollection}
  */
-async function fetchFirestoreCollection(subcollection, idToken, cfg) {
+async function fetchFirestoreCollection(subcollection, auth, cfg) {
   try {
     const url = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/rooms/${cfg.roomId}/${subcollection}`;
     const headers = {};
-    if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
+    if (auth && auth.idToken) headers['Authorization'] = `Bearer ${auth.idToken}`;
 
     const res = await fetch(url, { headers });
+    if (res.status === 403) {
+      hasPermissionDenied = true;
+      await ensureBotMemberRequest(cfg.roomId, auth, cfg);
+      return [];
+    }
     if (!res.ok) return [];
 
     const data = await res.json();
@@ -405,12 +446,31 @@ export async function runEmailReminders({ isTest = false, isDryRun = false } = {
   console.log(`📧 Expéditeur configuré : ${cfg.gmailUser}`);
   console.log(`🏠 Salle Firestore : ${cfg.roomId}`);
 
-  const idToken = await getFirebaseAuthToken(cfg);
-  const vehicles = await fetchFirestoreCollection('vehicles', idToken, cfg);
-  const items = await fetchFirestoreCollection('items', idToken, cfg);
-  const kmLogs = await fetchFirestoreCollection('kmLogs', idToken, cfg);
-  const members = await fetchFirestoreCollection('members', idToken, cfg);
-  const history = await fetchFirestoreCollection('history', idToken, cfg);
+  hasPermissionDenied = false;
+  const auth = await getFirebaseAuthToken(cfg);
+  const vehicles = await fetchFirestoreCollection('vehicles', auth, cfg);
+  const items = await fetchFirestoreCollection('items', auth, cfg);
+  const kmLogs = await fetchFirestoreCollection('kmLogs', auth, cfg);
+  const members = await fetchFirestoreCollection('members', auth, cfg);
+  const history = await fetchFirestoreCollection('history', auth, cfg);
+
+  if (hasPermissionDenied) {
+    console.error(`\n🔒 [Firestore] ACCÈS EN ATTENTE D'APPROBATION (Erreur 403) :`);
+    console.error(`👉 Le compte du Bot/Script a demandé à rejoindre la salle "${cfg.roomId}".`);
+    console.error(`👉 Action requise :`);
+    console.error(`   1. Ouvrez l'application web : https://ishak8bd.github.io/Carnet-dEntretien-AUTO/`);
+    console.error(`   2. Rendez-vous dans Paramètres ⚙️ > Membres de la salle (ou sur le bandeau jaune en haut).`);
+    console.error(`   3. Cliquez sur "Accepter" à côté de "Bot WhatsApp (Baileys)".\n`);
+    return { success: false, error: 'permission_denied' };
+  }
+
+  if (vehicles.length === 0) {
+    console.warn(`\nℹ️ Aucun véhicule trouvé dans la salle Firestore "${cfg.roomId}".`);
+    console.warn(`👉 Vérifications :`);
+    console.warn(`   1. Êtes-vous bien connecté en Mode Salle (et non en Mode Solo local) ?`);
+    console.warn(`   2. Le code de votre salle dans l'application correspond-il bien à "${cfg.roomId}" ?\n`);
+    return { success: false, error: 'no_vehicles' };
+  }
 
   console.log(`📊 Données récupérées : ${vehicles.length} véhicule(s), ${items.length} entretien(s), ${kmLogs.length} relevé(s), ${history.length} intervention(s), ${members.length} membre(s).`);
 
