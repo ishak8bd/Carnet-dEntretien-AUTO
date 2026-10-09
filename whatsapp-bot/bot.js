@@ -6,7 +6,7 @@
 //    - J-15 à J-8 : rappel tous les 4 jours.
 //    - J-7 à J-3  : rappel tous les 2 jours.
 //    - J-2 à retard : rappel QUOTIDIEN (chaque jour), répété jusqu'à ce que l'utilisateur clique sur "Fait" dans l'application.
-// 3. Commandes interactives WhatsApp (!statut, !aide, !km <valeur>).
+// 3. Commandes interactives WhatsApp (!statut, !aide, !verif, !room <id>, !tel <numero>).
 
 import makeWASocket, {
   DisconnectReason,
@@ -26,13 +26,39 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-const TARGET_PHONE = process.env.TARGET_WHATSAPP_PHONE || '';
-const ROOM_ID = process.env.FIREBASE_ROOM_ID || '';
-const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'entretien-auto-tracker';
-const API_KEY = process.env.FIREBASE_API_KEY || '';
-const CHECK_HOURS = parseInt(process.env.CHECK_INTERVAL_HOURS || '12', 10);
-
+const CONFIG_FILE = path.join(__dirname, 'config.json');
 const HISTORY_FILE = path.join(__dirname, 'notification_history.json');
+
+// Configuration dynamique (mélange .env et config.json sauvegardé par commandes)
+function loadConfig() {
+  let cfg = {
+    targetPhone: process.env.TARGET_WHATSAPP_PHONE || '',
+    roomId: process.env.FIREBASE_ROOM_ID || '',
+    projectId: process.env.FIREBASE_PROJECT_ID || 'entretien-auto-tracker',
+    apiKey: process.env.FIREBASE_API_KEY || 'AIzaSyA7qjZi_aWunCo15Y96BbvsZfX7n7O8LO8',
+    checkHours: parseInt(process.env.CHECK_INTERVAL_HOURS || '12', 10)
+  };
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const saved = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      cfg = { ...cfg, ...saved };
+    }
+  } catch (e) {
+    console.warn("Échec lecture config.json:", e.message);
+  }
+  return cfg;
+}
+
+function saveConfig(updated) {
+  try {
+    const cur = loadConfig();
+    const merged = { ...cur, ...updated };
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(merged, null, 2), 'utf-8');
+    return merged;
+  } catch (e) {
+    console.warn("Échec écriture config.json:", e.message);
+  }
+}
 
 // Gestionnaire d'historique des notifications pour éviter le spam et gérer l'escalade
 function loadNotificationHistory() {
@@ -57,16 +83,57 @@ function saveNotificationHistory(hist) {
 let sock = null;
 
 // ============================================================================
-// 1. RÉCUPÉRATION DES DONNÉES FIRESTORE
+// 1. GESTION DES IDENTIFIANTS WHATSAPP
+// ============================================================================
+
+function formatPhoneJid(phone) {
+  let cleaned = phone.replace(/[^0-9]/g, '');
+  if (!cleaned.endsWith('@s.whatsapp.net')) {
+    cleaned = `${cleaned}@s.whatsapp.net`;
+  }
+  return cleaned;
+}
+
+function getTargetJid() {
+  const cfg = loadConfig();
+  if (cfg.targetPhone) {
+    return formatPhoneJid(cfg.targetPhone);
+  }
+  // Si aucun numéro spécifié, utiliser le compte connecté lui-même (message à soi-même)
+  if (sock && sock.user && sock.user.id) {
+    const selfNumber = sock.user.id.split(':')[0].replace(/[^0-9]/g, '');
+    return `${selfNumber}@s.whatsapp.net`;
+  }
+  return null;
+}
+
+async function sendWhatsAppMessage(jid, text) {
+  if (!sock) {
+    console.warn("Bot non connecté, impossible d'envoyer le message.");
+    return false;
+  }
+  try {
+    await sock.sendMessage(jid, { text });
+    console.log(`[WhatsApp] Message envoyé avec succès à ${jid}`);
+    return true;
+  } catch (err) {
+    console.error(`[WhatsApp] Échec d'envoi du message:`, err.message);
+    return false;
+  }
+}
+
+// ============================================================================
+// 2. RÉCUPÉRATION DES DONNÉES FIRESTORE
 // ============================================================================
 
 async function fetchFirestoreCollection(subcollection) {
-  if (!ROOM_ID) {
-    console.warn("⚠️ FIREBASE_ROOM_ID non renseigné dans le fichier .env");
+  const cfg = loadConfig();
+  if (!cfg.roomId) {
+    console.warn("⚠️ FIREBASE_ROOM_ID non configuré. Tapez !room <id> sur WhatsApp ou éditez .env");
     return [];
   }
 
-  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/rooms/${ROOM_ID}/${subcollection}?key=${API_KEY}`;
+  const url = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/rooms/${cfg.roomId}/${subcollection}?key=${cfg.apiKey}`;
   try {
     const res = await fetch(url);
     if (!res.ok) {
@@ -104,46 +171,34 @@ async function getTrackerData() {
 }
 
 // ============================================================================
-// 2. LOGIQUE MÉTIER & VÉRIFICATION DES ÉCHÉANCES
+// 3. LOGIQUE MÉTIER & VÉRIFICATION DES ÉCHÉANCES
 // ============================================================================
-
-function formatPhoneJid(phone) {
-  let cleaned = phone.replace(/[^0-9]/g, '');
-  if (!cleaned.endsWith('@s.whatsapp.net')) {
-    cleaned = `${cleaned}@s.whatsapp.net`;
-  }
-  return cleaned;
-}
-
-async function sendWhatsAppMessage(jid, text) {
-  if (!sock) {
-    console.warn("Bot non connecté, impossible d'envoyer le message.");
-    return false;
-  }
-  try {
-    await sock.sendMessage(jid, { text });
-    console.log(`[WhatsApp] Message envoyé avec succès à ${jid}`);
-    return true;
-  } catch (err) {
-    console.error(`[WhatsApp] Échec d'envoi du message:`, err.message);
-    return false;
-  }
-}
 
 /**
  * Vérifie le kilométrage (tous les 15 jours) et les entretiens (escalade progressive)
  */
 async function runReminderChecks() {
   console.log(`\n🔍 [${new Date().toLocaleString('fr-FR')}] Vérification des rappels...`);
-  if (!TARGET_PHONE) {
-    console.warn("⚠️ TARGET_WHATSAPP_PHONE manquant dans .env. Vérification ignorée.");
+  const jid = getTargetJid();
+  if (!jid) {
+    console.warn("⚠️ Numéro de destination introuvable. Vérification reportée.");
     return;
   }
 
-  const jid = formatPhoneJid(TARGET_PHONE);
+  const cfg = loadConfig();
+  if (!cfg.roomId) {
+    console.warn("⚠️ Salle Firestore non définie. Tapez !room <votre_room_id> pour démarrer la synchronisation.");
+    return;
+  }
+
   const data = await getTrackerData();
   const history = loadNotificationHistory();
   const now = Date.now();
+
+  if (!data.vehicles || data.vehicles.length === 0) {
+    console.log("ℹ️ Aucun véhicule trouvé pour la salle configurée.");
+    return;
+  }
 
   for (const veh of data.vehicles) {
     const vehId = veh.id;
@@ -166,7 +221,7 @@ async function runReminderChecks() {
         const lastSent = history.mileage[vehId] || 0;
         const hoursSinceLastNotification = (now - lastSent) / (1000 * 60 * 60);
 
-        // Envoyer au maximum 1 fois tous les 2 jours pour ne pas surcharger
+        // Envoyer au maximum 1 fois toutes les 48 heures pour éviter le spam
         if (hoursSinceLastNotification >= 48) {
           const msg = `🚗 *RAPPEL KILOMÉTRAGE - Carnet d'Entretien*\n\n` +
             `Bonjour ! Votre dernier relevé de compteur pour *${veh.name || 'votre véhicule'}* (${veh.brand} ${veh.model}) date d'il y a *${daysElapsed} jours* (le ${lastLog.date}).\n\n` +
@@ -314,15 +369,20 @@ async function runReminderChecks() {
 }
 
 // ============================================================================
-// 3. GESTION DES COMMANDES WHATSAPP ENTRANTES
+// 4. GESTION DES COMMANDES WHATSAPP ENTRANTES
 // ============================================================================
 
 async function handleIncomingMessage(msg) {
-  if (!msg.message || msg.key.fromMe) return;
+  if (!msg.message) return;
 
   const sender = msg.key.remoteJid;
-  const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || '').trim();
+  const selfJid = sock?.user?.id ? `${sock.user.id.split(':')[0]}@s.whatsapp.net` : '';
+  const isSelf = msg.key.fromMe && (sender === selfJid || sender?.includes(sock?.user?.id?.split(':')[0]));
 
+  // Ignorer les messages envoyés par le bot SAUF si c'est l'utilisateur qui s'écrit à lui-même
+  if (msg.key.fromMe && !isSelf) return;
+
+  const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || '').trim();
   if (!text.startsWith('!')) return;
 
   console.log(`[WhatsApp] Commande reçue de ${sender}: "${text}"`);
@@ -331,24 +391,55 @@ async function handleIncomingMessage(msg) {
 
   if (cmd === '!aide' || cmd === '!help') {
     const help = `🤖 *Commandes du Bot Carnet d'Entretien* :\n\n` +
-      `• *!statut* : Affiche le kilométrage et les prochains entretiens.\n` +
-      `• *!verif* : Force une vérification immédiate des alertes.\n` +
+      `• *!statut* : Affiche vos véhicules et l'état de synchronisation.\n` +
+      `• *!room <id>* : Définit la salle partagée à surveiller.\n` +
+      `• *!tel <numero>* : Définit le numéro qui reçoit les alertes (format ex: 213555123456).\n` +
+      `• *!verif* : Déclenche immédiatement une vérification des rappels.\n` +
       `• *!aide* : Affiche ce menu d'aide.`;
     await sendWhatsAppMessage(sender, help);
     return;
   }
 
+  if (cmd === '!room') {
+    const newRoomId = parts[1]?.trim();
+    if (!newRoomId) {
+      await sendWhatsAppMessage(sender, "⚠️ Format incorrect. Tapez : *!room <id_de_la_salle>*");
+      return;
+    }
+    saveConfig({ roomId: newRoomId });
+    await sendWhatsAppMessage(sender, `✅ Salle enregistrée : *${newRoomId}*\nVérification des véhicules en cours...`);
+    await runReminderChecks();
+    return;
+  }
+
+  if (cmd === '!tel') {
+    const newPhone = parts[1]?.trim();
+    if (!newPhone) {
+      await sendWhatsAppMessage(sender, "⚠️ Format incorrect. Tapez : *!tel <votre_numero>* (ex: 213555123456)");
+      return;
+    }
+    saveConfig({ targetPhone: newPhone });
+    await sendWhatsAppMessage(sender, `✅ Numéro de destination configuré : *+${newPhone}*`);
+    return;
+  }
+
   if (cmd === '!verif') {
-    await sendWhatsAppMessage(sender, "⏳ Vérification des échéances en cours...");
+    await sendWhatsAppMessage(sender, "⏳ Vérification manuelle des échéances en cours...");
     await runReminderChecks();
     await sendWhatsAppMessage(sender, "✅ Vérification effectuée.");
     return;
   }
 
   if (cmd === '!statut') {
+    const cfg = loadConfig();
+    if (!cfg.roomId) {
+      await sendWhatsAppMessage(sender, `⚠️ Aucune salle configurée.\nEnvoyez *!room <id_salle>* pour synchroniser vos véhicules.`);
+      return;
+    }
+
     const data = await getTrackerData();
     if (!data.vehicles || data.vehicles.length === 0) {
-      await sendWhatsAppMessage(sender, "Aucun véhicule trouvé sur le carnet d'entretien.");
+      await sendWhatsAppMessage(sender, `ℹ️ Connecté à la salle *${cfg.roomId}*, mais aucun véhicule n'a été trouvé.`);
       return;
     }
 
@@ -357,17 +448,17 @@ async function handleIncomingMessage(msg) {
       report += `🚗 *${v.name || v.brand + ' ' + v.model}* (${v.currentKm?.toLocaleString('fr-FR')} km)\n`;
       const vItems = data.items.filter(i => i.vehicleId === v.id && !i.deleted);
       if (vItems.length > 0) {
-        report += `Entretiens enregistrés : ${vItems.length}\n`;
+        report += `• Entretiens surveillés : ${vItems.length}\n`;
       }
     }
-    report += `\nPour voir le détail ou valider un entretien fait, ouvrez votre application Web !`;
+    report += `\nPour marquer un entretien comme "Fait", ouvrez votre carnet d'entretien Web !`;
     await sendWhatsAppMessage(sender, report);
     return;
   }
 }
 
 // ============================================================================
-// 4. CONNEXION BAILEYS WHATSAPP MULTI-DEVICE
+// 5. CONNEXION BAILEYS WHATSAPP MULTI-DEVICE
 // ============================================================================
 
 async function startWhatsAppBot() {
@@ -408,14 +499,20 @@ async function startWhatsAppBot() {
     } else if (connection === 'open') {
       console.log('\n✅ Connecté avec succès à WhatsApp ! Le bot est opérationnel.');
 
+      const cfg = loadConfig();
+      const targetJid = getTargetJid();
+      if (targetJid) {
+        console.log(`[WhatsApp] Destinataire des alertes configuré : ${targetJid}`);
+      }
+
       // Exécuter une première vérification après 5 secondes
       setTimeout(() => {
         runReminderChecks();
       }, 5000);
 
-      // Programmer la vérification récurrente (ex: toutes les 12 heures)
-      const cronExpr = `0 */${CHECK_HOURS} * * *`;
-      console.log(`⏰ Planification des vérifications automatiques (toutes les ${CHECK_HOURS} heures)`);
+      // Programmer la vérification récurrente (toutes les X heures)
+      const cronExpr = `0 */${cfg.checkHours} * * *`;
+      console.log(`⏰ Planification des vérifications automatiques (toutes les ${cfg.checkHours} heures)`);
       cron.schedule(cronExpr, () => {
         runReminderChecks();
       });
