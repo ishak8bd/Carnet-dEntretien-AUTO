@@ -38,7 +38,8 @@ let appState = {
   history: [],
   settings: {
     defaultIntervals: JSON.parse(JSON.stringify(DEFAULT_MAINTENANCE_TYPES)),
-    lastBackupDate: null
+    lastBackupDate: null,
+    contacts: []
   },
   isDemo: false
 };
@@ -238,10 +239,16 @@ function loadState() {
     if (!parsed.settings) {
       parsed.settings = {
         defaultIntervals: JSON.parse(JSON.stringify(DEFAULT_MAINTENANCE_TYPES)),
-        lastBackupDate: null
+        lastBackupDate: null,
+        contacts: []
       };
-    } else if (!parsed.settings.defaultIntervals) {
-      parsed.settings.defaultIntervals = JSON.parse(JSON.stringify(DEFAULT_MAINTENANCE_TYPES));
+    } else {
+      if (!parsed.settings.defaultIntervals) {
+        parsed.settings.defaultIntervals = JSON.parse(JSON.stringify(DEFAULT_MAINTENANCE_TYPES));
+      }
+      if (!Array.isArray(parsed.settings.contacts)) {
+        parsed.settings.contacts = [];
+      }
     }
 
     // Si un seul véhicule, s'assurer que les historiques pointent bien vers son id
@@ -4002,6 +4009,224 @@ function renderSettingsScreen() {
       demoCard.classList.add('hidden');
     }
   }
+
+  // 5. Destinataires supplémentaires d'alertes (sans adhésion)
+  renderExternalContactsList();
+}
+
+/**
+ * Rendu de la liste des destinataires supplémentaires d'alertes (e-mail & WhatsApp sans compte)
+ */
+function renderExternalContactsList() {
+  const container = document.getElementById('settingsContactsList');
+  const addBtn = document.getElementById('btnAddExternalContact');
+  if (!container) return;
+
+  const isRoom = Boolean(window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive());
+  const profile = (isRoom && typeof window.FamilyRoom.getStoredRoomProfile === 'function') ? window.FamilyRoom.getStoredRoomProfile() : null;
+  const isOwner = isRoom ? (profile && profile.role === 'owner') : true;
+
+  if (addBtn) {
+    if (isRoom && !isOwner) {
+      addBtn.style.display = 'none';
+    } else {
+      addBtn.style.display = 'inline-flex';
+    }
+  }
+
+  let contacts = [];
+  if (isRoom && typeof window.FamilyRoom.getExternalContacts === 'function') {
+    contacts = window.FamilyRoom.getExternalContacts();
+  } else {
+    contacts = (appState.settings && Array.isArray(appState.settings.contacts)) ? appState.settings.contacts : [];
+  }
+
+  container.innerHTML = '';
+
+  if (contacts.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; color: var(--text-muted); padding: 16px 12px; font-size: 0.85rem; background: var(--bg-input); border-radius: var(--radius-sm); border: 1px dashed var(--border-color);">
+        Aucun destinataire supplémentaire configuré.<br>
+        <span style="font-size: 0.78rem;">${isOwner ? "Cliquez sur <strong>➕ Ajouter</strong> pour renseigner une adresse e-mail ou un numéro WhatsApp." : "Seul le gestionnaire du partage peut ajouter des destinataires."}</span>
+      </div>
+    `;
+    return;
+  }
+
+  contacts.forEach((c) => {
+    const row = document.createElement('div');
+    row.className = 'room-member-row contact-card-row';
+    row.dataset.id = c.id;
+
+    row.innerHTML = `
+      <div class="room-member-info">
+        <div class="room-member-name-row">
+          <span class="room-member-name">📢 ${escapeHtml(c.name)}</span>
+          <span class="room-member-badge badge-user">Sans adhésion</span>
+        </div>
+        <div class="room-member-contact-row">
+          ${c.phone ? `<span>📱 <strong class="contact-val">${escapeHtml(c.phone)}</strong></span>` : `<span style="font-style: italic; color: var(--text-muted);">Pas de WhatsApp</span>`}
+          ${c.email ? `<span>📧 <strong class="contact-val">${escapeHtml(c.email)}</strong></span>` : `<span style="font-style: italic; color: var(--text-muted);">Pas d'e-mail</span>`}
+        </div>
+      </div>
+      ${isOwner ? `
+        <div class="room-member-actions">
+          <button type="button" class="btn-secondary btn-xs btn-edit-contact" data-id="${escapeHtml(c.id)}" title="Modifier">
+            ✏️ Modifier
+          </button>
+          <button type="button" class="btn-reject btn-xs btn-delete-contact" data-id="${escapeHtml(c.id)}" data-name="${escapeHtml(c.name)}" title="Retirer">
+            🗑️ Retirer
+          </button>
+        </div>
+      ` : ''}
+    `;
+
+    if (isOwner) {
+      row.querySelector('.btn-edit-contact')?.addEventListener('click', () => {
+        openAddContactModal(c);
+      });
+      row.querySelector('.btn-delete-contact')?.addEventListener('click', () => {
+        deleteExternalContactRecord(c.id, c.name);
+      });
+    }
+
+    container.appendChild(row);
+  });
+}
+
+/** Ouvre la modale d'ajout ou modification de contact */
+function openAddContactModal(contact = null) {
+  const modal = document.getElementById('modalAddContact');
+  if (!modal) return;
+
+  const idInp = document.getElementById('editContactId');
+  const nameInp = document.getElementById('contactNameInput');
+  const emailInp = document.getElementById('contactEmailInput');
+  const phoneInp = document.getElementById('contactPhoneInput');
+  const titleEl = document.getElementById('contactModalTitle');
+
+  if (idInp) idInp.value = contact?.id || '';
+  if (nameInp) nameInp.value = contact?.name || '';
+  if (emailInp) emailInp.value = contact?.email || '';
+  if (phoneInp) phoneInp.value = contact?.phone || '';
+
+  if (titleEl) {
+    titleEl.textContent = contact ? "Modifier le destinataire ✏️" : "📢 Ajouter un destinataire d'alerte";
+  }
+
+  modal.classList.remove('hidden');
+  setTimeout(() => nameInp?.focus(), 50);
+}
+
+/** Ferme la modale de contact */
+function closeAddContactModal() {
+  const modal = document.getElementById('modalAddContact');
+  if (modal) modal.classList.add('hidden');
+}
+
+/** Enregistre le contact (en mode salle via FamilyRoom ou local via localStorage) */
+async function handleContactFormSubmit(e) {
+  e.preventDefault();
+  const id = document.getElementById('editContactId')?.value;
+  const name = (document.getElementById('contactNameInput')?.value || '').trim();
+  const email = (document.getElementById('contactEmailInput')?.value || '').trim();
+  const phone = (document.getElementById('contactPhoneInput')?.value || '').trim();
+
+  if (!name) {
+    showToast("Le nom du destinataire est requis.", "warning");
+    return;
+  }
+  if (!email && !phone) {
+    showToast("Veuillez renseigner au moins une adresse e-mail ou un numéro WhatsApp.", "warning");
+    return;
+  }
+
+  const isRoom = Boolean(window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive());
+  const btnSubmit = document.getElementById('btnSubmitContact');
+  if (btnSubmit) {
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = "Enregistrement...";
+  }
+
+  try {
+    if (isRoom) {
+      if (typeof window.FamilyRoom.saveExternalContact === 'function') {
+        await window.FamilyRoom.saveExternalContact({ id, name, email, phone });
+      }
+    } else {
+      if (!appState.settings) appState.settings = {};
+      if (!Array.isArray(appState.settings.contacts)) appState.settings.contacts = [];
+
+      if (id) {
+        const idx = appState.settings.contacts.findIndex(c => c.id === id);
+        if (idx >= 0) {
+          appState.settings.contacts[idx] = {
+            ...appState.settings.contacts[idx],
+            name,
+            email: email || null,
+            phone: phone || null
+          };
+        }
+      } else {
+        const newId = 'contact_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+        appState.settings.contacts.push({
+          id: newId,
+          name,
+          email: email || null,
+          phone: phone || null,
+          createdAt: new Date().toISOString()
+        });
+      }
+      saveState();
+      renderExternalContactsList();
+    }
+
+    closeAddContactModal();
+    showToast("Destinataire enregistré avec succès !", "success");
+  } catch (err) {
+    console.error("Erreur enregistrement contact:", err);
+    showToast("Erreur: " + err.message, "error");
+  } finally {
+    if (btnSubmit) {
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = "Enregistrer";
+    }
+  }
+}
+
+/** Supprime un contact d'alerte */
+async function deleteExternalContactRecord(contactId, contactName) {
+  if (!confirm(`Voulez-vous vraiment retirer ${contactName || 'ce destinataire'} des alertes ?`)) {
+    return;
+  }
+
+  const isRoom = Boolean(window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive());
+
+  try {
+    if (isRoom) {
+      if (typeof window.FamilyRoom.deleteExternalContact === 'function') {
+        await window.FamilyRoom.deleteExternalContact(contactId);
+      }
+    } else {
+      if (appState.settings && Array.isArray(appState.settings.contacts)) {
+        appState.settings.contacts = appState.settings.contacts.filter(c => c.id !== contactId);
+        saveState();
+        renderExternalContactsList();
+      }
+    }
+    showToast("Destinataire retiré des alertes.", "info");
+  } catch (err) {
+    console.error("Erreur suppression contact:", err);
+    showToast("Erreur: " + err.message, "error");
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.renderExternalContactsList = renderExternalContactsList;
+  window.openAddContactModal = openAddContactModal;
+  window.closeAddContactModal = closeAddContactModal;
+  window.handleContactFormSubmit = handleContactFormSubmit;
+  window.deleteExternalContactRecord = deleteExternalContactRecord;
 }
 
 /** Export complet de l'état en fichier JSON téléchargeable */
@@ -4015,7 +4240,8 @@ function handleExportJsonBackup() {
     history: appState.history || [],
     settings: {
       defaultIntervals: (appState.settings && appState.settings.defaultIntervals) ? appState.settings.defaultIntervals : DEFAULT_MAINTENANCE_TYPES,
-      lastBackupDate: getTodayIsoString()
+      lastBackupDate: getTodayIsoString(),
+      contacts: (appState.settings && Array.isArray(appState.settings.contacts)) ? appState.settings.contacts : []
     }
   };
 
@@ -4157,7 +4383,8 @@ function handleImportJsonBackup(event) {
         history: Array.isArray(parsed.history) ? parsed.history : [],
         settings: {
           defaultIntervals: (parsed.settings && parsed.settings.defaultIntervals) ? parsed.settings.defaultIntervals : DEFAULT_MAINTENANCE_TYPES,
-          lastBackupDate: getTodayIsoString()
+          lastBackupDate: getTodayIsoString(),
+          contacts: (parsed.settings && Array.isArray(parsed.settings.contacts)) ? parsed.settings.contacts : []
         },
         isDemo: false
       };
@@ -4700,6 +4927,12 @@ function attachEventListeners() {
       });
     });
   });
+
+  // Destinataires supplémentaires d'alertes (Sans adhésion)
+  document.getElementById('btnAddExternalContact')?.addEventListener('click', () => openAddContactModal());
+  document.getElementById('btnCloseContactModal')?.addEventListener('click', closeAddContactModal);
+  document.getElementById('btnCancelContactModal')?.addEventListener('click', closeAddContactModal);
+  document.getElementById('formAddContact')?.addEventListener('submit', handleContactFormSubmit);
 
 }
 

@@ -440,6 +440,29 @@
       <!-- SECTION MULTI-UTILISATEURS & SYNCHRONISATION MULTI-APPAREILS -->
       <div id="settingsRoomContainer"></div>
 
+      <!-- CARTE : Destinataires supplémentaires des alertes (Sans adhésion) -->
+      <section class="card settings-card" id="settingsContactsCard">
+        <div class="card-header">
+          <div class="card-title">
+            <span>📢 Destinataires supplémentaires des alertes</span>
+          </div>
+          <button type="button" id="btnAddExternalContact" class="btn-sm btn-primary" style="display: inline-flex; align-items: center; gap: 4px;">
+            <span>➕</span>
+            <span>Ajouter</span>
+          </button>
+        </div>
+        <p class="card-subtitle">
+          Envoyez des alertes et rappels d'échéances par e-mail ou WhatsApp à d'autres destinataires (famille, amis, mécanicien) sans qu'ils aient besoin d'installer l'application ni d'adhérer au partage.
+        </p>
+
+        <!-- Liste des destinataires supplémentaires -->
+        <div id="settingsContactsContainer">
+          <div id="settingsContactsList" class="contacts-list" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+            <!-- Rendu dynamiquement en JS -->
+          </div>
+        </div>
+      </section>
+
       <!-- CARTE : Intervalles par défaut (Settings) -->
       <section class="card settings-card">
         <div class="card-header">
@@ -1196,6 +1219,50 @@
         <div class="modal-actions" style="margin-top: 16px;">
           <button type="submit" id="btnSubmitEditMemberProfile" class="btn-primary" style="flex: 1;">Enregistrer</button>
           <button type="button" id="btnCancelEditMemberProfile" class="btn-secondary">Annuler</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Ajouter / Modifier un destinataire supplémentaire des alertes (Sans adhésion) -->
+  <div id="modalAddContact" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h2 class="modal-title" id="contactModalTitle">📢 Destinataire d'alertes</h2>
+        <button type="button" class="modal-close" id="btnCloseContactModal" aria-label="Fermer">✕</button>
+      </div>
+      <p class="card-subtitle">
+        Ajoutez un contact (e-mail ou numéro WhatsApp) pour lui envoyer des rappels d'entretien sans adhésion ni création de compte.
+      </p>
+
+      <form id="formAddContact">
+        <input type="hidden" id="editContactId">
+
+        <div class="form-group">
+          <label class="form-label" for="contactNameInput">Nom / Prénom du destinataire</label>
+          <input type="text" id="contactNameInput" class="form-input" placeholder="Ex: Grand-père, Mécanicien Ahmed, Yacine..." required maxlength="100">
+          <span class="form-help">Permet d'identifier ce destinataire dans la liste des alertes.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="contactEmailInput">Adresse E-mail (optionnel)</label>
+          <input type="email" id="contactEmailInput" class="form-input" placeholder="Ex: alerte@exemple.com" maxlength="100">
+          <span class="form-help">Recevra les notifications et rappels d'échéances d'entretien par e-mail.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="contactPhoneInput">Numéro WhatsApp (optionnel)</label>
+          <input type="tel" id="contactPhoneInput" class="form-input" placeholder="Ex: 213555123456 ou +213555123456" maxlength="35">
+          <span class="form-help">Recevra les alertes par le bot WhatsApp (avec indicatif pays, sans espace ni tiret).</span>
+        </div>
+
+        <div style="font-size: 0.78rem; color: var(--text-muted); background: var(--bg-input); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 12px;">
+          💡 <strong>Astuce :</strong> Renseignez au moins une adresse e-mail ou un numéro WhatsApp.
+        </div>
+
+        <div class="modal-actions" style="margin-top: 14px;">
+          <button type="submit" id="btnSubmitContact" class="btn-primary" style="flex: 1;">Enregistrer</button>
+          <button type="button" id="btnCancelContactModal" class="btn-secondary">Annuler</button>
         </div>
       </form>
     </div>

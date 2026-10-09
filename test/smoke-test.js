@@ -75,6 +75,7 @@ const domContentLoadedEvent = new window.Event('DOMContentLoaded', {
 window.dispatchEvent(domContentLoadedEvent);
 
 // Vérifications
+(async () => {
 try {
   console.log('1. Vérification au premier lancement (0 véhicule) : modal onboarding');
   const onboardingModal = document.getElementById('onboardingModal');
@@ -488,7 +489,10 @@ try {
     'renderSettingsRoomSection',
     'updateMemberProfile',
     'showEditMemberModal',
-    'hideEditMemberModal'
+    'hideEditMemberModal',
+    'getExternalContacts',
+    'saveExternalContact',
+    'deleteExternalContact'
   ];
 
   // Extraire le bloc window.FamilyRoom = { ... };
@@ -575,9 +579,60 @@ try {
   assert(window.appState.history.length >= 5, `Doit contenir au moins 5 interventions (actuel : ${window.appState.history.length})`);
   assert(modalAddHist.classList.contains('hidden'), 'La modale doit être fermée après la 5ème intervention');
 
-  console.log('✅ TOUS LES TESTS DU SMOKE TEST (21/21) ONT RÉUSSI SANS AUCUNE ERREUR !');
+  console.log('22. Vérification des destinataires supplémentaires d\'alertes (modal, saisie multiple e-mails/téléphones sans adhésion)');
+  const modalContact = document.getElementById('modalAddContact');
+  const btnAddContact = document.getElementById('btnAddExternalContact');
+  const contactsList = document.getElementById('settingsContactsList');
+  const inpContactName = document.getElementById('contactNameInput');
+  const inpContactEmail = document.getElementById('contactEmailInput');
+  const inpContactPhone = document.getElementById('contactPhoneInput');
+  const formContact = document.getElementById('formAddContact');
+
+  assert(modalContact, 'Modale modalAddContact présente dans le DOM');
+  assert(btnAddContact, 'Bouton btnAddExternalContact présent dans les paramètres');
+  assert(contactsList, 'Conteneur settingsContactsList présent');
+  assert(inpContactName, 'Input contactNameInput présent');
+  assert(inpContactEmail, 'Input contactEmailInput présent');
+  assert(inpContactPhone, 'Input contactPhoneInput présent');
+
+  // Ouvrir la modale
+  window.openAddContactModal();
+  assert(!modalContact.classList.contains('hidden'), 'La modale modalAddContact doit être visible');
+
+  // Ajouter un 1er contact avec e-mail seul
+  inpContactName.value = 'Oncle Sam';
+  inpContactEmail.value = 'sam@example.com';
+  inpContactPhone.value = '';
+  await window.handleContactFormSubmit(new window.Event('submit', { cancelable: true }));
+
+  // Ajouter un 2ème contact avec téléphone WhatsApp seul
+  window.openAddContactModal();
+  inpContactName.value = 'Mécanicien Ahmed';
+  inpContactEmail.value = '';
+  inpContactPhone.value = '213555123456';
+  await window.handleContactFormSubmit(new window.Event('submit', { cancelable: true }));
+
+  // Ajouter un 3ème contact avec les deux
+  window.openAddContactModal();
+  inpContactName.value = 'Grand-père';
+  inpContactEmail.value = 'papy@famille.dz';
+  inpContactPhone.value = '+213555987654';
+  await window.handleContactFormSubmit(new window.Event('submit', { cancelable: true }));
+
+  assert(Array.isArray(window.appState.settings.contacts), 'appState.settings.contacts doit être un tableau');
+  assert.strictEqual(window.appState.settings.contacts.length, 3, '3 contacts supplémentaires enregistrés');
+  assert.strictEqual(window.appState.settings.contacts[0].name, 'Oncle Sam');
+  assert.strictEqual(window.appState.settings.contacts[1].phone, '213555123456');
+  assert.strictEqual(window.appState.settings.contacts[2].email, 'papy@famille.dz');
+
+  // Vérifier le rendu dans la liste
+  window.renderExternalContactsList();
+  assert.strictEqual(contactsList.querySelectorAll('.contact-card-row').length, 3, '3 cartes de destinataires rendues dans le DOM');
+
+  console.log('✅ TOUS LES TESTS DU SMOKE TEST (22/22) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
 } catch (err) {
   console.error('❌ Échec du smoke test:', err);
   process.exit(1);
 }
+})();

@@ -15,6 +15,7 @@
  * 8. Nullable values validation.
  * 9. Optional WhatsApp phone number on members and self-update permissions.
  * 10. Optional email address on members and self-update permissions.
+ * 11. External contacts subcollection validation (owner CRUD, member read-only, non-member deny).
  */
 
 const fs = require('fs');
@@ -892,6 +893,188 @@ describe('Family Room Car Maintenance Tracker - Firestore Security Rules', () =>
       await assertFails(patchDoc(approvedDb, 'rooms/room_1/members/user_owner', {
         email: 'hacked.owner.email@example.com',
       }));
+    });
+  });
+
+  // -------------------------------------------------------------
+  // 11. External Contacts Subcollection Validation
+  // -------------------------------------------------------------
+  describe('11. External contacts subcollection validation', () => {
+    it('allows room owner to create an external contact with valid email and phone', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+
+      await assertSucceeds(writeDoc(ownerDb, 'rooms/room_1/contacts/contact_1', {
+        name: 'Grandpa Joe',
+        email: 'grandpa@example.com',
+        phone: '+213555987654',
+        createdAt: new Date(),
+        createdBy: 'user_owner',
+      }));
+    });
+
+    it('allows room owner to create a contact with email only (no phone)', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+
+      await assertSucceeds(writeDoc(ownerDb, 'rooms/room_1/contacts/contact_email_only', {
+        name: 'Aunt May',
+        email: 'may@example.com',
+        phone: null,
+        createdAt: new Date(),
+        createdBy: 'user_owner',
+      }));
+    });
+
+    it('allows room owner to create a contact with phone only (no email)', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+
+      await assertSucceeds(writeDoc(ownerDb, 'rooms/room_1/contacts/contact_phone_only', {
+        name: 'Uncle Ben',
+        email: null,
+        phone: '+33612345678',
+        createdAt: new Date(),
+        createdBy: 'user_owner',
+      }));
+    });
+
+    it('rejects creating a contact without both email and phone (or too short)', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+
+      await assertFails(writeDoc(ownerDb, 'rooms/room_1/contacts/invalid_contact', {
+        name: 'No Contact Info',
+        email: null,
+        phone: null,
+        createdAt: new Date(),
+        createdBy: 'user_owner',
+      }));
+
+      await assertFails(writeDoc(ownerDb, 'rooms/room_1/contacts/invalid_contact_2', {
+        name: 'Short Info',
+        email: 'ab',
+        phone: null,
+        createdAt: new Date(),
+        createdBy: 'user_owner',
+      }));
+    });
+
+    it('rejects contact creation if createdBy does not match request.auth.uid', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+
+      await assertFails(writeDoc(ownerDb, 'rooms/room_1/contacts/contact_spoofed', {
+        name: 'Spoofed Creator',
+        email: 'test@example.com',
+        phone: null,
+        createdAt: new Date(),
+        createdBy: 'user_approved',
+      }));
+    });
+
+    it('allows approved members to read contacts', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+      await writeDoc(ownerDb, 'rooms/room_1/contacts/contact_1', {
+        name: 'Grandpa Joe',
+        email: 'grandpa@example.com',
+        phone: '+213555987654',
+        createdAt: new Date(),
+        createdBy: 'user_owner',
+      });
+
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+      await assertSucceeds(readDoc(approvedDb, 'rooms/room_1/contacts/contact_1'));
+    });
+
+    it('denies approved non-owner member from creating, updating, or deleting contacts', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+      const createdDate = new Date();
+      await writeDoc(ownerDb, 'rooms/room_1/contacts/contact_1', {
+        name: 'Grandpa Joe',
+        email: 'grandpa@example.com',
+        phone: '+213555987654',
+        createdAt: createdDate,
+        createdBy: 'user_owner',
+      });
+
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      // Deny create
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/contacts/contact_2', {
+        name: 'Member Trying Create',
+        email: 'test@example.com',
+        phone: null,
+        createdAt: new Date(),
+        createdBy: 'user_approved',
+      }));
+
+      // Deny update
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/contacts/contact_1', {
+        name: 'Hacked Name',
+      }));
+
+      // Deny delete
+      await assertFails(removeDoc(approvedDb, 'rooms/room_1/contacts/contact_1'));
+    });
+
+    it('denies non-member or unauthenticated user from reading or writing contacts', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+      await writeDoc(ownerDb, 'rooms/room_1/contacts/contact_1', {
+        name: 'Grandpa Joe',
+        email: 'grandpa@example.com',
+        phone: '+213555987654',
+        createdAt: new Date(),
+        createdBy: 'user_owner',
+      });
+
+      const unauthDb = testEnv.unauthenticatedContext().firestore();
+      const outsiderDb = testEnv.authenticatedContext('user_outsider').firestore();
+
+      await assertFails(readDoc(unauthDb, 'rooms/room_1/contacts/contact_1'));
+      await assertFails(readDoc(outsiderDb, 'rooms/room_1/contacts/contact_1'));
+
+      await assertFails(writeDoc(outsiderDb, 'rooms/room_1/contacts/contact_outside', {
+        name: 'Outsider',
+        email: 'outsider@example.com',
+        phone: null,
+        createdAt: new Date(),
+        createdBy: 'user_outsider',
+      }));
+    });
+
+    it('allows room owner to update contact and delete contact', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+      const createdDate = new Date();
+      await writeDoc(ownerDb, 'rooms/room_1/contacts/contact_1', {
+        name: 'Grandpa Joe',
+        email: 'grandpa@example.com',
+        phone: '+213555987654',
+        createdAt: createdDate,
+        createdBy: 'user_owner',
+      });
+
+      // Update name / phone
+      await assertSucceeds(patchDoc(ownerDb, 'rooms/room_1/contacts/contact_1', {
+        name: 'Grandpa Joseph',
+        phone: '+213555111222',
+      }));
+
+      // Delete contact
+      await assertSucceeds(removeDoc(ownerDb, 'rooms/room_1/contacts/contact_1'));
     });
   });
 });

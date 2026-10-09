@@ -90,6 +90,14 @@ service cloud.firestore {
     //   - authorName: string (1-100 chars, required) - Submitter display name
     //   - createdAt: timestamp (required, immutable) - Activity log timestamp
     //
+    // Subcollection: rooms/{roomId}/contacts/{contactId}
+    // Fields:
+    //   - name: string (1-100 chars, required) - External contact display name
+    //   - email: string (0-100 chars, optional) - Email for reminder alerts
+    //   - phone: string (0-35 chars, optional) - WhatsApp phone number for reminder alerts
+    //   - createdAt: timestamp (required, immutable) - Record creation timestamp
+    //   - createdBy: string (UID, required, immutable) - Creator UID (room owner)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -219,6 +227,17 @@ service cloud.firestore {
         data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 &&
         data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 100 &&
         data.createdAt is timestamp;
+    }
+
+    function isValidContact(data) {
+      return data.keys().hasAll(['name', 'createdAt', 'createdBy']) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 100)) &&
+        (!('phone' in data) || data.phone == null || (data.phone is string && data.phone.size() <= 35)) &&
+        (('email' in data && data.email is string && data.email.size() >= 3) ||
+         ('phone' in data && data.phone is string && data.phone.size() >= 3)) &&
+        data.createdAt is timestamp &&
+        data.createdBy is string && data.createdBy.size() >= 1 && data.createdBy.size() <= 128;
     }
 
     // ===============================================================
@@ -429,6 +448,24 @@ service cloud.firestore {
 
         // Activity log is strictly append-only; updates prohibited, delete allowed only by room owner
         allow update: if false;
+        allow delete: if isRoomOwner(roomId);
+      }
+
+      // -------------------------------------------------------------
+      // Subcollection: contacts (External notification recipients)
+      // -------------------------------------------------------------
+      match /contacts/{contactId} {
+        allow read: if isApprovedMember(roomId);
+
+        allow create: if isRoomOwner(roomId) &&
+                         isValidContact(request.resource.data) &&
+                         request.resource.data.createdBy == request.auth.uid;
+
+        allow update: if isRoomOwner(roomId) &&
+                         isValidContact(request.resource.data) &&
+                         request.resource.data.createdBy == resource.data.createdBy &&
+                         request.resource.data.createdAt == resource.data.createdAt;
+
         allow delete: if isRoomOwner(roomId);
       }
     }

@@ -43,6 +43,7 @@ const roomVehiclesMap = new Map();
 const roomKmLogsMap = new Map();
 const roomItemsMap = new Map();
 const roomHistoryMap = new Map();
+const roomContactsMap = new Map();
 let roomActivityList = [];
 let roomMembersList = [];
 
@@ -586,6 +587,7 @@ export async function transferOwnershipAndLeave(roomId, successorUid, successorN
   roomKmLogsMap.clear();
   roomItemsMap.clear();
   roomHistoryMap.clear();
+  roomContactsMap.clear();
   roomActivityList = [];
   roomMembersList = [];
 
@@ -669,6 +671,7 @@ export async function leaveRoom() {
   roomKmLogsMap.clear();
   roomItemsMap.clear();
   roomHistoryMap.clear();
+  roomContactsMap.clear();
   roomActivityList = [];
   roomMembersList = [];
 
@@ -886,6 +889,17 @@ export function startRoomSynchronization(roomId) {
     checkPendingWrites(snap);
   }, onSyncError);
   roomDataUnsubscribers.push(unsubMembers);
+
+  // 7. Contacts externes de notification (alertes sans adhésion)
+  const unsubContacts = onSnapshot(collection(db, 'rooms', roomId, 'contacts'), (snap) => {
+    roomContactsMap.clear();
+    snap.forEach(d => roomContactsMap.set(d.id, { id: d.id, ...d.data() }));
+    if (typeof window.renderExternalContactsList === 'function') {
+      window.renderExternalContactsList();
+    }
+    checkPendingWrites(snap);
+  }, onSyncError);
+  roomDataUnsubscribers.push(unsubContacts);
 }
 
 /** Arrête tous les écouteurs de synchronisation */
@@ -894,6 +908,7 @@ export function stopRoomSynchronization() {
     try { unsub(); } catch (e) {}
   });
   roomDataUnsubscribers = [];
+  roomContactsMap.clear();
 }
 
 function onSyncError(err) {
@@ -1159,6 +1174,83 @@ export async function deleteHistoryEntry(historyId) {
 }
 
 /**
+ * Retourne la liste des contacts externes d'alerte en mémoire
+ */
+export function getExternalContacts() {
+  return Array.from(roomContactsMap.values());
+}
+
+/**
+ * Ajoute ou met à jour un contact externe dans Firestore (Réservé au gestionnaire de la salle)
+ */
+export async function saveExternalContact({ id, name, email, phone }) {
+  const profile = getStoredRoomProfile();
+  if (!profile || profile.status !== 'approved') {
+    throw new Error("Action impossible : vous n'êtes pas connecté à un partage actif.");
+  }
+  if (profile.role !== 'owner') {
+    throw new Error("Seul le gestionnaire du partage peut ajouter des destinataires supplémentaires.");
+  }
+  const user = await ensureAuth();
+
+  const cleanName = (name || '').trim();
+  const cleanEmail = (email && email.trim() !== '') ? email.trim() : null;
+  const cleanPhone = (phone && phone.trim() !== '') ? phone.trim() : null;
+
+  if (!cleanName) {
+    throw new Error("Le nom du destinataire est requis.");
+  }
+  if (!cleanEmail && !cleanPhone) {
+    throw new Error("Veuillez renseigner au moins une adresse e-mail ou un numéro WhatsApp.");
+  }
+
+  const contactId = id || `contact_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const contactRef = doc(db, 'rooms', profile.roomId, 'contacts', contactId);
+
+  if (id) {
+    await updateDoc(contactRef, {
+      name: cleanName,
+      email: cleanEmail,
+      phone: cleanPhone
+    });
+  } else {
+    await setDoc(contactRef, {
+      name: cleanName,
+      email: cleanEmail,
+      phone: cleanPhone,
+      createdAt: serverTimestamp(),
+      createdBy: user.uid
+    });
+  }
+
+  await addRoomActivity(profile.roomId, `${profile.myName} a configuré le destinataire d'alerte : ${cleanName}`);
+  pingRoomActivity(profile.roomId);
+  return contactId;
+}
+
+/**
+ * Supprime un contact externe dans Firestore (Réservé au gestionnaire de la salle)
+ */
+export async function deleteExternalContact(contactId) {
+  const profile = getStoredRoomProfile();
+  if (!profile || profile.status !== 'approved') {
+    throw new Error("Action impossible : vous n'êtes pas connecté à un partage actif.");
+  }
+  if (profile.role !== 'owner') {
+    throw new Error("Seul le gestionnaire du partage peut supprimer des destinataires d'alertes.");
+  }
+
+  const contact = roomContactsMap.get(contactId);
+  const contactName = contact ? contact.name : 'un destinataire';
+
+  const contactRef = doc(db, 'rooms', profile.roomId, 'contacts', contactId);
+  await deleteDoc(contactRef);
+
+  await addRoomActivity(profile.roomId, `${profile.myName} a retiré ${contactName} des alertes.`);
+  pingRoomActivity(profile.roomId);
+}
+
+/**
  * Supprime TOUTES les données de la salle (véhicules, relevés, entretiens, historique, activité)
  * Réservé à l'administrateur (propriétaire) de la salle.
  */
@@ -1189,8 +1281,8 @@ export async function clearAllRoomData(roomId) {
     console.warn("Note vérification propriétaire:", checkErr);
   }
 
-  // 2. Supprimer les sous-collections métier (véhicules, relevés, entretiens, historique)
-  const subcollections = ['vehicles', 'kmLogs', 'items', 'history'];
+  // 2. Supprimer les sous-collections métier (véhicules, relevés, entretiens, historique, contacts)
+  const subcollections = ['vehicles', 'kmLogs', 'items', 'history', 'contacts'];
   let deletedCount = 0;
 
   for (const sub of subcollections) {
@@ -2036,7 +2128,10 @@ window.FamilyRoom = {
   migrateLocalDataToRoom,
   parseInviteToken,
   generateSecureToken,
-  ensureAuth
+  ensureAuth,
+  getExternalContacts,
+  saveExternalContact,
+  deleteExternalContact
 };
 
 if (document.readyState === 'loading') {

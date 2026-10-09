@@ -507,6 +507,7 @@ export async function runEmailReminders({ isTest = false, isDryRun = false } = {
   const kmLogs = await fetchFirestoreCollection('kmLogs', auth, cfg);
   const members = await fetchFirestoreCollection('members', auth, cfg);
   const history = await fetchFirestoreCollection('history', auth, cfg);
+  const contacts = await fetchFirestoreCollection('contacts', auth, cfg);
 
   if (hasPermissionDenied) {
     console.error(`\n🔒 [Firestore] ACCÈS EN ATTENTE D'APPROBATION (Erreur 403) :`);
@@ -526,7 +527,7 @@ export async function runEmailReminders({ isTest = false, isDryRun = false } = {
     return { success: false, error: 'no_vehicles' };
   }
 
-  console.log(`📊 Données récupérées : ${vehicles.length} véhicule(s), ${items.length} entretien(s), ${kmLogs.length} relevé(s), ${history.length} intervention(s), ${members.length} membre(s).`);
+  console.log(`📊 Données récupérées : ${vehicles.length} véhicule(s), ${items.length} entretien(s), ${kmLogs.length} relevé(s), ${history.length} intervention(s), ${members.length} membre(s), ${contacts.length} contact(s) externe(s).`);
 
   // Extraire la liste des destinataires e-mail avec nom et rôle
   const recipientMap = new Map();
@@ -542,6 +543,22 @@ export async function runEmailReminders({ isTest = false, isDryRun = false } = {
       }
     }
   });
+
+  // Ajouter les destinataires externes ajoutés par l'admin sans être membres de la salle
+  if (Array.isArray(contacts)) {
+    contacts.forEach(c => {
+      if (c.email) {
+        const clean = c.email.trim().toLowerCase();
+        if (clean.includes('@') && !recipientMap.has(clean)) {
+          recipientMap.set(clean, {
+            email: clean,
+            name: c.name ? c.name.trim() : 'Destinataire externe',
+            role: 'external'
+          });
+        }
+      }
+    });
+  }
 
   // Toujours inclure l'expéditeur Gmail / compte admin si aucun e-mail membre n'est présent
   if (cfg.gmailUser && recipientMap.size === 0) {

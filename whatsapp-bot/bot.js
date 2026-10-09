@@ -295,12 +295,14 @@ async function getTrackerData() {
   const items = await fetchFirestoreCollection('items');
   const kmLogs = await fetchFirestoreCollection('kmLogs');
   const members = await fetchFirestoreCollection('members');
+  const contacts = await fetchFirestoreCollection('contacts');
 
   return {
     vehicles: Array.isArray(vehicles) ? vehicles : [],
     items: Array.isArray(items) ? items : [],
     kmLogs: Array.isArray(kmLogs) ? kmLogs : [],
-    members: Array.isArray(members) ? members : []
+    members: Array.isArray(members) ? members : [],
+    contacts: Array.isArray(contacts) ? contacts : []
   };
 }
 
@@ -327,9 +329,9 @@ function getSelfJid() {
 }
 
 /**
- * Retourne la liste unique de TOUS les destinataires (hôte WhatsApp, membres Firestore avec numéro, numéros configurés, abonnés)
+ * Retourne la liste unique de TOUS les destinataires (hôte WhatsApp, membres Firestore avec numéro, contacts externes, numéros configurés, abonnés)
  */
-function getAllTargetJids(firestoreMembers = []) {
+function getAllTargetJids(firestoreMembers = [], firestoreContacts = []) {
   const cfg = loadConfig();
   const jids = new Set();
 
@@ -342,6 +344,16 @@ function getAllTargetJids(firestoreMembers = []) {
     for (const m of firestoreMembers) {
       if (m.phone && (m.status === 'approved' || m.role === 'owner')) {
         const j = formatPhoneJid(m.phone);
+        if (j) jids.add(j);
+      }
+    }
+  }
+
+  // 2b. Contacts externes ajoutés par l'admin (sans être membres)
+  if (Array.isArray(firestoreContacts)) {
+    for (const c of firestoreContacts) {
+      if (c.phone) {
+        const j = formatPhoneJid(c.phone);
         if (j) jids.add(j);
       }
     }
@@ -397,8 +409,8 @@ async function sendWhatsAppMessage(jid, text) {
 /**
  * Diffuse un message à TOUS les utilisateurs enregistrés avec temporisation anti-spam
  */
-async function broadcastMessage(text, excludeJid = null, firestoreMembers = []) {
-  const targets = getAllTargetJids(firestoreMembers).filter(j => j !== excludeJid);
+async function broadcastMessage(text, excludeJid = null, firestoreMembers = [], firestoreContacts = []) {
+  const targets = getAllTargetJids(firestoreMembers, firestoreContacts).filter(j => j !== excludeJid);
   if (targets.length === 0) {
     console.warn("⚠️ Aucun destinataire disponible pour la diffusion.");
     return { total: 0, sent: 0, failed: 0, recipients: [] };
@@ -452,7 +464,7 @@ async function runReminderChecks() {
     return;
   }
 
-  const allTargets = getAllTargetJids(data.members || []);
+  const allTargets = getAllTargetJids(data.members || [], data.contacts || []);
   if (allTargets.length === 0) {
     console.warn("⚠️ Aucun numéro de destination configuré (ni dans le bot, ni dans les membres de la salle).");
     return;
