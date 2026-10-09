@@ -472,6 +472,42 @@ async function runReminderChecks() {
 }
 
 // ============================================================================
+function extractRoomId(text) {
+  if (!text) return null;
+  const clean = text.trim();
+
+  // 1. URL d'invitation complète (ex: https://...#join=room_123456_token ou #join=...)
+  const urlMatch = clean.match(/#join=([a-zA-Z0-9_-]+)/i);
+  if (urlMatch) {
+    const raw = urlMatch[1];
+    const parts = raw.split('_');
+    if (parts.length >= 3 && parts[0] === 'room') return `${parts[0]}_${parts[1]}`;
+    return parts[0];
+  }
+
+  // 2. Commande !room ou !salle ou !id (ex: !room room_123 ou !room: room_123 ou !room 123)
+  const cmdMatch = clean.match(/^!(?:room|salle|id)\s*[:=]?\s*(\S+)/i);
+  if (cmdMatch) {
+    let raw = cmdMatch[1].trim();
+    if (raw.includes('#join=')) return extractRoomId(raw);
+    const parts = raw.split('_');
+    if (parts.length >= 3 && parts[0] === 'room') return `${parts[0]}_${parts[1]}`;
+    return raw;
+  }
+
+  // 3. ID direct commençant par room_ (ex: room_1728481234)
+  const directMatch = clean.match(/\b(room_[a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)?)\b/i);
+  if (directMatch) {
+    const raw = directMatch[1];
+    const parts = raw.split('_');
+    if (parts.length >= 3 && parts[0] === 'room') return `${parts[0]}_${parts[1]}`;
+    return raw;
+  }
+
+  return null;
+}
+
+// ============================================================================
 // 4. GESTION DES COMMANDES WHATSAPP ENTRANTES
 // ============================================================================
 
@@ -490,28 +526,33 @@ async function handleIncomingMessage(msg) {
   const sender = msg.key.remoteJid;
   console.log(`[WhatsApp] Message reçu de ${sender} (fromMe: ${msg.key.fromMe}): "${rawText}"`);
 
-  const parts = rawText.split(' ');
-  const cmd = parts[0].toLowerCase();
+  // Enregistrer dans le journal bot.log
+  try {
+    fs.appendFileSync(path.join(__dirname, 'bot.log'), `[${new Date().toISOString()}] from: ${sender} (fromMe: ${msg.key.fromMe}) text: "${rawText}"\n`);
+  } catch (e) {}
 
-  // Détection souple : soit !room <id>, soit room_xxxx, soit chaîne longue sans espace
-  let candidateRoom = null;
-  if (cmd === '!room' && parts[1]) {
-    candidateRoom = parts[1].trim();
-  } else if (rawText.startsWith('room_') || (rawText.includes('_') && rawText.length >= 10 && !rawText.includes(' '))) {
-    candidateRoom = rawText.trim();
-  }
-
+  // 1. Vérification si le message contient ou définit un ID de salle
+  const candidateRoom = extractRoomId(rawText);
   if (candidateRoom) {
     saveConfig({ roomId: candidateRoom });
-    await sendWhatsAppMessage(sender, `✅ Salle enregistrée : *${candidateRoom}*\n🔍 Recherche des véhicules en cours...`);
+    await sendWhatsAppMessage(sender, `✅ Salle enregistrée : *${candidateRoom}*\n🔍 Recherche des véhicules et entretiens en cours...`);
     await runReminderChecks();
     return;
   }
 
+  // Si l'utilisateur tape !room tout seul sans argument
+  if (/^!(?:room|salle|id)\b/i.test(rawText)) {
+    await sendWhatsAppMessage(sender, `⚠️ Vous n'avez pas spécifié l'ID de votre salle.\n\n👉 *Exemples d'utilisation :*\n• *!room room_1728481234*\n• Ou collez directement votre lien d'invitation complet ici !`);
+    return;
+  }
+
+  const parts = rawText.split(/\s+/);
+  const cmd = parts[0].toLowerCase();
+
   if (cmd === '!aide' || cmd === '!help') {
     const help = `🤖 *Commandes du Bot Carnet d'Entretien* :\n\n` +
+      `• *!room <id>* : Définit la salle (ou collez votre lien d'invitation).\n` +
       `• *!statut* : Affiche vos véhicules et l'état de synchronisation.\n` +
-      `• *!room <id>* : Définit la salle à surveiller.\n` +
       `• *!tel <numero>* : Définit le numéro qui reçoit les alertes.\n` +
       `• *!verif* : Déclenche immédiatement une vérification des rappels.\n` +
       `• *!aide* : Affiche ce menu d'aide.`;
