@@ -414,8 +414,9 @@ service cloud.firestore {
                          request.resource.data.authorUid == request.auth.uid &&
                          isValidActivity(request.resource.data);
 
-        // Activity log is strictly append-only; updates and deletes prohibited
-        allow update, delete: if false;
+        // Activity log is strictly append-only; updates prohibited, delete allowed only by room owner
+        allow update: if false;
+        allow delete: if isRoomOwner(roomId);
       }
     }
   }

@@ -560,8 +560,12 @@ describe('Family Room Car Maintenance Tracker - Firestore Security Rules', () =>
         text: 'Hacked message',
       }));
 
-      // Delete denied
+      // Delete denied for regular member
       await assertFails(removeDoc(approvedDb, 'rooms/room_1/activity/act_1'));
+
+      // Delete allowed for room owner (data wipe by admin)
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+      await assertSucceeds(removeDoc(ownerDb, 'rooms/room_1/activity/act_1'));
     });
   });
 

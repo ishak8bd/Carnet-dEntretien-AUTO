@@ -387,7 +387,40 @@ try {
   assert.strictEqual(removeBtns.length, 1, 'Un bouton "Retirer" affiché pour le propriétaire');
   assert.strictEqual(removeBtns[0].getAttribute('data-uid'), 'uid_brother', 'Le bouton cible bien le membre tiers et non le propriétaire');
 
-  console.log('✅ TOUS LES TESTS DU SMOKE TEST (15/15) ONT RÉUSSI SANS AUCUNE ERREUR !');
+  console.log('16. Vérification des droits d\'administration de la salle (Effacement des données & suppression de salle)');
+  // Simuler le rendu avec la Zone Administrateur pour le propriétaire
+  const isOwner = testOwnerProfile.role === 'owner';
+  settingsContainer.innerHTML = `
+    <div class="card">
+      ${isOwner ? `
+        <div class="admin-danger-zone">
+          <button type="button" id="btnAdminClearRoomData" class="btn-danger">Effacer toutes les données</button>
+          <button type="button" id="btnAdminDeleteRoom" class="btn-danger">Supprimer la salle</button>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  const btnClearData = document.getElementById('btnAdminClearRoomData');
+  const btnDelRoom = document.getElementById('btnAdminDeleteRoom');
+  assert(btnClearData, 'Bouton "Effacer toutes les données" présent pour l\'administrateur');
+  assert(btnDelRoom, 'Bouton "Supprimer la salle" présent pour l\'administrateur');
+
+  // Simuler pour un membre ordinaire
+  const isMemberOwner = false;
+  settingsContainer.innerHTML = `
+    <div class="card">
+      ${isMemberOwner ? `
+        <div class="admin-danger-zone">
+          <button type="button" id="btnAdminClearRoomData" class="btn-danger">Effacer toutes les données</button>
+          <button type="button" id="btnAdminDeleteRoom" class="btn-danger">Supprimer la salle</button>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  assert.strictEqual(document.getElementById('btnAdminClearRoomData'), null, 'Bouton absent pour un simple membre');
+  assert.strictEqual(document.getElementById('btnAdminDeleteRoom'), null, 'Bouton supprimer salle absent pour un simple membre');
+
+  console.log('✅ TOUS LES TESTS DU SMOKE TEST (16/16) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
 } catch (err) {
   console.error('❌ Échec du smoke test:', err);

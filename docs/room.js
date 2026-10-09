@@ -21,6 +21,7 @@ import {
   updateDoc,
   deleteDoc,
   collection,
+  getDocs,
   query,
   where,
   orderBy,
@@ -863,6 +864,119 @@ export async function deleteHistoryEntry(historyId) {
   pingRoomActivity(profile.roomId);
 }
 
+/**
+ * Supprime TOUTES les données de la salle (véhicules, relevés, entretiens, historique, activité)
+ * Réservé à l'administrateur (propriétaire) de la salle.
+ */
+export async function clearAllRoomData(roomId) {
+  const profile = getStoredRoomProfile();
+  if (!profile || profile.role !== 'owner') {
+    throw new Error("Seul l'administrateur (propriétaire) peut supprimer toutes les données de la salle.");
+  }
+
+  const subcollections = ['vehicles', 'kmLogs', 'items', 'history', 'activity'];
+  const batch = writeBatch(db);
+  let deletedCount = 0;
+
+  for (const sub of subcollections) {
+    try {
+      const snap = await getDocs(collection(db, 'rooms', roomId, sub));
+      snap.forEach((d) => {
+        batch.delete(d.ref);
+        deletedCount++;
+      });
+    } catch (e) {
+      console.warn(`Erreur lors de la lecture de la sous-collection ${sub}:`, e);
+    }
+  }
+
+  // Ajouter une entrée d'activité annonçant la réinitialisation
+  const actId = `act_${Date.now()}`;
+  const actRef = doc(db, 'rooms', roomId, 'activity', actId);
+  batch.set(actRef, {
+    text: `${profile.myName} (Admin) a effacé toutes les données de la salle`,
+    authorUid: profile.myUid,
+    authorName: profile.myName,
+    createdAt: serverTimestamp()
+  });
+
+  await batch.commit();
+
+  // Vider les caches mémoire locaux
+  roomVehiclesMap.clear();
+  roomKmLogsMap.clear();
+  roomItemsMap.clear();
+  roomHistoryMap.clear();
+  roomActivityList = [];
+
+  if (window.appState) {
+    window.appState.vehicles = [];
+    window.appState.history = [];
+    window.appState.activeVehicleId = null;
+  }
+  if (typeof window.saveState === 'function') window.saveState();
+  if (typeof window.renderApp === 'function') window.renderApp();
+
+  if (window.showToast) {
+    window.showToast("Toutes les données de la salle ont été effacées avec succès.", "success", 5000);
+  }
+
+  return { deletedCount };
+}
+
+/**
+ * Supprime DÉFINITIVEMENT la salle entière, tous ses membres, invitations et toutes ses données.
+ * Réservé à l'administrateur (propriétaire) de la salle.
+ */
+export async function deleteEntireRoom(roomId) {
+  const profile = getStoredRoomProfile();
+  if (!profile || profile.role !== 'owner') {
+    throw new Error("Seul l'administrateur (propriétaire) peut supprimer définitivement la salle.");
+  }
+
+  const subcollections = ['vehicles', 'kmLogs', 'items', 'history', 'activity', 'invites', 'members'];
+  const batch = writeBatch(db);
+
+  for (const sub of subcollections) {
+    try {
+      const snap = await getDocs(collection(db, 'rooms', roomId, sub));
+      snap.forEach((d) => {
+        batch.delete(d.ref);
+      });
+    } catch (e) {
+      console.warn(`Erreur lors de la suppression de la sous-collection ${sub}:`, e);
+    }
+  }
+
+  // Supprimer le document de la salle lui-même
+  const roomRef = doc(db, 'rooms', roomId);
+  batch.delete(roomRef);
+
+  await batch.commit();
+
+  // Nettoyage local et arrêt de la synchronisation
+  stopRoomSynchronization();
+  if (activeMemberStatusUnsubscribe) {
+    activeMemberStatusUnsubscribe();
+    activeMemberStatusUnsubscribe = null;
+  }
+  saveStoredRoomProfile(null);
+
+  if (window.appState) {
+    window.appState.vehicles = [];
+    window.appState.history = [];
+    window.appState.activeVehicleId = null;
+  }
+  if (typeof window.saveState === 'function') window.saveState();
+  if (typeof window.renderApp === 'function') window.renderApp();
+  renderSettingsRoomSection();
+  updateSyncIndicatorBadge('offline', 'Mode solo local');
+
+  if (window.showToast) {
+    window.showToast("La salle familiale et toutes ses données ont été supprimées définitivement.", "info", 5000);
+  }
+}
+
 /** Ajoute une entrée dans le fil d'activité */
 export async function addRoomActivity(roomId, text) {
   try {
@@ -1138,10 +1252,31 @@ export function renderSettingsRoomSection() {
             📲 Inviter un membre
           </button>
         ` : ''}
-        <button type="button" id="btnLeaveRoom" class="btn-danger" style="flex: 1; min-width: 120px;">
+        <button type="button" id="btnLeaveRoom" class="btn-secondary" style="flex: 1; min-width: 120px;">
           🚪 Quitter la salle
         </button>
       </div>
+
+      ${isOwner ? `
+        <!-- Zone Administrateur (Suppression de données & Dissolution) -->
+        <div style="margin-top: 20px; padding-top: 14px; border-top: 1.5px dashed rgba(239, 68, 68, 0.35);">
+          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+            <span style="font-size: 1rem;">⚠️</span>
+            <strong style="color: var(--danger); font-size: 0.88rem;">Zone Administrateur</strong>
+          </div>
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+            En tant que propriétaire, vous avez le contrôle total sur la gestion et la suppression des données partagées.
+          </p>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" id="btnAdminClearRoomData" class="btn-danger btn-sm" style="flex: 1; min-width: 180px;">
+              🗑️ Effacer toutes les données
+            </button>
+            <button type="button" id="btnAdminDeleteRoom" class="btn-danger btn-sm" style="flex: 1; min-width: 180px; background: #991b1b; border-color: #7f1d1d;">
+              💥 Supprimer la salle
+            </button>
+          </div>
+        </div>
+      ` : ''}
     </div>
   `;
 
@@ -1177,6 +1312,47 @@ export function renderSettingsRoomSection() {
   document.getElementById('btnLeaveRoom')?.addEventListener('click', () => {
     if (confirm("Voulez-vous vraiment quitter cette salle partagée et revenir en mode autonome ?")) {
       leaveRoom();
+    }
+  });
+
+  // Actions d'administration de la salle
+  document.getElementById('btnAdminClearRoomData')?.addEventListener('click', async () => {
+    const c1 = window.confirm(
+      "⚠️ ATTENTION : Vous êtes sur le point de supprimer TOUS les véhicules, relevés de compteur, entretiens et historiques de cette salle.\n\nCette action effacera les données pour TOUS les membres de la famille.\n\nVoulez-vous continuer ?"
+    );
+    if (!c1) return;
+
+    const c2 = window.prompt("Pour confirmer l'effacement complet des données de la salle, tapez SUPPRIMER ci-dessous :");
+    if (c2 !== "SUPPRIMER") {
+      if (window.showToast) window.showToast("Suppression annulée.", "info");
+      return;
+    }
+
+    try {
+      await clearAllRoomData(profile.roomId);
+    } catch (err) {
+      console.error(err);
+      if (window.showToast) window.showToast("Erreur: " + err.message, "error");
+    }
+  });
+
+  document.getElementById('btnAdminDeleteRoom')?.addEventListener('click', async () => {
+    const c1 = window.confirm(
+      "⚠️ ATTENTION : Vous êtes sur le point de DISSOUDRE et SUPPRIMER DÉFINITIVEMENT cette salle familiale.\n\nToutes les données du cloud seront effacées et tous les membres retourneront en mode solo.\n\nVoulez-vous continuer ?"
+    );
+    if (!c1) return;
+
+    const c2 = window.prompt("Pour confirmer la suppression définitive de la salle, tapez DISSOUDRE ci-dessous :");
+    if (c2 !== "DISSOUDRE") {
+      if (window.showToast) window.showToast("Suppression annulée.", "info");
+      return;
+    }
+
+    try {
+      await deleteEntireRoom(profile.roomId);
+    } catch (err) {
+      console.error(err);
+      if (window.showToast) window.showToast("Erreur: " + err.message, "error");
     }
   });
 }
@@ -1254,6 +1430,8 @@ window.FamilyRoom = {
   rejectMember,
   removeMember,
   leaveRoom,
+  clearAllRoomData,
+  deleteEntireRoom,
   shareInviteLink,
   getStoredRoomProfile,
   isRoomActive,
