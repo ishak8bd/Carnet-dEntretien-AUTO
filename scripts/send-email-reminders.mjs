@@ -528,24 +528,32 @@ export async function runEmailReminders({ isTest = false, isDryRun = false } = {
 
   console.log(`📊 Données récupérées : ${vehicles.length} véhicule(s), ${items.length} entretien(s), ${kmLogs.length} relevé(s), ${history.length} intervention(s), ${members.length} membre(s).`);
 
-  // Extraire la liste des destinataires e-mail
-  const emailRecipients = new Set();
+  // Extraire la liste des destinataires e-mail avec nom et rôle
+  const recipientMap = new Map();
   members.forEach(m => {
     if (m.email && (m.status === 'approved' || m.role === 'owner')) {
       const clean = m.email.trim().toLowerCase();
-      if (clean.includes('@')) emailRecipients.add(clean);
+      if (clean.includes('@')) {
+        recipientMap.set(clean, {
+          email: clean,
+          name: m.name ? m.name.trim() : '',
+          role: m.role || 'member'
+        });
+      }
     }
   });
 
   // Toujours inclure l'expéditeur Gmail / compte admin si aucun e-mail membre n'est présent
-  if (cfg.gmailUser && emailRecipients.size === 0) {
-    emailRecipients.add(cfg.gmailUser.trim().toLowerCase());
+  if (cfg.gmailUser && recipientMap.size === 0) {
+    const clean = cfg.gmailUser.trim().toLowerCase();
+    recipientMap.set(clean, { email: clean, name: 'Administrateur', role: 'owner' });
   }
 
-  const recipientList = Array.from(emailRecipients);
-  console.log(`📬 Destinataire(s) e-mail (${recipientList.length}) :`, recipientList.join(', '));
+  const recipients = Array.from(recipientMap.values());
+  const recipientList = recipients.map(r => r.email);
+  console.log(`📬 Destinataire(s) e-mail (${recipients.length}) :`, recipients.map(r => r.name ? `${r.name} <${r.email}>` : r.email).join(', '));
 
-  if (recipientList.length === 0) {
+  if (recipients.length === 0) {
     console.warn("⚠️ Aucun destinataire e-mail trouvé.");
     return { success: false, error: 'no_recipients' };
   }
@@ -576,7 +584,7 @@ export async function runEmailReminders({ isTest = false, isDryRun = false } = {
             • <strong>Véhicule surveillé :</strong> ${vehName}<br>
             • <strong>Compteur actuel :</strong> ${currentKm.toLocaleString('fr-FR')} km<br>
             • <strong>Entretiens suivis :</strong> ${items.length} opération(s)<br>
-            • <strong>Destinataires connectés :</strong> ${recipientList.length} adresse(s) e-mail
+            • <strong>Destinataires connectés :</strong> ${recipients.length} adresse(s) e-mail
           `
         },
         {
@@ -592,19 +600,34 @@ export async function runEmailReminders({ isTest = false, isDryRun = false } = {
 
     if (isDryRun) {
       console.log("🔍 [Dry Run] E-mail de test prêt à être envoyé à :", recipientList);
-      return { success: true, count: recipientList.length, recipients: recipientList };
+      return { success: true, count: recipients.length, recipients: recipientList };
     }
 
-    const info = await transporter.sendMail({
-      from: `"Carnet d'Entretien" <${cfg.gmailUser}>`,
-      to: recipientList.join(', '),
-      subject: `🚗 Test de Notification - Carnet d'Entretien Automobile`,
-      html: testHtml,
-      text: `Test de notification réussi ! Votre Carnet d'Entretien est synchronisé (${recipientList.length} destinataires). Ouvrez l'application : ${cfg.appUrl}`
-    });
+    const testResults = [];
+    for (const r of recipients) {
+      const targetTo = r.name ? `"${r.name}" <${r.email}>` : r.email;
+      try {
+        const info = await transporter.sendMail({
+          from: `"Carnet d'Entretien" <${cfg.gmailUser}>`,
+          to: targetTo,
+          subject: `🚗 Test de Notification - Carnet d'Entretien Automobile`,
+          html: testHtml,
+          text: `Test de notification réussi ! Votre Carnet d'Entretien est synchronisé (${recipients.length} destinataires). Ouvrez l'application : ${cfg.appUrl}`
+        });
+        console.log(`  ✅ E-mail de test envoyé avec succès à ${r.email} (${r.name || 'Membre'}) ! MessageId : ${info.messageId}`);
+        testResults.push({ email: r.email, success: true, messageId: info.messageId });
+      } catch (err) {
+        console.error(`  ❌ Échec de l'envoi du test à ${r.email} :`, err.message);
+        testResults.push({ email: r.email, success: false, error: err.message });
+      }
+      if (recipients.length > 1) {
+        await new Promise(res => setTimeout(res, 350));
+      }
+    }
 
-    console.log(`✅ E-mail de test envoyé avec succès ! MessageId : ${info.messageId}`);
-    return { success: true, messageId: info.messageId, recipients: recipientList };
+    const allSuccessful = testResults.filter(r => r.success).length;
+    console.log(`✨ Bilan du test : ${allSuccessful}/${recipients.length} destinataire(s) validé(s).`);
+    return { success: allSuccessful > 0, recipients: recipientList, details: testResults };
   }
 
   // --------------------------------------------------------------------------
@@ -746,20 +769,35 @@ export async function runEmailReminders({ isTest = false, isDryRun = false } = {
   });
 
   if (isDryRun) {
-    console.log(`🔍 [Dry Run] E-mail prêt (${alertsToSend.length} alertes) pour :`, recipientList);
+    console.log(`🔍 [Dry Run] E-mail prêt (${alertsToSend.length} alertes) pour :`, recipients.map(r => r.email));
     return { success: true, count: alertsToSend.length };
   }
 
-  const info = await transporter.sendMail({
-    from: `"Carnet d'Entretien" <${cfg.gmailUser}>`,
-    to: recipientList.join(', '),
-    subject,
-    html,
-    text: `Carnet d'Entretien : ${alertsToSend.length} rappel(s) à consulter. Rendez-vous sur ${cfg.appUrl}`
-  });
+  const sendResults = [];
+  for (const r of recipients) {
+    const targetTo = r.name ? `"${r.name}" <${r.email}>` : r.email;
+    try {
+      const info = await transporter.sendMail({
+        from: `"Carnet d'Entretien" <${cfg.gmailUser}>`,
+        to: targetTo,
+        subject,
+        html,
+        text: `Carnet d'Entretien : ${alertsToSend.length} rappel(s) à consulter. Rendez-vous sur ${cfg.appUrl}`
+      });
+      console.log(`  ✅ E-mail d'alerte envoyé avec succès à ${r.email} (${r.name || 'Membre'}) ! MessageId : ${info.messageId}`);
+      sendResults.push({ email: r.email, success: true, messageId: info.messageId });
+    } catch (err) {
+      console.error(`  ❌ Échec de l'envoi d'alerte à ${r.email} :`, err.message);
+      sendResults.push({ email: r.email, success: false, error: err.message });
+    }
+    if (recipients.length > 1) {
+      await new Promise(res => setTimeout(res, 350));
+    }
+  }
 
-  console.log(`✅ E-mail envoyé avec succès à ${recipientList.length} destinataire(s) ! MessageId : ${info.messageId}`);
-  return { success: true, messageId: info.messageId, alertsCount: alertsToSend.length };
+  const successCount = sendResults.filter(r => r.success).length;
+  console.log(`✨ Bilan d'envoi des alertes : ${successCount}/${recipients.length} destinataire(s) ont reçu leur notification !`);
+  return { success: successCount > 0, alertsCount: alertsToSend.length, details: sendResults };
 }
 
 // Exécution directe en ligne de commande
