@@ -4396,10 +4396,48 @@ window.addEventListener('DOMContentLoaded', () => {
     showToast("Application installée avec succès !", "success");
   });
 
-  // Enregistrement du Service Worker pour PWA
+  // Bouton pour forcer la mise à jour et vider le cache PWA
+  document.getElementById('btnForcePwaUpdate')?.addEventListener('click', async () => {
+    showToast("Actualisation et purge du cache...", "info");
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.update();
+          await reg.unregister();
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (const key of keys) {
+          await caches.delete(key);
+        }
+      }
+      showToast("Cache vidé ! Rechargement de l'application...", "success");
+      setTimeout(() => {
+        window.location.reload();
+      }, 400);
+    } catch (e) {
+      window.location.reload();
+    }
+  });
+
+  // Enregistrement du Service Worker pour PWA avec mise à jour automatique
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
-      .then((reg) => console.log('Service Worker enregistré:', reg.scope))
+      .then((reg) => {
+        console.log('Service Worker enregistré:', reg.scope);
+        // Forcer la vérification d'une nouvelle version auprès du serveur
+        reg.update();
+      })
       .catch((err) => console.warn('Erreur Service Worker:', err));
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
   }
 });
