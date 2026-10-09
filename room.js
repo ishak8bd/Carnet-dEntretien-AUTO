@@ -1588,38 +1588,8 @@ export function renderSettingsRoomSection() {
         </div>
       </div>
 
-      <!-- CARTE : Mon Profil Personnel (Conducteur) -->
-      <div class="room-my-profile-card">
-        <div class="room-my-profile-header">
-          <div class="room-my-profile-title-group">
-            <span class="room-my-profile-avatar">👤</span>
-            <div>
-              <div class="room-my-profile-title">Mon Profil (Conducteur)</div>
-              <div class="room-my-profile-subtitle">Vos coordonnées de notification et de synchronisation</div>
-            </div>
-          </div>
-          <button type="button" id="btnEditMySelfProfile" class="btn-secondary btn-xs">
-            ✏️ Modifier mon profil
-          </button>
-        </div>
-        <div class="room-my-profile-grid">
-          <div class="room-my-profile-chip">
-            <span class="chip-label">Prénom</span>
-            <strong class="chip-val">${escapeHtml(myDisplayName)}</strong>
-          </div>
-          <div class="room-my-profile-chip">
-            <span class="chip-label">WhatsApp</span>
-            <strong class="chip-val">${myDisplayPhone ? `📱 ${escapeHtml(myDisplayPhone)}` : `<span style="color: var(--text-muted); font-style: italic;">Non configuré</span>`}</strong>
-          </div>
-          <div class="room-my-profile-chip">
-            <span class="chip-label">Adresse E-mail</span>
-            <strong class="chip-val">${myDisplayEmail ? `📧 ${escapeHtml(myDisplayEmail)}` : `<span style="color: var(--text-muted); font-style: italic;">Non configurée</span>`}</strong>
-          </div>
-        </div>
-      </div>
-
       <!-- Liste des membres connectés -->
-      <div class="room-members-container">
+      <div class="room-members-container" style="margin-top: 10px; border-top: none; padding-top: 0;">
         <div class="room-members-header">
           <strong class="room-members-title">Membres du partage (${roomMembersList.length || 1})</strong>
           ${isOwner ? `<span class="room-members-hint">💡 L'administrateur peut modifier tous les membres</span>` : ''}
@@ -1705,16 +1675,6 @@ export function renderSettingsRoomSection() {
     </div>
   `;
 
-  // Bouton modifier mon propre profil
-  document.getElementById('btnEditMySelfProfile')?.addEventListener('click', () => {
-    showEditMemberModal({
-      uid: profile.myUid,
-      name: myDisplayName,
-      phone: myDisplayPhone,
-      email: myDisplayEmail,
-      isSelf: true
-    });
-  });
 
   // Boutons Modifier sur chaque membre
   container.querySelectorAll('.btn-edit-member').forEach(btn => {
