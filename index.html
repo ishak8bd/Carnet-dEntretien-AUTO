@@ -1010,6 +1010,40 @@
     </div>
   </div>
 
+  <!-- MODAL: Transférer la gestion de la salle (Passation obligatoire avant départ de l'admin) -->
+  <div id="modalTransferOwnership" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Transférer la gestion 👑</h2>
+        <button type="button" class="modal-close" id="btnCloseTransferOwnership" aria-label="Fermer">✕</button>
+      </div>
+      <p class="card-subtitle">
+        En tant que propriétaire, vous devez désigner un nouveau gestionnaire parmi les membres de la salle avant de la quitter.
+      </p>
+
+      <form id="formTransferOwnership">
+        <div class="form-group">
+          <label class="form-label" for="transferSuccessorSelect">Nouveau propriétaire</label>
+          <select id="transferSuccessorSelect" class="form-select" required>
+            <!-- Options insérées dynamiquement -->
+          </select>
+          <span class="form-help">Ce membre aura le contrôle total de la salle (gestion des membres, invitations, suppression).</span>
+        </div>
+
+        <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; background: rgba(239, 68, 68, 0.08); border-left: 3px solid var(--danger); padding: 8px 12px; border-radius: var(--radius-sm); margin-bottom: 12px;">
+          ⚠️ <strong>Attention :</strong> Une fois le transfert validé, vous quitterez immédiatement la salle et votre application repassera en mode solo.
+        </div>
+
+        <div class="modal-actions" style="margin-top: 14px;">
+          <button type="submit" id="btnConfirmTransferOwnership" class="btn-primary" style="flex: 1;">
+            Transférer &amp; Quitter la salle
+          </button>
+          <button type="button" id="btnCancelTransferOwnership" class="btn-secondary">Annuler</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Barre de navigation mobile inférieure (4 Onglets) -->
   <nav class="bottom-nav" aria-label="Navigation principale">
     <button type="button" class="nav-tab active" id="tabDashboard" aria-label="Tableau de bord">

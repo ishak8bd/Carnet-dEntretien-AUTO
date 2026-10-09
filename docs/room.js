@@ -372,6 +372,7 @@ export function setupMemberStatusListener(roomId, uid, onApprovedCallback) {
     if (data.status === 'approved') {
       const current = getStoredRoomProfile() || {};
       const wasPending = current.status === 'pending';
+      const wasMember = current.role === 'member';
       current.status = 'approved';
       current.role = data.role || current.role || 'member';
       current.myName = data.name || current.myName;
@@ -381,6 +382,8 @@ export function setupMemberStatusListener(roomId, uid, onApprovedCallback) {
 
       if (wasPending && window.showToast) {
         window.showToast("🎉 Votre accès a été validé par le propriétaire ! Bienvenue dans la salle.", "success", 5000);
+      } else if (wasMember && current.role === 'owner' && window.showToast) {
+        window.showToast("👑 Vous êtes désormais le gestionnaire / propriétaire de la salle familiale !", "success", 6000);
       }
 
       // Lancer la synchronisation temps réel
@@ -430,14 +433,155 @@ export async function removeMember(roomId, memberUid) {
   if (window.showToast) window.showToast("Membre retiré de la salle familiale.", "info");
 }
 
-/** Quitter la salle partagée */
-export async function leaveRoom() {
+/**
+ * Transfère la gestion de la salle à un autre membre approuvé et quitte la salle (Succession obligatoire de l'admin)
+ */
+export async function transferOwnershipAndLeave(roomId, successorUid, successorName) {
+  const profile = getStoredRoomProfile();
+  if (!profile || profile.role !== 'owner') {
+    throw new Error("Seul le propriétaire actuel peut transférer la gestion de la salle.");
+  }
+  const user = await ensureAuth();
+
+  // 1. Promouvoir le successeur au rôle 'owner' dans members/{successorUid}
+  const successorRef = doc(db, 'rooms', roomId, 'members', successorUid);
+  await updateDoc(successorRef, {
+    role: 'owner',
+    lastSeenAt: serverTimestamp()
+  });
+
+  // 2. Transférer la propriété sur le document de salle rooms/{roomId}
+  const roomRef = doc(db, 'rooms', roomId);
+  await updateDoc(roomRef, {
+    ownerUid: successorUid,
+    lastActivityAt: serverTimestamp()
+  });
+
+  // 3. Journaliser le transfert dans l'activité
+  try {
+    await addRoomActivity(roomId, `${profile.myName} a transmis la gestion de la salle à ${successorName} et a quitté la salle.`);
+  } catch (e) {
+    console.warn("Échec log activité passation:", e);
+  }
+
+  // 4. Supprimer définitivement le document membre de l'ancien propriétaire dans Firestore
+  const myMemberRef = doc(db, 'rooms', roomId, 'members', user.uid);
+  await deleteDoc(myMemberRef);
+
+  // 5. Fermer la modale si ouverte
+  hideTransferOwnershipModal();
+
+  // 6. Nettoyage local et déconnexion
   stopRoomSynchronization();
   if (activeMemberStatusUnsubscribe) {
     activeMemberStatusUnsubscribe();
     activeMemberStatusUnsubscribe = null;
   }
+  if (activePendingMembersUnsubscribe) {
+    activePendingMembersUnsubscribe();
+    activePendingMembersUnsubscribe = null;
+  }
+
+  roomVehiclesMap.clear();
+  roomKmLogsMap.clear();
+  roomItemsMap.clear();
+  roomHistoryMap.clear();
+  roomActivityList = [];
+  roomMembersList = [];
+
   saveStoredRoomProfile(null);
+
+  if (typeof loadState === 'function') {
+    loadState();
+  } else if (window.loadState) {
+    window.loadState();
+  }
+
+  if (window.showToast) {
+    window.showToast(`Vous avez confié la gestion à ${successorName} et quitté la salle.`, "success", 5000);
+  }
+  if (window.renderApp) window.renderApp();
+  renderSettingsRoomSection();
+  updateSyncIndicatorBadge('offline', 'Mode solo local');
+}
+
+/**
+ * Affiche la modale de sélection du successeur lors du départ de l'administrateur
+ */
+export function showTransferOwnershipModal(candidates) {
+  const modal = document.getElementById('modalTransferOwnership');
+  const select = document.getElementById('transferSuccessorSelect');
+  if (!modal || !select) return;
+
+  if (!candidates || candidates.length === 0) {
+    if (window.showToast) window.showToast("Aucun autre membre approuvé disponible pour la transmission.", "warning");
+    return;
+  }
+
+  select.innerHTML = candidates.map(m => `
+    <option value="${m.uid}">${escapeHtml(m.name)}</option>
+  `).join('');
+
+  modal.classList.remove('hidden');
+}
+
+/**
+ * Ferme la modale de passation de propriété
+ */
+export function hideTransferOwnershipModal() {
+  const modal = document.getElementById('modalTransferOwnership');
+  if (modal) modal.classList.add('hidden');
+}
+
+/** Quitter la salle partagée (Membre standard ou départ sans transfert si autorisé) */
+export async function leaveRoom() {
+  const profile = getStoredRoomProfile();
+  if (profile && profile.roomId && profile.myUid) {
+    try {
+      // 1. Ajouter l'activité avant suppression du document membre
+      try {
+        await addRoomActivity(profile.roomId, `${profile.myName} a quitté la salle familiale.`);
+      } catch (e) {
+        console.warn("Échec log activité départ:", e);
+      }
+
+      // 2. Supprimer définitivement le document membre dans Firestore
+      const memberRef = doc(db, 'rooms', profile.roomId, 'members', profile.myUid);
+      await deleteDoc(memberRef);
+    } catch (err) {
+      console.warn("Erreur suppression document membre Firestore lors de la sortie:", err);
+    }
+  }
+
+  // 3. Arrêter les écoutes temps réel
+  stopRoomSynchronization();
+  if (activeMemberStatusUnsubscribe) {
+    activeMemberStatusUnsubscribe();
+    activeMemberStatusUnsubscribe = null;
+  }
+  if (activePendingMembersUnsubscribe) {
+    activePendingMembersUnsubscribe();
+    activePendingMembersUnsubscribe = null;
+  }
+
+  // 4. Nettoyer les caches locaux
+  roomVehiclesMap.clear();
+  roomKmLogsMap.clear();
+  roomItemsMap.clear();
+  roomHistoryMap.clear();
+  roomActivityList = [];
+  roomMembersList = [];
+
+  // 5. Supprimer le profil local
+  saveStoredRoomProfile(null);
+
+  // 6. Restaurer les données locales
+  if (typeof loadState === 'function') {
+    loadState();
+  } else if (window.loadState) {
+    window.loadState();
+  }
+
   if (window.showToast) window.showToast("Vous avez quitté la salle familiale.", "info");
   if (window.renderApp) window.renderApp();
   renderSettingsRoomSection();
@@ -1347,11 +1491,20 @@ export function renderSettingsRoomSection() {
                   ${m.role === 'owner' ? '👑 Propriétaire' : (m.status === 'pending' ? '⏳ En attente' : '✅ Membre')}
                 </span>
               </div>
-              ${(isOwner && m.uid !== profile.myUid) ? `
+              ${(isOwner && m.uid !== profile.myUid && m.status === 'approved') ? `
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <button type="button" class="btn-secondary btn-xs btn-transfer-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}" title="Transférer la gestion de la salle à ce membre">
+                    👑 Transférer gestion
+                  </button>
+                  <button type="button" class="btn-reject btn-xs btn-remove-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}">
+                    Retirer
+                  </button>
+                </div>
+              ` : ((isOwner && m.uid !== profile.myUid) ? `
                 <button type="button" class="btn-reject btn-xs btn-remove-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}">
                   Retirer
                 </button>
-              ` : ''}
+              ` : '')}
             </div>
           `).join('')}
         </div>
@@ -1391,6 +1544,18 @@ export function renderSettingsRoomSection() {
     </div>
   `;
 
+  // Gestion des transferts de gestion directs depuis la liste des membres
+  container.querySelectorAll('.btn-transfer-member').forEach(btn => {
+    btn.onclick = () => {
+      const otherApprovedMembers = roomMembersList.filter(
+        m => m.uid !== profile.myUid && m.status === 'approved'
+      );
+      showTransferOwnershipModal(otherApprovedMembers);
+      const sel = document.getElementById('transferSuccessorSelect');
+      if (sel) sel.value = btn.dataset.uid;
+    };
+  });
+
   // Gestion des retraits de membres (Point 11)
   container.querySelectorAll('.btn-remove-member').forEach(btn => {
     btn.onclick = async () => {
@@ -1420,9 +1585,40 @@ export function renderSettingsRoomSection() {
     }
   });
 
-  document.getElementById('btnLeaveRoom')?.addEventListener('click', () => {
-    if (confirm("Voulez-vous vraiment quitter cette salle partagée et revenir en mode autonome ?")) {
-      leaveRoom();
+  document.getElementById('btnLeaveRoom')?.addEventListener('click', async () => {
+    if (isOwner) {
+      // Filtrer les autres membres approuvés dans la salle
+      const otherApprovedMembers = roomMembersList.filter(
+        m => m.uid !== profile.myUid && m.status === 'approved'
+      );
+
+      if (otherApprovedMembers.length > 0) {
+        // Cas 1 : D'autres membres existent -> Obligation de transférer avant de quitter
+        showTransferOwnershipModal(otherApprovedMembers);
+      } else {
+        // Cas 2 : Propriétaire seul (ou aucun autre membre approuvé)
+        const c = confirm(
+          "Vous êtes le seul gestionnaire de cette salle.\n\nEn la quittant, la salle sera définitivement supprimée. Voulez-vous supprimer la salle et revenir en mode solo ?"
+        );
+        if (c) {
+          try {
+            await deleteEntireRoom(profile.roomId);
+          } catch (e) {
+            console.error("Erreur suppression de la salle lors du départ:", e);
+            if (window.showToast) window.showToast("Erreur: " + e.message, "error");
+          }
+        }
+      }
+    } else {
+      // Membre standard : confirmation et sortie
+      if (confirm("Voulez-vous vraiment quitter cette salle partagée et revenir en mode autonome ?")) {
+        try {
+          await leaveRoom();
+        } catch (e) {
+          console.error("Erreur lors de la sortie:", e);
+          if (window.showToast) window.showToast("Erreur: " + e.message, "error");
+        }
+      }
     }
   });
 
@@ -1530,6 +1726,59 @@ export async function initFamilyRoom() {
 
   renderSettingsRoomSection();
 
+  // Écouteurs de la modale de transfert de propriété
+  document.getElementById('btnCloseTransferOwnership')?.addEventListener('click', hideTransferOwnershipModal);
+  document.getElementById('btnCancelTransferOwnership')?.addEventListener('click', hideTransferOwnershipModal);
+  document.getElementById('formTransferOwnership')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const sel = document.getElementById('transferSuccessorSelect');
+    const successorUid = sel ? sel.value : '';
+    if (!successorUid) return;
+
+    const currentProfile = getStoredRoomProfile();
+    if (!currentProfile) return;
+
+    const candidate = roomMembersList.find(m => m.uid === successorUid);
+    const successorName = candidate ? candidate.name : 'le nouveau propriétaire';
+
+    const ok = confirm(`Confirmez-vous le transfert de la gestion à ${successorName} ? Vous quitterez ensuite la salle partagée.`);
+    if (!ok) return;
+
+    const btnSubmit = document.getElementById('btnConfirmTransferOwnership');
+    if (btnSubmit) btnSubmit.disabled = true;
+
+    try {
+      await transferOwnershipAndLeave(currentProfile.roomId, successorUid, successorName);
+    } catch (err) {
+      console.error("Erreur lors du transfert de propriété:", err);
+      if (window.showToast) window.showToast("Erreur: " + err.message, "error");
+      if (btnSubmit) btnSubmit.disabled = false;
+    }
+  });
+
+  // Bouton annulation d'une demande d'accès en attente
+  document.getElementById('btnCancelPendingJoin')?.addEventListener('click', async () => {
+    if (confirm("Voulez-vous annuler votre demande d'accès et revenir en mode local ?")) {
+      const prof = getStoredRoomProfile();
+      if (prof && prof.roomId && prof.myUid) {
+        try {
+          const mRef = doc(db, 'rooms', prof.roomId, 'members', prof.myUid);
+          await deleteDoc(mRef);
+        } catch (e) {
+          console.warn("Échec suppression demande en attente:", e);
+        }
+      }
+      hidePendingApprovalModal();
+      saveStoredRoomProfile(null);
+      if (activeMemberStatusUnsubscribe) {
+        activeMemberStatusUnsubscribe();
+        activeMemberStatusUnsubscribe = null;
+      }
+      if (window.renderApp) window.renderApp();
+      renderSettingsRoomSection();
+    }
+  });
+
   window.addEventListener('online', () => {
     if (isRoomActive()) updateSyncIndicatorBadge('online', 'En ligne (Synchronisé)');
   });
@@ -1546,6 +1795,9 @@ window.FamilyRoom = {
   approveMember,
   rejectMember,
   removeMember,
+  transferOwnershipAndLeave,
+  showTransferOwnershipModal,
+  hideTransferOwnershipModal,
   leaveRoom,
   clearAllRoomData,
   deleteEntireRoom,

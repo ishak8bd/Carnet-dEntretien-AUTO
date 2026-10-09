@@ -408,6 +408,38 @@ describe('Family Room Car Maintenance Tracker - Firestore Security Rules', () =>
       // Owner succeeds
       await assertSucceeds(removeDoc(ownerDb, 'rooms/room_1'));
     });
+
+    it('allows owner to transfer ownership to an approved member, but rejects transfer to unapproved or non-member', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+
+      // Denied: transfer to unapproved/pending member
+      await assertFails(patchDoc(ownerDb, 'rooms/room_1', {
+        ownerUid: 'user_pending',
+      }));
+
+      // Denied: transfer to non-existent member
+      await assertFails(patchDoc(ownerDb, 'rooms/room_1', {
+        ownerUid: 'user_stranger_unknown',
+      }));
+
+      // Allowed: transfer to approved member
+      await assertSucceeds(patchDoc(ownerDb, 'rooms/room_1', {
+        ownerUid: 'user_approved',
+      }));
+    });
+
+    it('allows a member to delete their own member doc when leaving the room', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+      const pendingDb = testEnv.authenticatedContext('user_pending').firestore();
+
+      // User leaves by deleting their own member doc (isSelf(uid))
+      await assertSucceeds(removeDoc(approvedDb, 'rooms/room_1/members/user_approved'));
+      await assertSucceeds(removeDoc(pendingDb, 'rooms/room_1/members/user_pending'));
+    });
   });
 
   // -------------------------------------------------------------

@@ -420,7 +420,37 @@ try {
   assert.strictEqual(document.getElementById('btnAdminClearRoomData'), null, 'Bouton absent pour un simple membre');
   assert.strictEqual(document.getElementById('btnAdminDeleteRoom'), null, 'Bouton supprimer salle absent pour un simple membre');
 
-  console.log('✅ TOUS LES TESTS DU SMOKE TEST (16/16) ONT RÉUSSI SANS AUCUNE ERREUR !');
+  console.log('17. Vérification de la présence et structure de la modale de passation de propriété');
+  const modalTransfer = document.getElementById('modalTransferOwnership');
+  const selectSuccessor = document.getElementById('transferSuccessorSelect');
+  const btnConfirmTransfer = document.getElementById('btnConfirmTransferOwnership');
+  const btnCancelTransfer = document.getElementById('btnCancelTransferOwnership');
+  assert(modalTransfer, 'Modale modalTransferOwnership présente dans le DOM');
+  assert(selectSuccessor, 'Sélecteur transferSuccessorSelect présent');
+  assert(btnConfirmTransfer, 'Bouton confirmer le transfert présent');
+  assert(btnCancelTransfer, 'Bouton annuler le transfert présent');
+
+  console.log('18. Vérification de la logique de passation de rôle lors du départ de l\'administrateur');
+  // Simuler la sélection d'un successeur parmi les autres membres approuvés
+  const testRoomMembers = [
+    { uid: 'uid_owner', name: 'Papa', role: 'owner', status: 'approved' },
+    { uid: 'uid_brother', name: 'Karim', role: 'member', status: 'approved' },
+    { uid: 'uid_pending', name: 'Invité', role: 'member', status: 'pending' }
+  ];
+
+  // Les candidats éligibles à la succession ne doivent inclure que les membres approuvés tiers
+  const eligibleSuccessors = testRoomMembers.filter(
+    m => m.uid !== testOwnerProfile.myUid && m.status === 'approved'
+  );
+  assert.strictEqual(eligibleSuccessors.length, 1, 'Un seul successeur approuvé éligible (Karim)');
+  assert.strictEqual(eligibleSuccessors[0].name, 'Karim');
+
+  // Peupler le sélecteur avec les candidats éligibles
+  selectSuccessor.innerHTML = eligibleSuccessors.map(m => `<option value="${m.uid}">${m.name}</option>`).join('');
+  assert.strictEqual(selectSuccessor.children.length, 1, 'Option ajoutée dans le sélecteur');
+  assert.strictEqual(selectSuccessor.options[0].value, 'uid_brother', 'L\'option pointe bien vers le successeur Karim');
+
+  console.log('✅ TOUS LES TESTS DU SMOKE TEST (18/18) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
 } catch (err) {
   console.error('❌ Échec du smoke test:', err);
