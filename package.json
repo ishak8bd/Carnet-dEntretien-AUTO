@@ -7,7 +7,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "node test/smoke-test.js",
+    "test": "node test/smoke-test.js && node test/prediction-engine.test.mjs",
     "test:rules": "firebase emulators:exec --only firestore \"node --test test/firestore-rules.test.js\"",
     "sync-docs": "node scripts/sync-docs.js"
   },

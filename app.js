@@ -441,147 +441,134 @@ function buildDailyTimeline(kmLog) {
   return timeline;
 }
 
+// ============================================================================
+// MODÈLE DE PRÉDICTION INTELLIGENT & PRIOR AUTOMOBILE
+// ============================================================================
+// Moyenne de roulage automobile standard : 1 000 à 2 000 km / mois
+const PRIOR_MONTHLY_KM_MIN = 1000;
+const PRIOR_MONTHLY_KM_MAX = 2000;
+const PRIOR_MONTHLY_KM_DEFAULT = 1500;
+const DAYS_PER_MONTH = 30.4375;
+const PRIOR_DAILY_KM_DEFAULT = PRIOR_MONTHLY_KM_DEFAULT / DAYS_PER_MONTH; // ~49.28 km/j
+const PRIOR_DAILY_KM_MIN = PRIOR_MONTHLY_KM_MIN / DAYS_PER_MONTH;         // ~32.85 km/j
+const PRIOR_DAILY_KM_MAX = PRIOR_MONTHLY_KM_MAX / DAYS_PER_MONTH;         // ~65.71 km/j
+
+/**
+ * Extrait et fusionne l'ensemble des repères kilométriques d'un véhicule :
+ * - Journal des relevés périodiques (kmLog)
+ * - Dates et kilométrages des derniers entretiens réalisés (item.lastDate, item.lastKm)
+ * - Historique complet des interventions passées (appState.history)
+ * - Compteur kilométrique actuel avec sa date de mise à jour (ou aujourd'hui)
+ */
+function collectVehicleMilestones(vehicle) {
+  if (!vehicle) return [];
+  const pointsMap = new Map(); // clé : dateStr (YYYY-MM-DD), valeur : { date, km, sources: [] }
+
+  function addPoint(dateStr, kmVal, source, label) {
+    if (!dateStr || kmVal === null || kmVal === undefined) return;
+    const cleanDate = String(dateStr).split('T')[0];
+    const kmNum = Number(kmVal);
+    if (isNaN(kmNum) || kmNum <= 0) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) return;
+
+    if (!pointsMap.has(cleanDate)) {
+      pointsMap.set(cleanDate, { date: cleanDate, km: kmNum, sources: [{ source, km: kmNum, label }] });
+    } else {
+      const existing = pointsMap.get(cleanDate);
+      existing.sources.push({ source, km: kmNum, label });
+      if (kmNum > existing.km) existing.km = kmNum;
+    }
+  }
+
+  // 1. Relevés du journal (kmLog)
+  if (Array.isArray(vehicle.kmLog)) {
+    vehicle.kmLog.forEach(l => {
+      if (l && l.date && l.km !== null && l.km !== undefined) {
+        addPoint(l.date, l.km, 'kmLog');
+      }
+    });
+  }
+
+  // 2. Derniers entretiens renseignés (maintenanceItems / items)
+  const items = vehicle.maintenanceItems || vehicle.items || [];
+  if (Array.isArray(items)) {
+    items.forEach(it => {
+      if (it && it.lastDate && it.lastKm !== null && it.lastKm !== undefined) {
+        addPoint(it.lastDate, it.lastKm, 'maintenanceItem', it.name);
+      }
+    });
+  }
+
+  // 3. Historique complet des interventions passées
+  if (typeof appState !== 'undefined' && Array.isArray(appState.history)) {
+    appState.history.forEach(h => {
+      if (h && (h.vehicleId === vehicle.id || (!h.vehicleId && appState.vehicles && appState.vehicles.length === 1)) && h.date && h.km !== null && h.km !== undefined) {
+        addPoint(h.date, h.km, 'history', h.type);
+      }
+    });
+  }
+
+  // 4. Compteur actuel à ce jour
+  const currentKm = Number(vehicle.currentKm);
+  if (!isNaN(currentKm) && currentKm > 0) {
+    const today = getTodayIsoString();
+    const updateDate = vehicle.updatedAt ? String(vehicle.updatedAt).split('T')[0] : today;
+    const validDate = updateDate <= today ? updateDate : today;
+    addPoint(validDate, currentKm, 'currentKm', 'Compteur actuel');
+  }
+
+  // Trier par ordre chronologique
+  const sorted = Array.from(pointsMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+  // Filtrage des régressions kilométriques manifestes (erreurs de frappe)
+  const monotonic = [];
+  let maxSeenKm = 0;
+  for (const p of sorted) {
+    if (p.km >= maxSeenKm) {
+      monotonic.push(p);
+      maxSeenKm = p.km;
+    }
+  }
+
+  return monotonic;
+}
+
 /**
  * Calcule tous les paramètres du moteur de prédiction pour un véhicule :
- * - Vérifie le seuil minimal (>= 2 relevés ET >= 7 jours entre le 1er et le dernier)
- * - Combine deux fenêtres temporelles : court terme (~14 jours) et long terme (~90 jours)
- * - Pondère vers le court terme quand les relevés récents abondent, et vers le long terme sinon
- * - Applique une décroissance exponentielle pour donner plus de poids aux données fraîches
- * - Active le motif semaine / week-end uniquement après ~8 semaines (56 jours) de données
- * - Calcule l'incertitude et la fourchette (range) selon la variabilité observée
- * - Calcule le km actuel estimé : dernier km + moyenne * jours écoulés (jamais sauvegardé)
+ * - Compare les dates et kilométrages de TOUS les entretiens passés avec la situation actuelle
+ * - Intègre la baseline automobile standard (1 000 à 2 000 km / mois, médiane 1 500 km/mois)
+ * - Fusionne les observations réelles avec l'a priori statistique par pondération bayésienne
+ * - Combine deux fenêtres temporelles (court terme et long terme) avec décroissance exponentielle
+ * - Détecte le motif semaine / week-end quand des relevés fréquents sont disponibles
+ * - Fournit un score de confiance transparent (⭐⭐⭐ Élevée, ⭐⭐ Affinée, ⭐ Standard)
  */
 function computePredictionEngine(vehicle) {
   const fallback = {
     hasSufficientData: false,
-    dailyRate: 0,
-    weeklyRate: 0,
-    monthlyRate: 0,
-    effectiveCurrentKm: vehicle ? vehicle.currentKm : 0,
+    dailyRate: PRIOR_DAILY_KM_DEFAULT,
+    weeklyRate: PRIOR_DAILY_KM_DEFAULT * 7,
+    monthlyRate: PRIOR_MONTHLY_KM_DEFAULT,
+    effectiveCurrentKm: vehicle ? (vehicle.currentKm || 0) : 0,
     isEstimated: false,
     accuracy: null,
     weekdayWeekendPattern: false,
     weekdayFactor: 1.0,
     weekendFactor: 1.0,
     uncertaintySpread: 0.25,
-    daysSinceLastLog: 0
+    daysSinceLastLog: 0,
+    confidenceLevel: 'prior',
+    confidenceStars: '⭐',
+    confidenceDescription: "Estimation basée sur la moyenne automobile standard (1 500 km/mois)",
+    milestonesCount: 0
   };
 
-  if (!vehicle || !vehicle.kmLog || vehicle.kmLog.length < 2) {
-    return fallback;
-  }
+  if (!vehicle) return fallback;
 
-  const logs = [...vehicle.kmLog].sort((a, b) => a.date.localeCompare(b.date));
-  const firstLog = logs[0];
-  const lastLog = logs[logs.length - 1];
+  // 1. Extraire l'ensemble des jalons (entretiens passés, historique, logs, compteur actuel)
+  const milestones = collectVehicleMilestones(vehicle);
+  const logs = Array.isArray(vehicle.kmLog) ? [...vehicle.kmLog].sort((a, b) => a.date.localeCompare(b.date)) : [];
 
-  const firstDate = parseDateOnly(firstLog.date);
-  const lastDate = parseDateOnly(lastLog.date);
-  const totalSpanDays = Math.round((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
-
-  // Condition requise : au moins 2 relevés et ~7 jours
-  if (logs.length < 2 || totalSpanDays < 7) {
-    return fallback;
-  }
-
-  const timeline = buildDailyTimeline(logs);
-  if (timeline.length === 0) {
-    return fallback;
-  }
-
-  const daysSinceLastLog = getDaysElapsed(lastLog.date);
-  const totalDays = timeline.length;
-  const shortWindowDays = Math.min(14, totalDays);
-  const longWindowDays = Math.min(90, totalDays);
-
-  // Court terme avec décroissance exponentielle (demi-vie ~7 jours)
-  let shortWeightedSum = 0;
-  let shortWeightTotal = 0;
-  for (let i = 0; i < shortWindowDays; i++) {
-    const dayItem = timeline[totalDays - 1 - i];
-    const weight = Math.exp(-i / 7);
-    shortWeightedSum += dayItem.km * weight;
-    shortWeightTotal += weight;
-  }
-  const shortRate = shortWeightTotal > 0 ? (shortWeightedSum / shortWeightTotal) : 0;
-
-  // Long terme avec décroissance exponentielle (demi-vie ~30 jours)
-  let longWeightedSum = 0;
-  let longWeightTotal = 0;
-  for (let i = 0; i < longWindowDays; i++) {
-    const dayItem = timeline[totalDays - 1 - i];
-    const weight = Math.exp(-i / 30);
-    longWeightedSum += dayItem.km * weight;
-    longWeightTotal += weight;
-  }
-  const longRate = longWeightTotal > 0 ? (longWeightedSum / longWeightTotal) : 0;
-
-  // Fréquence des relevés récents dans les 14 derniers jours
-  const fourteenDaysAgoIso = getDateMinusDays(14);
-  const recentLogsCount = logs.filter(l => l.date >= fourteenDaysAgoIso).length;
-
-  let alpha = 0.5;
-  if (recentLogsCount >= 3) {
-    alpha = 0.75;
-  } else if (recentLogsCount === 2) {
-    alpha = 0.60;
-  } else if (recentLogsCount === 1) {
-    alpha = 0.35;
-  } else {
-    alpha = 0.20;
-  }
-
-  let blendedDailyRate = alpha * shortRate + (1 - alpha) * longRate;
-  if (blendedDailyRate < 0.1) blendedDailyRate = 0.1;
-
-  // Motif semaine vs week-end : activé uniquement après ~8 semaines (56 jours)
-  const hasWeekdayPattern = totalSpanDays >= 56;
-  let weekdayFactor = 1.0;
-  let weekendFactor = 1.0;
-
-  if (hasWeekdayPattern) {
-    let weekdaySum = 0, weekdayCount = 0;
-    let weekendSum = 0, weekendCount = 0;
-
-    timeline.forEach(item => {
-      // Week-end = Vendredi (5) et Samedi (6)
-      if (item.dayOfWeek === 5 || item.dayOfWeek === 6) {
-        weekendSum += item.km;
-        weekendCount++;
-      } else {
-        weekdaySum += item.km;
-        weekdayCount++;
-      }
-    });
-
-    const weekdayAvg = weekdayCount > 0 ? (weekdaySum / weekdayCount) : blendedDailyRate;
-    const weekendAvg = weekendCount > 0 ? (weekendSum / weekendCount) : blendedDailyRate;
-    const overallAvg = (5 * weekdayAvg + 2 * weekendAvg) / 7;
-
-    if (overallAvg > 0) {
-      weekdayFactor = Math.max(0.2, Math.min(2.5, weekdayAvg / overallAvg));
-      weekendFactor = Math.max(0.2, Math.min(2.5, weekendAvg / overallAvg));
-    }
-  }
-
-  // Calcul de la variabilité / incertitude (écart-type et intervalle)
-  let sumSqDiff = 0;
-  timeline.forEach(item => {
-    sumSqDiff += Math.pow(item.km - blendedDailyRate, 2);
-  });
-  const variance = sumSqDiff / timeline.length;
-  const stdDev = Math.sqrt(variance);
-
-  // Le range se resserre à mesure que le nombre de données augmente
-  const effectivePoints = Math.min(timeline.length, 90);
-  const standardError = stdDev / Math.sqrt(effectivePoints);
-  const rawSpread = blendedDailyRate > 0 ? (1.645 * standardError) / blendedDailyRate : 0.25;
-  const uncertaintySpread = Math.max(0.08, Math.min(0.35, rawSpread));
-
-  // Kilométrage actuel estimé si non mis à jour aujourd'hui (jamais sauvegardé)
-  const estimatedKm = Math.round(lastLog.km + blendedDailyRate * daysSinceLastLog);
-
-  // Précision moyenne sur les relevés récents (inclut les prédictions parfaites où l'erreur est 0)
+  // Précision moyenne sur les relevés récents passés (conserve l'évaluation d'exactitude des prédictions)
   let errorSum = 0;
   let errorCount = 0;
   logs.forEach(l => {
@@ -592,19 +579,195 @@ function computePredictionEngine(vehicle) {
   });
   const avgAccuracy = errorCount > 0 ? Math.round(errorSum / errorCount) : null;
 
+  // 2. Si aucun jalon exploitable
+  if (milestones.length === 0) {
+    return {
+      ...fallback,
+      hasSufficientData: true,
+      accuracy: avgAccuracy
+    };
+  }
+
+  const firstMilestone = milestones[0];
+  const lastMilestone = milestones[milestones.length - 1];
+  const firstDate = parseDateOnly(firstMilestone.date);
+  const lastDate = parseDateOnly(lastMilestone.date);
+  const totalSpanDays = Math.max(0, Math.round((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)));
+  const totalDeltaKm = Math.max(0, lastMilestone.km - firstMilestone.km);
+
+  // 3. Vitesse observée globale entre le premier entretien/relevé et le plus récent
+  let observedLongRate = null;
+  if (totalSpanDays >= 3 && totalDeltaKm > 0) {
+    observedLongRate = totalDeltaKm / totalSpanDays;
+  }
+
+  // 4. Vitesse observée sur le dernier intervalle (ex: entre le dernier entretien et aujourd'hui)
+  let observedRecentRate = null;
+  if (milestones.length >= 2) {
+    const prevMilestone = milestones[milestones.length - 2];
+    const prevDate = parseDateOnly(prevMilestone.date);
+    const recentDays = Math.max(0, Math.round((lastDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)));
+    const recentKm = Math.max(0, lastMilestone.km - prevMilestone.km);
+    if (recentDays >= 3 && recentKm > 0) {
+      observedRecentRate = recentKm / recentDays;
+    }
+  }
+
+  // 5. Si des relevés journaliers denses existent (>= 2 logs et >= 7 jours), calculer la timeline fine
+  let timelineRate = null;
+  let hasWeekdayPattern = false;
+  let weekdayFactor = 1.0;
+  let weekendFactor = 1.0;
+
+  if (logs.length >= 2) {
+    const firstLogDate = parseDateOnly(logs[0].date);
+    const lastLogDate = parseDateOnly(logs[logs.length - 1].date);
+    const logSpanDays = Math.round((lastLogDate.getTime() - firstLogDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (logSpanDays >= 7) {
+      const timeline = buildDailyTimeline(logs);
+      if (timeline.length > 0) {
+        const totalDays = timeline.length;
+        const shortWindowDays = Math.min(14, totalDays);
+        const longWindowDays = Math.min(90, totalDays);
+
+        // Court terme avec décroissance exponentielle (demi-vie ~7 jours)
+        let shortWeightedSum = 0;
+        let shortWeightTotal = 0;
+        for (let i = 0; i < shortWindowDays; i++) {
+          const dayItem = timeline[totalDays - 1 - i];
+          const weight = Math.exp(-i / 7);
+          shortWeightedSum += dayItem.km * weight;
+          shortWeightTotal += weight;
+        }
+        const shortRate = shortWeightTotal > 0 ? (shortWeightedSum / shortWeightTotal) : 0;
+
+        // Long terme avec décroissance exponentielle (demi-vie ~30 jours)
+        let longWeightedSum = 0;
+        let longWeightTotal = 0;
+        for (let i = 0; i < longWindowDays; i++) {
+          const dayItem = timeline[totalDays - 1 - i];
+          const weight = Math.exp(-i / 30);
+          longWeightedSum += dayItem.km * weight;
+          longWeightTotal += weight;
+        }
+        const longRate = longWeightTotal > 0 ? (longWeightedSum / longWeightTotal) : 0;
+
+        const fourteenDaysAgoIso = getDateMinusDays(14);
+        const recentLogsCount = logs.filter(l => l.date >= fourteenDaysAgoIso).length;
+        let alpha = 0.5;
+        if (recentLogsCount >= 3) alpha = 0.75;
+        else if (recentLogsCount === 2) alpha = 0.60;
+        else if (recentLogsCount === 1) alpha = 0.35;
+        else alpha = 0.20;
+
+        timelineRate = alpha * shortRate + (1 - alpha) * longRate;
+
+        // Motif semaine / week-end activé après ~8 semaines
+        if (logSpanDays >= 56) {
+          hasWeekdayPattern = true;
+          let weekdaySum = 0, weekdayCount = 0;
+          let weekendSum = 0, weekendCount = 0;
+          timeline.forEach(item => {
+            if (item.dayOfWeek === 5 || item.dayOfWeek === 6) {
+              weekendSum += item.km;
+              weekendCount++;
+            } else {
+              weekdaySum += item.km;
+              weekdayCount++;
+            }
+          });
+          const weekdayAvg = weekdayCount > 0 ? (weekdaySum / weekdayCount) : timelineRate;
+          const weekendAvg = weekendCount > 0 ? (weekendSum / weekendCount) : timelineRate;
+          const overallAvg = (5 * weekdayAvg + 2 * weekendAvg) / 7;
+          if (overallAvg > 0) {
+            weekdayFactor = Math.max(0.2, Math.min(2.5, weekdayAvg / overallAvg));
+            weekendFactor = Math.max(0.2, Math.min(2.5, weekendAvg / overallAvg));
+          }
+        }
+      }
+    }
+  }
+
+  // 6. Fusion Bayésienne : combiner observations réelles (entretiens + logs) avec le prior 1000-2000 km/mois
+  let empiricalRate = null;
+  if (timelineRate !== null && timelineRate > 0) {
+    empiricalRate = timelineRate;
+  } else if (observedRecentRate !== null && observedLongRate !== null) {
+    empiricalRate = 0.60 * observedLongRate + 0.40 * observedRecentRate;
+  } else if (observedLongRate !== null) {
+    empiricalRate = observedLongRate;
+  } else if (observedRecentRate !== null) {
+    empiricalRate = observedRecentRate;
+  }
+
+  let finalDailyRate = PRIOR_DAILY_KM_DEFAULT;
+  let confidenceLevel = 'prior';
+  let confidenceStars = '⭐';
+  let confidenceDescription = "Estimation initiale basée sur la moyenne automobile standard (1 500 km/mois)";
+  let uncertaintySpread = 0.25;
+
+  if (empiricalRate !== null && totalSpanDays > 0) {
+    // Poids de confiance W_obs croissant avec la durée observée et le nombre de points
+    const spanWeight = Math.min(1.0, totalSpanDays / 60); // Max atteint après 60 jours
+    const pointsBonus = Math.min(1.0, (milestones.length - 1) / 3); // Max atteint avec >= 4 jalons
+    const wObs = Math.min(0.95, (spanWeight * 0.70 + pointsBonus * 0.30));
+
+    // Régularisation contre les valeurs aberrantes (ex: erreurs de saisie < 3 km/j ou > 250 km/j)
+    const clampedEmpirical = Math.max(5, Math.min(250, empiricalRate));
+    finalDailyRate = wObs * clampedEmpirical + (1 - wObs) * PRIOR_DAILY_KM_DEFAULT;
+
+    const monthlyObserved = Math.round(finalDailyRate * DAYS_PER_MONTH);
+
+    if (wObs >= 0.70 && milestones.length >= 3 && totalSpanDays >= 30) {
+      confidenceLevel = 'high';
+      confidenceStars = '⭐⭐⭐';
+      confidenceDescription = `Précision élevée basée sur vos entretiens et relevés récents (~${monthlyObserved.toLocaleString('fr-FR')} km/mois)`;
+      uncertaintySpread = 0.10;
+    } else if (wObs >= 0.30 || milestones.length >= 2) {
+      confidenceLevel = 'medium';
+      confidenceStars = '⭐⭐';
+      confidenceDescription = `Précision affinée selon vos entretiens passés (~${monthlyObserved.toLocaleString('fr-FR')} km/mois)`;
+      uncertaintySpread = 0.18;
+    } else {
+      confidenceLevel = 'prior';
+      confidenceStars = '⭐';
+      confidenceDescription = `Estimation initiale combinée à vos repères d'entretien (~${monthlyObserved.toLocaleString('fr-FR')} km/mois)`;
+      uncertaintySpread = 0.25;
+    }
+  }
+
+  if (finalDailyRate < 0.1) finalDailyRate = 0.1;
+
+  // 7. Calcul du kilométrage actuel estimé et des jours écoulés
+  const latestMilestone = milestones[milestones.length - 1];
+  const lastLogItem = logs.length > 0 ? logs[logs.length - 1] : null;
+  const daysSinceLatest = getDaysElapsed(latestMilestone.date);
+  const daysSinceLastLog = lastLogItem ? getDaysElapsed(lastLogItem.date) : daysSinceLatest;
+
+  const currentVehicleKm = Number(vehicle.currentKm) || latestMilestone.km;
+  const baseKm = Math.max(currentVehicleKm, latestMilestone.km);
+  const estimatedKm = Math.round(baseKm + finalDailyRate * daysSinceLatest);
+
   return {
     hasSufficientData: true,
-    dailyRate: blendedDailyRate,
-    weeklyRate: blendedDailyRate * 7,
-    monthlyRate: blendedDailyRate * 30.4375,
-    effectiveCurrentKm: daysSinceLastLog > 0 ? estimatedKm : lastLog.km,
-    isEstimated: daysSinceLastLog > 0,
+    dailyRate: finalDailyRate,
+    weeklyRate: finalDailyRate * 7,
+    monthlyRate: finalDailyRate * DAYS_PER_MONTH,
+    effectiveCurrentKm: daysSinceLatest > 0 ? estimatedKm : baseKm,
+    isEstimated: daysSinceLatest > 0,
     accuracy: avgAccuracy,
     weekdayWeekendPattern: hasWeekdayPattern,
     weekdayFactor: weekdayFactor,
     weekendFactor: weekendFactor,
     uncertaintySpread: uncertaintySpread,
-    daysSinceLastLog: daysSinceLastLog
+    daysSinceLastLog: daysSinceLastLog,
+    confidenceLevel,
+    confidenceStars,
+    confidenceDescription,
+    milestonesCount: milestones.length,
+    empiricalRate,
+    totalSpanDays
   };
 }
 
@@ -1493,7 +1656,8 @@ function renderPredictionStats(vehicle, engine) {
 
   if (engine.hasSufficientData) {
     dailyEl.textContent = `~${Math.round(engine.dailyRate)} km/j`;
-    weeklyEl.textContent = `~${Math.round(engine.weeklyRate)} km/sem`;
+    const monthlyVal = Math.round(engine.monthlyRate || engine.dailyRate * 30.4375);
+    weeklyEl.textContent = `~${monthlyVal.toLocaleString('fr-FR')} km/mois`;
 
     if (engine.isEstimated) {
       effKmEl.textContent = formatKm(engine.effectiveCurrentKm);
@@ -1505,12 +1669,16 @@ function renderPredictionStats(vehicle, engine) {
 
     if (engine.accuracy !== null) {
       accEl.textContent = `±${engine.accuracy} km`;
+      accEl.title = engine.confidenceDescription || `Écart moyen constaté : ±${engine.accuracy} km`;
+    } else if (engine.confidenceStars) {
+      accEl.textContent = `${engine.confidenceStars} ${engine.confidenceLevel === 'high' ? 'Élevée' : (engine.confidenceLevel === 'medium' ? 'Affinée' : 'Initiale')}`;
+      accEl.title = engine.confidenceDescription || 'Niveau de confiance';
     } else {
       accEl.textContent = `En apprentissage`;
     }
   } else {
     dailyEl.textContent = `-- km/j`;
-    weeklyEl.textContent = `Besoin de 7 jours`;
+    weeklyEl.textContent = `1 000 - 2 000 km/mois`;
     effKmEl.textContent = formatKm(vehicle.currentKm);
     effSubEl.textContent = `Relevé réel`;
     accEl.textContent = `En apprentissage`;

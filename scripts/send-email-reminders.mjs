@@ -159,6 +159,114 @@ async function fetchFirestoreCollection(subcollection, idToken, cfg) {
 }
 
 /**
+ * Calcule intelligemment le rythme de roulage journalier d'un véhicule :
+ * - Compare les dates et kilométrages de tous les entretiens passés (items) avec le compteur actuel
+ * - Intègre la baseline automobile standard (1 000 à 2 000 km / mois, médiane 1 500 km/mois)
+ * - Fusionne les données observées par pondération bayésienne selon la profondeur d'historique
+ */
+export function calculateIntelligentDailyRate(veh, vehLogs = [], vehItems = [], history = []) {
+  const PRIOR_MONTHLY_KM_DEFAULT = 1500;
+  const DAYS_PER_MONTH = 30.4375;
+  const PRIOR_DAILY_KM_DEFAULT = PRIOR_MONTHLY_KM_DEFAULT / DAYS_PER_MONTH; // ~49.28 km/j
+
+  const pointsMap = new Map();
+
+  function addPoint(dateStr, kmVal) {
+    if (!dateStr || kmVal === null || kmVal === undefined) return;
+    const cleanDate = String(dateStr).split('T')[0];
+    const kmNum = Number(kmVal);
+    if (isNaN(kmNum) || kmNum <= 0) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) return;
+
+    if (!pointsMap.has(cleanDate)) {
+      pointsMap.set(cleanDate, { date: cleanDate, km: kmNum });
+    } else {
+      const existing = pointsMap.get(cleanDate);
+      if (kmNum > existing.km) existing.km = kmNum;
+    }
+  }
+
+  // 1. Relevés du journal (kmLog)
+  vehLogs.forEach(l => {
+    if (l && l.date && l.km) addPoint(l.date, l.km);
+  });
+
+  // 2. Derniers entretiens renseignés (items)
+  vehItems.forEach(i => {
+    if (i && i.lastDate && i.lastKm) addPoint(i.lastDate, i.lastKm);
+  });
+
+  // 3. Historique d'interventions
+  history.forEach(h => {
+    if (h && h.date && h.km) addPoint(h.date, h.km);
+  });
+
+  // 4. Compteur actuel à ce jour
+  const currentKm = Number(veh.currentKm);
+  if (!isNaN(currentKm) && currentKm > 0) {
+    const today = new Date().toISOString().split('T')[0];
+    const updateDate = veh.updatedAt ? String(veh.updatedAt).split('T')[0] : today;
+    const validDate = updateDate <= today ? updateDate : today;
+    addPoint(validDate, currentKm);
+  }
+
+  const milestones = Array.from(pointsMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+  // Filtrer les incohérences régressives
+  const cleanMilestones = [];
+  let maxKm = 0;
+  for (const m of milestones) {
+    if (m.km >= maxKm) {
+      cleanMilestones.push(m);
+      maxKm = m.km;
+    }
+  }
+
+  if (cleanMilestones.length < 2) {
+    return {
+      dailyRate: PRIOR_DAILY_KM_DEFAULT,
+      monthlyRate: PRIOR_MONTHLY_KM_DEFAULT,
+      confidence: 'prior',
+      milestonesCount: cleanMilestones.length
+    };
+  }
+
+  const firstM = cleanMilestones[0];
+  const lastM = cleanMilestones[cleanMilestones.length - 1];
+  const totalDays = Math.max(0, Math.round((new Date(lastM.date) - new Date(firstM.date)) / (1000 * 60 * 60 * 24)));
+  const totalDeltaKm = Math.max(0, lastM.km - firstM.km);
+
+  if (totalDays < 3 || totalDeltaKm <= 0) {
+    return {
+      dailyRate: PRIOR_DAILY_KM_DEFAULT,
+      monthlyRate: PRIOR_MONTHLY_KM_DEFAULT,
+      confidence: 'prior',
+      milestonesCount: cleanMilestones.length
+    };
+  }
+
+  const observedRate = totalDeltaKm / totalDays;
+  const clampedObserved = Math.max(5, Math.min(250, observedRate));
+
+  // Poids W_obs croissant selon la durée d'observation et le nombre d'entretiens
+  const spanWeight = Math.min(1.0, totalDays / 60);
+  const pointsBonus = Math.min(1.0, (cleanMilestones.length - 1) / 3);
+  const wObs = Math.min(0.95, spanWeight * 0.70 + pointsBonus * 0.30);
+
+  const blendedRate = wObs * clampedObserved + (1 - wObs) * PRIOR_DAILY_KM_DEFAULT;
+  const finalDailyRate = Math.max(0.1, blendedRate);
+
+  return {
+    dailyRate: finalDailyRate,
+    monthlyRate: finalDailyRate * DAYS_PER_MONTH,
+    confidence: wObs >= 0.7 ? 'high' : 'medium',
+    milestonesCount: cleanMilestones.length,
+    observedRate,
+    wObs
+  };
+}
+
+/**
  * Crée le transporteur Nodemailer pour Gmail
  */
 function createEmailTransporter(cfg) {
@@ -302,8 +410,9 @@ export async function runEmailReminders({ isTest = false, isDryRun = false } = {
   const items = await fetchFirestoreCollection('items', idToken, cfg);
   const kmLogs = await fetchFirestoreCollection('kmLogs', idToken, cfg);
   const members = await fetchFirestoreCollection('members', idToken, cfg);
+  const history = await fetchFirestoreCollection('history', idToken, cfg);
 
-  console.log(`📊 Données récupérées : ${vehicles.length} véhicule(s), ${items.length} entretien(s), ${kmLogs.length} relevé(s), ${members.length} membre(s).`);
+  console.log(`📊 Données récupérées : ${vehicles.length} véhicule(s), ${items.length} entretien(s), ${kmLogs.length} relevé(s), ${history.length} intervention(s), ${members.length} membre(s).`);
 
   // Extraire la liste des destinataires e-mail
   const emailRecipients = new Set();
@@ -420,20 +529,15 @@ export async function runEmailReminders({ isTest = false, isDryRun = false } = {
       }
     }
 
-    // 2. Estimation de roulage journalier
-    let dailyRate = 35;
-    if (vehLogs.length >= 2) {
-      const first = vehLogs[0];
-      const last = vehLogs[vehLogs.length - 1];
-      const diffKm = last.km - first.km;
-      const diffDays = Math.max(1, Math.round((new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24)));
-      if (diffKm > 0 && diffDays > 0) {
-        dailyRate = Math.max(5, diffKm / diffDays);
-      }
-    }
+    // 2. Estimation intelligente du rythme de roulage (Prior 1000-2000 km/mois + entretiens passés)
+    const vehItems = items.filter(i => i.vehicleId === vehId && !i.deleted);
+    const vehHistory = history.filter(h => h.vehicleId === vehId);
+    const engineRate = calculateIntelligentDailyRate(veh, vehLogs, vehItems, vehHistory);
+    const dailyRate = engineRate.dailyRate;
+    const monthlyRate = Math.round(engineRate.monthlyRate);
+    console.log(`  🚗 ${vehName} : Rythme estimé = ~${Math.round(dailyRate)} km/j (~${monthlyRate.toLocaleString('fr-FR')} km/mois, ${engineRate.confidence === 'high' ? 'précision élevée' : (engineRate.confidence === 'medium' ? 'précision affinée' : 'prior 1 500 km/m')})`);
 
     // 3. Rappels d'entretiens proches
-    const vehItems = items.filter(i => i.vehicleId === vehId && !i.deleted);
     for (const item of vehItems) {
       if (item.lastDate === null && item.lastKm === null) continue;
 

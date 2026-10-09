@@ -36,11 +36,13 @@ const SERVICE_ACCOUNT_FILE = path.join(__dirname, 'serviceAccountKey.json');
 const BOT_AUTH_CACHE_FILE = path.join(__dirname, 'bot_firebase_auth.json');
 const BOT_LOG_FILE = path.join(__dirname, 'bot.log');
 
-// Module optionnel d'alertes par e-mail
+// Module optionnel d'alertes par e-mail et calcul prédictif intelligent
 let runEmailReminders = null;
+let calculateIntelligentDailyRate = null;
 try {
   const mailMod = await import('../scripts/send-email-reminders.mjs');
   runEmailReminders = mailMod.runEmailReminders;
+  calculateIntelligentDailyRate = mailMod.calculateIntelligentDailyRate;
 } catch (e) {}
 
 // ============================================================================
@@ -502,8 +504,12 @@ async function runReminderChecks() {
       }
     }
 
-    let dailyRate = 35;
-    if (vehLogs.length >= 2) {
+    const vehItems = data.items.filter(i => i.vehicleId === vehId && !i.deleted);
+    let dailyRate = 49.3; // Baseline prior ~1 500 km/mois
+    if (typeof calculateIntelligentDailyRate === 'function') {
+      const rateInfo = calculateIntelligentDailyRate(veh, vehLogs, vehItems, data.history || []);
+      dailyRate = rateInfo.dailyRate;
+    } else if (vehLogs.length >= 2) {
       const first = vehLogs[0];
       const last = vehLogs[vehLogs.length - 1];
       const diffKm = last.km - first.km;
@@ -516,7 +522,6 @@ async function runReminderChecks() {
     // ------------------------------------------------------------------------
     // RAPPEL 2 : ENTRETIENS PROCHES AVEC ESCALADE PROGRESSIVE
     // ------------------------------------------------------------------------
-    const vehItems = data.items.filter(i => i.vehicleId === vehId && !i.deleted);
 
     for (const item of vehItems) {
       const itemId = item.id;
