@@ -2869,11 +2869,15 @@ function renderHistoryScreen() {
         <div style="text-align: center; color: var(--text-muted); padding: 36px 16px; background: var(--bg-card); border: 1.5px dashed var(--border-color); border-radius: var(--radius-lg); display: flex; flex-direction: column; align-items: center; gap: 12px;">
           <span style="font-size: 2.6rem;">📜</span>
           <strong style="color: var(--text-main); font-size: 1.05rem;">Historique vide</strong>
-          <p style="font-size: 0.88rem; max-width: 380px; line-height: 1.45; margin: 0;">
-            Aucune opération n'a encore été enregistrée. Utilisez le bouton <strong>« ✅ Fait aujourd'hui »</strong> sur une carte d'entretien du tableau de bord pour l'enregistrer ici, ou chargez les données d'exemple.
+          <p style="font-size: 0.88rem; max-width: 440px; line-height: 1.45; margin: 0;">
+            Aucune opération n'a encore été enregistrée. Vous pouvez <strong>saisir vos anciennes factures / interventions</strong> pour alimenter l'IA, ou utiliser le bouton <strong>« ✅ Fait aujourd'hui »</strong> sur une carte d'entretien du tableau de bord.
           </p>
           <div style="display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; justify-content: center;">
-            <button type="button" class="btn-primary btn-sm" id="btnGoToDashboardFromHist">
+            <button type="button" class="btn-primary btn-sm" id="btnOpenAddHistFromEmpty" style="gap: 5px;">
+              <span>➕</span>
+              <span>Saisir une intervention passée</span>
+            </button>
+            <button type="button" class="btn-secondary btn-sm" id="btnGoToDashboardFromHist">
               📋 Aller au tableau de bord
             </button>
             <button type="button" class="btn-secondary btn-sm" id="btnLoadDemoHistory">
@@ -2882,6 +2886,9 @@ function renderHistoryScreen() {
           </div>
         </div>
       `;
+
+      const btnAddFromEmpty = document.getElementById('btnOpenAddHistFromEmpty');
+      if (btnAddFromEmpty) btnAddFromEmpty.addEventListener('click', () => openAddHistoryModal());
 
       const btnGo = document.getElementById('btnGoToDashboardFromHist');
       if (btnGo) btnGo.addEventListener('click', () => switchView('dashboard'));
@@ -3065,7 +3072,274 @@ function deleteHistoryRecord(id) {
   appState.history = appState.history.filter(h => h.id !== id);
   saveState();
   showToast("Intervention supprimée de l'historique.", 'info');
+  renderApp();
   renderHistoryScreen();
+}
+
+// ============================================================================
+// MODAL : AJOUT D'INTERVENTION PASSÉE DANS L'HISTORIQUE (CALIBRATION IA)
+// ============================================================================
+
+function updateAddHistoryModalTypes() {
+  const selVeh = document.getElementById('addHistVehicleSelect');
+  const selType = document.getElementById('addHistTypeSelect');
+  const customInput = document.getElementById('addHistCustomType');
+  const kmInput = document.getElementById('addHistKmInput');
+  const dateInput = document.getElementById('addHistDateInput');
+  if (!selVeh || !selType) return;
+
+  const currentSelectedType = selType.value;
+  const selectedVehId = selVeh.value;
+  const veh = (appState.vehicles || []).find(v => v.id === selectedVehId);
+
+  const types = new Set();
+  DEFAULT_MAINTENANCE_TYPES.forEach(d => types.add(d.name));
+  if (veh && Array.isArray(veh.maintenanceItems)) {
+    veh.maintenanceItems.forEach(mi => types.add(mi.name));
+  }
+
+  selType.innerHTML = '';
+  Array.from(types).forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t;
+    if (t === currentSelectedType) opt.selected = true;
+    selType.appendChild(opt);
+  });
+
+  const customOpt = document.createElement('option');
+  customOpt.value = 'custom';
+  customOpt.textContent = '✏️ Autre intervention personnalisée...';
+  if (currentSelectedType === 'custom') customOpt.selected = true;
+  selType.appendChild(customOpt);
+
+  if (customInput) {
+    if (selType.value === 'custom') {
+      customInput.classList.remove('hidden');
+      customInput.required = true;
+    } else {
+      customInput.classList.add('hidden');
+      customInput.required = false;
+    }
+  }
+
+  if (kmInput) {
+    if (veh && veh.currentKm !== undefined && veh.currentKm !== null) {
+      const suggestedKm = Math.max(0, veh.currentKm - 5000);
+      kmInput.placeholder = `Ex: ${suggestedKm} (actuel: ${veh.currentKm} km)`;
+    } else {
+      kmInput.placeholder = 'Ex: 120000';
+    }
+  }
+
+  if (dateInput) {
+    if (veh && veh.year) {
+      dateInput.min = `${veh.year}-01-01`;
+    } else {
+      dateInput.removeAttribute('min');
+    }
+  }
+}
+
+function openAddHistoryModal(defaultVehicleId) {
+  if (!appState.vehicles || appState.vehicles.length === 0) {
+    showToast("Veuillez d'abord ajouter un véhicule pour enregistrer une intervention.", 'warning');
+    return;
+  }
+
+  const modal = document.getElementById('modalAddHistoryEntry');
+  const selVeh = document.getElementById('addHistVehicleSelect');
+  const dateInput = document.getElementById('addHistDateInput');
+  const kmInput = document.getElementById('addHistKmInput');
+  const costInput = document.getElementById('addHistCostInput');
+  const garageInput = document.getElementById('addHistGarageInput');
+  const notesInput = document.getElementById('addHistNotesInput');
+  const customInput = document.getElementById('addHistCustomType');
+  const syncCheck = document.getElementById('addHistSyncItemCheckbox');
+
+  if (!modal || !selVeh) return;
+
+  const targetVehId = defaultVehicleId || appState.activeVehicleId || (appState.vehicles[0] ? appState.vehicles[0].id : null);
+  selVeh.innerHTML = '';
+  appState.vehicles.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.id;
+    opt.textContent = `${v.name} (${v.brand || ''} ${v.model || ''} - ${Number(v.currentKm || 0).toLocaleString('fr-FR')} km)`.trim();
+    if (v.id === targetVehId) opt.selected = true;
+    selVeh.appendChild(opt);
+  });
+
+  updateAddHistoryModalTypes();
+
+  const todayIso = getTodayIsoString();
+  if (dateInput) {
+    dateInput.value = '';
+    dateInput.max = todayIso;
+  }
+  if (kmInput) kmInput.value = '';
+  if (costInput) costInput.value = '';
+  if (garageInput) garageInput.value = '';
+  if (notesInput) notesInput.value = '';
+  if (customInput) {
+    customInput.value = '';
+    customInput.classList.add('hidden');
+    customInput.required = false;
+  }
+  if (syncCheck) syncCheck.checked = true;
+
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    if (dateInput) dateInput.focus();
+  }, 100);
+}
+
+function closeAddHistoryModal() {
+  const modal = document.getElementById('modalAddHistoryEntry');
+  if (modal) modal.classList.add('hidden');
+}
+
+function handleAddHistorySubmit(e) {
+  e.preventDefault();
+  const selVeh = document.getElementById('addHistVehicleSelect');
+  const selType = document.getElementById('addHistTypeSelect');
+  const customInput = document.getElementById('addHistCustomType');
+  const dateInput = document.getElementById('addHistDateInput');
+  const kmInput = document.getElementById('addHistKmInput');
+  const costInput = document.getElementById('addHistCostInput');
+  const garageInput = document.getElementById('addHistGarageInput');
+  const notesInput = document.getElementById('addHistNotesInput');
+  const syncCheck = document.getElementById('addHistSyncItemCheckbox');
+
+  if (!selVeh || !selType || !dateInput || !kmInput) return;
+
+  const vehId = selVeh.value;
+  const vehicle = appState.vehicles.find(v => v.id === vehId);
+  if (!vehicle) {
+    showToast("Véhicule introuvable.", 'error');
+    return;
+  }
+
+  let typeVal = selType.value;
+  if (typeVal === 'custom') {
+    typeVal = String(customInput ? customInput.value : '').trim();
+    if (!typeVal) {
+      showToast("Veuillez préciser le nom de l'intervention personnalisée.", 'warning');
+      if (customInput) customInput.focus();
+      return;
+    }
+  }
+
+  const dateVal = String(dateInput.value || '').trim();
+  const kmRaw = String(kmInput.value ?? '').trim();
+  const costRaw = String(costInput ? costInput.value : '').trim();
+  const garageVal = String(garageInput ? garageInput.value : '').trim();
+  const notesVal = String(notesInput ? notesInput.value : '').trim();
+  const syncWithPlan = syncCheck ? syncCheck.checked : true;
+
+  if (!dateVal) {
+    showToast("La date d'intervention est obligatoire.", 'warning');
+    return;
+  }
+
+  const todayIso = getTodayIsoString();
+  if (dateVal > todayIso) {
+    showToast("La date d'intervention ne peut pas être dans le futur.", 'warning');
+    return;
+  }
+
+  if (vehicle.year && parseInt(dateVal.split('-')[0], 10) < vehicle.year) {
+    showToast(`La date ne peut pas être antérieure à l'année du véhicule (${vehicle.year}).`, 'warning');
+    return;
+  }
+
+  const kmVal = parseInt(kmRaw, 10);
+  if (isNaN(kmVal) || kmVal < 0) {
+    showToast("Veuillez saisir un kilométrage valide (≥ 0).", 'warning');
+    return;
+  }
+
+  let costVal = null;
+  if (costRaw !== '') {
+    const c = parseFloat(costRaw);
+    if (isNaN(c) || c < 0) {
+      showToast("Le montant du coût doit être supérieur ou égal à 0.", 'warning');
+      return;
+    }
+    costVal = Math.round(c);
+  }
+
+  const currentProfile = (window.FamilyRoom && typeof window.FamilyRoom.getStoredRoomProfile === 'function')
+    ? window.FamilyRoom.getStoredRoomProfile()
+    : null;
+  const currentAuthorName = (currentProfile && currentProfile.myName) ? currentProfile.myName : null;
+
+  const record = {
+    id: 'hist_' + Date.now(),
+    vehicleId: vehicle.id,
+    type: typeVal,
+    date: dateVal,
+    km: kmVal,
+    cost: costVal,
+    garage: garageVal || '',
+    notes: notesVal || '',
+    authorName: currentAuthorName
+  };
+
+  // Optionnel : actualiser l'échéance de la pièce correspondante dans le plan d'entretien si cette intervention est la plus récente
+  let updatedItem = null;
+  if (syncWithPlan && Array.isArray(vehicle.maintenanceItems)) {
+    const matchingItem = vehicle.maintenanceItems.find(it => it.name.toLowerCase() === typeVal.toLowerCase());
+    if (matchingItem) {
+      const isMoreRecentDate = !matchingItem.lastDate || dateVal >= matchingItem.lastDate;
+      const isMoreRecentKm = matchingItem.lastKm === null || matchingItem.lastKm === undefined || kmVal >= matchingItem.lastKm;
+      if (isMoreRecentDate && isMoreRecentKm) {
+        matchingItem.lastDate = dateVal;
+        matchingItem.lastKm = kmVal;
+        updatedItem = matchingItem;
+      }
+    }
+  }
+
+  // Si le km saisi dépasse le compteur actuel du véhicule, actualiser le compteur et kmLog
+  if (kmVal > (vehicle.currentKm || 0)) {
+    vehicle.currentKm = kmVal;
+    if (!vehicle.kmLog) vehicle.kmLog = [];
+    const existingLogIdx = vehicle.kmLog.findIndex(l => l.date === dateVal);
+    if (existingLogIdx >= 0) {
+      vehicle.kmLog[existingLogIdx].km = kmVal;
+    } else {
+      const realPredicted = typeof predictKmForDate === 'function' ? predictKmForDate(vehicle, dateVal) : null;
+      vehicle.kmLog.push({
+        date: dateVal,
+        km: kmVal,
+        predictedKm: (typeof realPredicted === 'number' && !isNaN(realPredicted)) ? realPredicted : null
+      });
+      vehicle.kmLog.sort((a, b) => a.date.localeCompare(b.date));
+    }
+  }
+
+  if (!appState.history) appState.history = [];
+  appState.history.unshift(record);
+  saveState();
+
+  if (window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive()) {
+    window.FamilyRoom.recordHistoryEntry(record, updatedItem).catch(err => {
+      console.warn("Erreur synchronisation intervention salle:", err);
+    });
+  }
+
+  closeAddHistoryModal();
+  showToast(`✅ Intervention "${typeVal}" enregistrée ! Le modèle d'IA a actualisé ses prédictions.`, 'success');
+
+  renderApp();
+  renderHistoryScreen();
+}
+
+if (typeof window !== 'undefined') {
+  window.openAddHistoryModal = openAddHistoryModal;
+  window.closeAddHistoryModal = closeAddHistoryModal;
+  window.updateAddHistoryModalTypes = updateAddHistoryModalTypes;
+  window.handleAddHistorySubmit = handleAddHistorySubmit;
 }
 
 function escapeHtml(text) {
@@ -4063,11 +4337,48 @@ function attachEventListeners() {
   if (histFilterVeh) histFilterVeh.addEventListener('change', renderHistoryScreen);
   if (histFilterType) histFilterType.addEventListener('change', renderHistoryScreen);
 
+  // Modal "Ajouter une intervention passée" (Historique & Modèle IA)
+  const btnAddHist = document.getElementById('btnAddHistoryEntry');
+  if (btnAddHist) btnAddHist.addEventListener('click', () => openAddHistoryModal());
+  const btnCloseAddHist = document.getElementById('btnCloseAddHistoryModal');
+  if (btnCloseAddHist) btnCloseAddHist.addEventListener('click', closeAddHistoryModal);
+  const btnCancelAddHist = document.getElementById('btnCancelAddHistoryModal');
+  if (btnCancelAddHist) btnCancelAddHist.addEventListener('click', closeAddHistoryModal);
+  const formAddHist = document.getElementById('formAddHistoryEntry');
+  if (formAddHist) formAddHist.addEventListener('submit', handleAddHistorySubmit);
+
+  const selAddHistType = document.getElementById('addHistTypeSelect');
+  if (selAddHistType) {
+    selAddHistType.addEventListener('change', () => {
+      const customInput = document.getElementById('addHistCustomType');
+      if (!customInput) return;
+      if (selAddHistType.value === 'custom') {
+        customInput.classList.remove('hidden');
+        customInput.required = true;
+        customInput.focus();
+      } else {
+        customInput.classList.add('hidden');
+        customInput.required = false;
+        customInput.value = '';
+      }
+    });
+  }
+
+  const selAddHistVeh = document.getElementById('addHistVehicleSelect');
+  if (selAddHistVeh) {
+    selAddHistVeh.addEventListener('change', () => {
+      if (typeof updateAddHistoryModalTypes === 'function') {
+        updateAddHistoryModalTypes();
+      }
+    });
+  }
+
   // Fermeture des fenêtres modales au clic sur l'arrière-plan
   [
     document.getElementById('vehicleModal'),
     document.getElementById('maintenanceItemModal'),
     document.getElementById('doneModal'),
+    document.getElementById('modalAddHistoryEntry'),
     document.getElementById('modalCreateRoom'),
     document.getElementById('modalJoinRoom'),
     document.getElementById('modalShareInvite')
@@ -4087,6 +4398,7 @@ function attachEventListeners() {
       closeVehicleModal();
       closeMaintenanceItemModal();
       closeDoneModal();
+      closeAddHistoryModal();
       document.getElementById('modalCreateRoom')?.classList.add('hidden');
       document.getElementById('modalJoinRoom')?.classList.add('hidden');
       document.getElementById('modalShareInvite')?.classList.add('hidden');

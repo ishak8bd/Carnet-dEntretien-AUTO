@@ -408,9 +408,15 @@
           <span>📜 Interventions enregistrées</span>
           <span class="vehicle-meta-badge" id="historyCountBadge">0 intervention</span>
         </div>
-        <div class="view-mode-toggle" id="historyViewToggle" role="group" aria-label="Mode d'affichage de l'historique">
-          <button type="button" class="view-toggle-btn active" data-mode="table" title="Affichage tableau glissable">📋 Tableau</button>
-          <button type="button" class="view-toggle-btn" data-mode="cards" title="Affichage fiches">🗂️ Fiches</button>
+        <div class="section-actions">
+          <button type="button" class="btn-sm btn-primary" id="btnAddHistoryEntry" style="gap: 6px;">
+            <span>➕</span>
+            <span>Ajouter une intervention</span>
+          </button>
+          <div class="view-mode-toggle" id="historyViewToggle" role="group" aria-label="Mode d'affichage de l'historique">
+            <button type="button" class="view-toggle-btn active" data-mode="table" title="Affichage tableau glissable">📋 Tableau</button>
+            <button type="button" class="view-toggle-btn" data-mode="cards" title="Affichage fiches">🗂️ Fiches</button>
+          </div>
         </div>
       </div>
 
@@ -740,6 +746,85 @@
           <button type="button" id="btnCancelDoneModal" class="btn-secondary">Annuler</button>
           <button type="submit" class="btn-primary" style="background: linear-gradient(135deg, var(--success), #059669);">
             Valider l'entretien
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Ajouter une intervention passée dans l'historique -->
+  <div id="modalAddHistoryEntry" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="modal-header">
+        <h2 class="modal-title">📜 Ajouter une intervention passée</h2>
+        <button type="button" class="btn-icon" id="btnCloseAddHistoryModal" aria-label="Fermer">✕</button>
+      </div>
+
+      <p class="card-subtitle" style="margin-bottom: 14px;">
+        Enregistrez une ancienne intervention (date et kilométrage). Le <strong>modèle d'IA</strong> comparera ces relevés à votre compteur actuel pour affiner la prédiction de votre rythme de roulage !
+      </p>
+
+      <form id="formAddHistoryEntry">
+        <!-- Véhicule concerné -->
+        <div class="form-group">
+          <label class="form-label" for="addHistVehicleSelect">Véhicule concerné</label>
+          <select id="addHistVehicleSelect" class="form-input" required></select>
+        </div>
+
+        <!-- Type d'intervention -->
+        <div class="form-group">
+          <label class="form-label" for="addHistTypeSelect">Type d'opération</label>
+          <select id="addHistTypeSelect" class="form-input" required></select>
+          <input type="text" id="addHistCustomType" class="form-input hidden" style="margin-top: 8px;" placeholder="Précisez le type d'intervention personnalisé...">
+        </div>
+
+        <!-- Date & Kilométrage -->
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <div class="form-group" style="flex: 1; min-width: 140px;">
+            <label class="form-label" for="addHistDateInput">Date de réalisation</label>
+            <input type="date" id="addHistDateInput" class="form-input" required>
+            <span class="form-help">Date passée (ex: il y a 6 mois ou 2 ans)</span>
+          </div>
+          <div class="form-group" style="flex: 1; min-width: 140px;">
+            <label class="form-label" for="addHistKmInput">Kilométrage (km)</label>
+            <input type="number" id="addHistKmInput" class="form-input" min="0" step="1" required placeholder="Ex: 270000">
+            <span class="form-help">Kilométrage lors de l'opération</span>
+          </div>
+        </div>
+
+        <!-- Coût & Garage -->
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <div class="form-group" style="flex: 1; min-width: 140px;">
+            <label class="form-label" for="addHistCostInput">Coût total (DA) <span class="text-muted">(optionnel)</span></label>
+            <input type="number" id="addHistCostInput" class="form-input" min="0" step="100" placeholder="Ex: 6500">
+          </div>
+          <div class="form-group" style="flex: 1; min-width: 140px;">
+            <label class="form-label" for="addHistGarageInput">Garage / Intervenant <span class="text-muted">(optionnel)</span></label>
+            <input type="text" id="addHistGarageInput" class="form-input" placeholder="Ex: Garage Renault, Mécano...">
+          </div>
+        </div>
+
+        <!-- Remarques -->
+        <div class="form-group">
+          <label class="form-label" for="addHistNotesInput">Notes / Référence des pièces <span class="text-muted">(optionnel)</span></label>
+          <textarea id="addHistNotesInput" class="form-input" style="height: 65px; padding: 8px 12px; resize: none;" placeholder="Ex: Huile 5W40 + filtre Purflux..."></textarea>
+        </div>
+
+        <!-- Mettre à jour l'échéance dans le plan d'entretien -->
+        <div class="form-group" style="background: var(--bg-card-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px 12px; margin-top: 4px;">
+          <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 0.84rem; color: var(--text-main);">
+            <input type="checkbox" id="addHistSyncItemCheckbox" checked style="margin-top: 3px;">
+            <span>
+              <strong>Mettre à jour l'échéance du plan d'entretien</strong><br>
+              <span class="text-muted" style="font-size: 0.78rem;">Actualise la date et le kilométrage de la pièce si cette intervention est la plus récente enregistrée.</span>
+            </span>
+          </label>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 14px;">
+          <button type="button" id="btnCancelAddHistoryModal" class="btn-secondary">Annuler</button>
+          <button type="submit" class="btn-primary" style="flex: 1;">
+            💾 Enregistrer dans l'historique
           </button>
         </div>
       </form>

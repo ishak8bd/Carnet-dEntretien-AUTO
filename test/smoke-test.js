@@ -517,7 +517,49 @@ try {
   assert(document.getElementById('joinMemberPhone'), 'Input joinMemberPhone présent');
   assert(document.getElementById('joinMemberEmail'), 'Input joinMemberEmail présent');
 
-  console.log('✅ TOUS LES TESTS DU SMOKE TEST (20/20) ONT RÉUSSI SANS AUCUNE ERREUR !');
+  console.log('21. Vérification de l\'ajout d\'interventions passées dans l\'historique (recalibration IA)');
+  const btnAddHist = document.getElementById('btnAddHistoryEntry');
+  const modalAddHist = document.getElementById('modalAddHistoryEntry');
+  assert(btnAddHist, 'Bouton btnAddHistoryEntry présent dans l\'en-tête de l\'historique');
+  assert(modalAddHist, 'Modale modalAddHistoryEntry présente dans le DOM');
+
+  // Ouvrir la modale
+  window.openAddHistoryModal();
+  assert(!modalAddHist.classList.contains('hidden'), 'La modale modalAddHistoryEntry doit être visible');
+
+  const selVehHist = document.getElementById('addHistVehicleSelect');
+  const selTypeHist = document.getElementById('addHistTypeSelect');
+  const dateInputHist = document.getElementById('addHistDateInput');
+  const kmInputHist = document.getElementById('addHistKmInput');
+  const costInputHist = document.getElementById('addHistCostInput');
+  const formHist = document.getElementById('formAddHistoryEntry');
+
+  assert(selVehHist && selVehHist.options.length > 0, 'Sélecteur de véhicule rempli');
+  assert(selTypeHist && selTypeHist.options.length > 0, 'Sélecteur de types d\'intervention rempli');
+
+  // Remplir une ancienne vidange passée
+  const testPastDate = new Date(Date.now() - 150 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const activeVeh = window.appState.vehicles[0];
+  const testPastKm = Math.max(1000, (activeVeh.currentKm || 50000) - 8000);
+
+  selTypeHist.value = 'Vidange (moteur)';
+  dateInputHist.value = testPastDate;
+  kmInputHist.value = String(testPastKm);
+  costInputHist.value = '6500';
+
+  const historyLenBefore = (window.appState.history || []).length;
+
+  const fakeSubmitEvent = new window.Event('submit', { cancelable: true });
+  window.handleAddHistorySubmit(fakeSubmitEvent);
+
+  assert.strictEqual(window.appState.history.length, historyLenBefore + 1, 'Une intervention doit être ajoutée dans appState.history');
+  const addedRecord = window.appState.history[0];
+  assert.strictEqual(addedRecord.type, 'Vidange (moteur)', 'Type d\'intervention conforme');
+  assert.strictEqual(addedRecord.km, testPastKm, 'Kilométrage passé conforme');
+  assert.strictEqual(addedRecord.cost, 6500, 'Coût conforme');
+  assert(modalAddHist.classList.contains('hidden'), 'La modale doit être fermée après enregistrement');
+
+  console.log('✅ TOUS LES TESTS DU SMOKE TEST (21/21) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
 } catch (err) {
   console.error('❌ Échec du smoke test:', err);

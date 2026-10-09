@@ -59,4 +59,18 @@ console.log("--- Démarrage des Tests Unitaires du Moteur de Prédiction Intelli
   console.log(`✓ Test 4 réussi : Petit rouleur régularisé (~${Math.round(res.monthlyRate)} km/mois)`);
 }
 
+// Test 5: Intervention passée enregistrée dans l'historique (sans entretien ni kmLog)
+{
+  // Facture / vidange passée enregistrée dans l'historique il y a 200 jours à 120 000 km, compteur actuel à 130 000 km (+10 000 km en 200 j = 50 km/j = ~1 520 km/mois)
+  const d200Ago = new Date(Date.now() - 200 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const veh = { id: 'v5', currentKm: 130000 };
+  const history = [
+    { vehicleId: 'v5', type: 'Vidange moteur', date: d200Ago, km: 120000, cost: 7000 }
+  ];
+  const res = calculateIntelligentDailyRate(veh, [], [], history);
+  assert(res.milestonesCount >= 2, "Doit avoir détecté au moins 2 jalons (historique + compteur actuel)");
+  assert(res.monthlyRate >= 1400 && res.monthlyRate <= 1600, `Rythme détecté (~${Math.round(res.monthlyRate)} km/mois) conforme aux interventions passées`);
+  console.log(`✓ Test 5 réussi : Intervention passée dans l'historique prise en compte (~${Math.round(res.monthlyRate)} km/mois)`);
+}
+
 console.log("✅ TOUS LES TESTS DE PRÉDICTION INTELLIGENTE ONT RÉUSSI AVEC SUCCÈS !");
