@@ -6,8 +6,9 @@
 //    - J-15 à J-8 : rappel tous les 4 jours.
 //    - J-7 à J-3  : rappel tous les 2 jours.
 //    - J-2 à retard : rappel QUOTIDIEN (chaque jour), répété jusqu'à validation "Fait".
-// 3. Commandes interactives WhatsApp (!statut, !aide, !verif, !room <id>, !tel <numero>).
-// 4. Double mode de connexion Firestore :
+// 3. Diffusion multi-utilisateurs à TOUS les membres / destinataires enregistrés.
+// 4. Commandes interactives WhatsApp (!test, !ajouter, !destinataires, !retirer, !rejoindre, !broadcast, !statut, !aide, !verif, !room <id>).
+// 5. Double mode de connexion Firestore :
 //    - Admin SDK (si serviceAccountKey.json présent)
 //    - OU Firebase Auth REST (avec demande d'approbation automatique 'Bot WhatsApp')
 
@@ -33,11 +34,17 @@ const CONFIG_FILE = path.join(__dirname, 'config.json');
 const HISTORY_FILE = path.join(__dirname, 'notification_history.json');
 const SERVICE_ACCOUNT_FILE = path.join(__dirname, 'serviceAccountKey.json');
 const BOT_AUTH_CACHE_FILE = path.join(__dirname, 'bot_firebase_auth.json');
+const BOT_LOG_FILE = path.join(__dirname, 'bot.log');
 
-// Configuration dynamique
+// ============================================================================
+// CONFIGURATION DYNAMIQUE
+// ============================================================================
+
 function loadConfig() {
   let cfg = {
     targetPhone: process.env.TARGET_WHATSAPP_PHONE || '',
+    targetPhones: [],
+    subscribers: [],
     roomId: process.env.FIREBASE_ROOM_ID || '',
     projectId: process.env.FIREBASE_PROJECT_ID || 'entretien-auto-tracker',
     apiKey: process.env.FIREBASE_API_KEY || 'AIzaSyA7qjZi_aWunCo15Y96BbvsZfX7n7O8LO8',
@@ -51,6 +58,15 @@ function loadConfig() {
   } catch (e) {
     console.warn("Échec lecture config.json:", e.message);
   }
+
+  // Si des numéros multiples sont spécifiés dans .env sous TARGET_WHATSAPP_PHONES
+  if (process.env.TARGET_WHATSAPP_PHONES) {
+    const fromEnv = process.env.TARGET_WHATSAPP_PHONES.split(',').map(s => s.trim()).filter(Boolean);
+    cfg.targetPhones = Array.from(new Set([...(cfg.targetPhones || []), ...fromEnv]));
+  }
+
+  if (!Array.isArray(cfg.targetPhones)) cfg.targetPhones = [];
+  if (!Array.isArray(cfg.subscribers)) cfg.subscribers = [];
   return cfg;
 }
 
@@ -82,6 +98,7 @@ function saveNotificationHistory(hist) {
 
 let sock = null;
 let adminDb = null;
+const sentMessageIds = new Set();
 
 // Initialiser Firebase Admin si la clé de compte de service est présente
 async function initFirebaseAdminIfAvailable() {
@@ -170,7 +187,6 @@ async function fetchFirestoreCollection(subcollection) {
 
     if (res.status === 403) {
       console.warn(`[Firestore] Permission refusée pour le Bot sur ${subcollection}.`);
-      // Vérifier si le membre est en attente ou s'il faut créer une demande d'accès
       await ensureBotMemberRequest(cfg.roomId, auth);
       return { status: 403, error: 'permission_denied' };
     }
@@ -207,7 +223,6 @@ async function ensureBotMemberRequest(roomId, auth) {
   const cfg = loadConfig();
   const docUrl = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/rooms/${roomId}/members/${auth.localId}`;
 
-  // Vérifier si la demande existe déjà
   const getRes = await fetch(docUrl, {
     headers: { 'Authorization': `Bearer ${auth.idToken}` }
   });
@@ -242,31 +257,69 @@ async function getTrackerData() {
   const items = await fetchFirestoreCollection('items');
   const kmLogs = await fetchFirestoreCollection('kmLogs');
 
-  return { vehicles: Array.isArray(vehicles) ? vehicles : [], items: Array.isArray(items) ? items : [], kmLogs: Array.isArray(kmLogs) ? kmLogs : [] };
+  return {
+    vehicles: Array.isArray(vehicles) ? vehicles : [],
+    items: Array.isArray(items) ? items : [],
+    kmLogs: Array.isArray(kmLogs) ? kmLogs : []
+  };
 }
 
 // ============================================================================
-// 2. GESTION DES IDENTIFIANTS WHATSAPP
+// 2. GESTION DES DESTINATAIRES & DIFFUSION MULTI-UTILISATEURS
 // ============================================================================
 
 function formatPhoneJid(phone) {
-  let cleaned = phone.replace(/[^0-9]/g, '');
+  if (!phone) return null;
+  let cleaned = String(phone).replace(/[^0-9]/g, '');
+  if (!cleaned) return null;
   if (!cleaned.endsWith('@s.whatsapp.net')) {
     cleaned = `${cleaned}@s.whatsapp.net`;
   }
   return cleaned;
 }
 
-function getTargetJid() {
-  const cfg = loadConfig();
-  if (cfg.targetPhone) {
-    return formatPhoneJid(cfg.targetPhone);
-  }
+function getSelfJid() {
   if (sock && sock.user && sock.user.id) {
     const selfNumber = sock.user.id.split(':')[0].replace(/[^0-9]/g, '');
-    return `${selfNumber}@s.whatsapp.net`;
+    if (selfNumber) return `${selfNumber}@s.whatsapp.net`;
   }
   return null;
+}
+
+/**
+ * Retourne la liste unique de TOUS les destinataires (hôte WhatsApp, numéros configurés, abonnés)
+ */
+function getAllTargetJids() {
+  const cfg = loadConfig();
+  const jids = new Set();
+
+  // 1. Le téléphone hôte qui fait tourner le bot
+  const self = getSelfJid();
+  if (self) jids.add(self);
+
+  // 2. Numéro unique configuré (s'il y en a un)
+  if (cfg.targetPhone) {
+    const j = formatPhoneJid(cfg.targetPhone);
+    if (j) jids.add(j);
+  }
+
+  // 3. Liste de tous les numéros supplémentaires (famille, conducteurs)
+  if (Array.isArray(cfg.targetPhones)) {
+    for (const p of cfg.targetPhones) {
+      const j = formatPhoneJid(p);
+      if (j) jids.add(j);
+    }
+  }
+
+  // 4. Liste des utilisateurs abonnés (!rejoindre)
+  if (Array.isArray(cfg.subscribers)) {
+    for (const s of cfg.subscribers) {
+      const j = formatPhoneJid(s);
+      if (j) jids.add(j);
+    }
+  }
+
+  return Array.from(jids);
 }
 
 async function sendWhatsAppMessage(jid, text) {
@@ -275,24 +328,66 @@ async function sendWhatsAppMessage(jid, text) {
     return false;
   }
   try {
-    await sock.sendMessage(jid, { text });
+    const res = await sock.sendMessage(jid, { text });
+    if (res && res.key && res.key.id) {
+      sentMessageIds.add(res.key.id);
+      if (sentMessageIds.size > 500) {
+        const first = sentMessageIds.values().next().value;
+        sentMessageIds.delete(first);
+      }
+    }
     console.log(`[WhatsApp] Message envoyé avec succès à ${jid}`);
     return true;
   } catch (err) {
-    console.error(`[WhatsApp] Échec d'envoi du message:`, err.message);
+    console.error(`[WhatsApp] Échec d'envoi à ${jid}:`, err.message);
     return false;
   }
 }
 
+/**
+ * Diffuse un message à TOUS les utilisateurs enregistrés avec temporisation anti-spam
+ */
+async function broadcastMessage(text, excludeJid = null) {
+  const targets = getAllTargetJids().filter(j => j !== excludeJid);
+  if (targets.length === 0) {
+    console.warn("⚠️ Aucun destinataire disponible pour la diffusion.");
+    return { total: 0, sent: 0, failed: 0, recipients: [] };
+  }
+
+  console.log(`📢 [Diffusion] Envoi à ${targets.length} destinataire(s)...`);
+  let sentCount = 0;
+  let failedCount = 0;
+  const sentRecipients = [];
+
+  for (const jid of targets) {
+    const ok = await sendWhatsAppMessage(jid, text);
+    if (ok) {
+      sentCount++;
+      sentRecipients.push(jid.replace('@s.whatsapp.net', ''));
+    } else {
+      failedCount++;
+    }
+    // Petit délai de 350ms pour respecter les limites WhatsApp
+    await new Promise(r => setTimeout(r, 350));
+  }
+
+  return {
+    total: targets.length,
+    sent: sentCount,
+    failed: failedCount,
+    recipients: sentRecipients
+  };
+}
+
 // ============================================================================
-// 3. LOGIQUE MÉTIER & VÉRIFICATION DES ÉCHÉANCES
+// 3. LOGIQUE MÉTIER & VÉRIFICATION DES ÉCHÉANCES (DIFFUSION MULTI-UTILISATEURS)
 // ============================================================================
 
 async function runReminderChecks() {
   console.log(`\n🔍 [${new Date().toLocaleString('fr-FR')}] Vérification des rappels...`);
-  const jid = getTargetJid();
-  if (!jid) {
-    console.warn("⚠️ Numéro de destination introuvable.");
+  const allTargets = getAllTargetJids();
+  if (allTargets.length === 0) {
+    console.warn("⚠️ Aucun numéro de destination configuré.");
     return;
   }
 
@@ -309,7 +404,7 @@ async function runReminderChecks() {
       `👉 *Action requise :* Ouvrez votre carnet d'entretien Web. Une bannière orange en haut de l'écran indique :\n` +
       `*« 🔔 1 en attente : Bot WhatsApp (Baileys) »*\n` +
       `Cliquez sur *"Accepter"*, puis renvoyez *!verif* sur WhatsApp !`;
-    await sendWhatsAppMessage(jid, msg);
+    await broadcastMessage(msg);
     return;
   }
 
@@ -347,8 +442,8 @@ async function runReminderChecks() {
             `📊 Dernier kilométrage enregistré : *${currentKm.toLocaleString('fr-FR')} km*\n\n` +
             `➡️ Pensez à relever votre compteur et à l'actualiser dans l'application pour maintenir la fiabilité de vos échéances d'entretien !`;
 
-          const sent = await sendWhatsAppMessage(jid, msg);
-          if (sent) {
+          const res = await broadcastMessage(msg);
+          if (res.sent > 0) {
             history.mileage[vehId] = now;
             saveNotificationHistory(history);
           }
@@ -459,8 +554,8 @@ async function runReminderChecks() {
             `Rappel automatique programmé.`;
         }
 
-        const sent = await sendWhatsAppMessage(jid, msg);
-        if (sent) {
+        const res = await broadcastMessage(msg);
+        if (res.sent > 0) {
           history.items[itemId] = { lastSent: now, level };
           saveNotificationHistory(history);
         }
@@ -472,6 +567,9 @@ async function runReminderChecks() {
 }
 
 // ============================================================================
+// 4. PARSER DE ROOM ID
+// ============================================================================
+
 function extractRoomId(text) {
   if (!text) return null;
   const clean = text.trim();
@@ -485,7 +583,7 @@ function extractRoomId(text) {
     return parts[0];
   }
 
-  // 2. Commande !room ou !salle ou !id (ex: !room room_123 ou !room: room_123 ou !room 123)
+  // 2. Commande !room ou !salle ou !id (ex: !room room_123 ou !room: room_123)
   const cmdMatch = clean.match(/^!(?:room|salle|id)\s*[:=]?\s*(\S+)/i);
   if (cmdMatch) {
     let raw = cmdMatch[1].trim();
@@ -508,11 +606,12 @@ function extractRoomId(text) {
 }
 
 // ============================================================================
-// 4. GESTION DES COMMANDES WHATSAPP ENTRANTES
+// 5. GESTION DES COMMANDES WHATSAPP ENTRANTES
 // ============================================================================
 
 async function handleIncomingMessage(msg) {
   if (!msg.message) return;
+  if (msg.key && sentMessageIds.has(msg.key.id)) return;
 
   const rawText = (
     msg.message.conversation ||
@@ -528,7 +627,7 @@ async function handleIncomingMessage(msg) {
 
   // Enregistrer dans le journal bot.log
   try {
-    fs.appendFileSync(path.join(__dirname, 'bot.log'), `[${new Date().toISOString()}] from: ${sender} (fromMe: ${msg.key.fromMe}) text: "${rawText}"\n`);
+    fs.appendFileSync(BOT_LOG_FILE, `[${new Date().toISOString()}] from: ${sender} (fromMe: ${msg.key.fromMe}) text: "${rawText}"\n`);
   } catch (e) {}
 
   // 1. Vérification si le message contient ou définit un ID de salle
@@ -546,20 +645,196 @@ async function handleIncomingMessage(msg) {
     return;
   }
 
+  // Les commandes doivent commencer par '!'
+  if (!rawText.startsWith('!')) return;
+
   const parts = rawText.split(/\s+/);
   const cmd = parts[0].toLowerCase();
 
+  // --------------------------------------------------------------------------
+  // COMMANDE 1 : !aide / !help
+  // --------------------------------------------------------------------------
   if (cmd === '!aide' || cmd === '!help') {
-    const help = `🤖 *Commandes du Bot Carnet d'Entretien* :\n\n` +
-      `• *!room <id>* : Définit la salle (ou collez votre lien d'invitation).\n` +
+    const help =
+      `🤖 *Commandes du Bot Carnet d'Entretien* :\n\n` +
+      `• *!test* : Teste l'envoi d'une alerte à TOUS les utilisateurs.\n` +
+      `• *!destinataires* : Affiche tous les numéros qui reçoivent les alertes.\n` +
+      `• *!ajouter <tel>* : Ajoute un proche aux alertes (ex: !ajouter 213555123456).\n` +
+      `• *!retirer <tel>* : Supprime un numéro de la liste.\n` +
       `• *!statut* : Affiche vos véhicules et l'état de synchronisation.\n` +
-      `• *!tel <numero>* : Définit le numéro qui reçoit les alertes.\n` +
-      `• *!verif* : Déclenche immédiatement une vérification des rappels.\n` +
+      `• *!verif* : Vérifie immédiatement les entretiens et lance les alertes.\n` +
+      `• *!broadcast <texte>* : Envoie un message personnalisé à tous les membres.\n` +
+      `• *!rejoindre* : S'inscrire soi-même aux alertes depuis son WhatsApp.\n` +
+      `• *!room <id>* : Associe une nouvelle salle Firestore.\n` +
       `• *!aide* : Affiche ce menu d'aide.`;
     await sendWhatsAppMessage(sender, help);
     return;
   }
 
+  // --------------------------------------------------------------------------
+  // COMMANDE 2 : !test / !testall (TEST MULTI-UTILISATEURS)
+  // --------------------------------------------------------------------------
+  if (cmd === '!test' || cmd === '!testall' || cmd === '!tester' || cmd === '!testnotif') {
+    const cfg = loadConfig();
+    const allTargets = getAllTargetJids();
+
+    const senderJid = formatPhoneJid(sender);
+    if (senderJid && !allTargets.includes(senderJid)) {
+      allTargets.push(senderJid);
+    }
+
+    const data = await getTrackerData();
+    const veh = (data.vehicles && data.vehicles.length > 0) ? data.vehicles[0] : null;
+    const currentKm = veh ? (veh.currentKm || 0) : 250000;
+    const vehName = veh ? (veh.name || `${veh.brand || ''} ${veh.model || ''}`.trim()) : "Renault Symbol";
+
+    const items = data.items || [];
+    const vidange = items.find(i => i.name && i.name.toLowerCase().includes('vidange')) || items[0];
+    const itemName = vidange ? vidange.name : "Vidange (moteur)";
+    const itemDueKm = (vidange && vidange.intervalKm && vidange.lastKm)
+      ? (vidange.lastKm + vidange.intervalKm)
+      : (currentKm + 1000);
+    const remainingKm = Math.max(0, itemDueKm - currentKm);
+
+    const testBroadcastMsg =
+      `🚗 *TEST DU BOT WHATSAPP - Carnet d'Entretien Automobile*\n\n` +
+      `✅ *Le système d'alerte fonctionne parfaitement !*\n\n` +
+      `📊 *Données synchronisées en direct :*\n` +
+      `• Salle : *${cfg.roomId || 'roommv13dgxrc6c448ac3b69'}*\n` +
+      `• Véhicule : *${vehName}*\n` +
+      `• Kilométrage actuel : *${currentKm.toLocaleString('fr-FR')} km*\n` +
+      `• Entretien suivi : 🔧 *${itemName}* (échéance : ${itemDueKm.toLocaleString('fr-FR')} km, reste *${remainingKm.toLocaleString('fr-FR')} km*)\n` +
+      `• Statut du bot : 🟢 Membre approuvé & actif\n\n` +
+      `👥 *Diffusion multi-utilisateurs :*\n` +
+      `Ce message de test est envoyé simultanément à l'ensemble des ${allTargets.length} destinataire(s) enregistré(s).\n\n` +
+      `🔔 *Rappels automatiques programmés :*\n` +
+      `1️⃣ Relevé kilométrique : tous les 15 jours.\n` +
+      `2️⃣ Échéance proche : relance progressive (tous les 4 jours, 2 jours, puis quotidienne jusqu'à validation "Fait" dans l'application) !\n\n` +
+      `_Envoyé le ${new Date().toLocaleString('fr-FR')}_`;
+
+    await sendWhatsAppMessage(sender, `⏳ Envoi du test de diffusion à *${allTargets.length}* destinataire(s)...`);
+    const res = await broadcastMessage(testBroadcastMsg);
+
+    const recipientListStr = allTargets.map(j => `• +${j.replace('@s.whatsapp.net', '')}`).join('\n');
+    await sendWhatsAppMessage(sender,
+      `✅ *Test terminé !*\n\n` +
+      `📊 *Résultat :* ${res.sent}/${res.total} message(s) délivré(s) avec succès.\n\n` +
+      `📱 *Destinataires notifiés :*\n${recipientListStr}\n\n` +
+      `💡 Pour ajouter un autre proche : *!ajouter <numéro>*\n` +
+      `💡 Pour voir la liste complète : *!destinataires*`
+    );
+    return;
+  }
+
+  // --------------------------------------------------------------------------
+  // COMMANDE 3 : !ajouter <tel> / !add <tel>
+  // --------------------------------------------------------------------------
+  if (cmd === '!ajouter' || cmd === '!add') {
+    const rawNumber = parts.slice(1).join('').replace(/[^0-9]/g, '');
+    if (!rawNumber || rawNumber.length < 8) {
+      await sendWhatsAppMessage(sender, "⚠️ Format incorrect. Tapez : *!ajouter <numéro_avec_indicatif>*\n\n👉 Exemple : *!ajouter 213555123456*");
+      return;
+    }
+    const cfg = loadConfig();
+    const existing = new Set(cfg.targetPhones || []);
+    existing.add(rawNumber);
+    cfg.targetPhones = Array.from(existing);
+    saveConfig(cfg);
+
+    const newJid = formatPhoneJid(rawNumber);
+    await sendWhatsAppMessage(newJid,
+      `👋 *Bonjour !*\n\n` +
+      `Votre numéro a été ajouté aux alertes WhatsApp du *Carnet d'Entretien Automobile* 🚗.\n\n` +
+      `Vous recevrez désormais :\n` +
+      `• 📅 Le rappel de mise à jour du compteur tous les 15 jours\n` +
+      `• 🔧 Les alertes lorsqu'un entretien approche\n\n` +
+      `Tapez *!aide* pour découvrir les commandes disponibles.`
+    );
+
+    const total = getAllTargetJids().length;
+    await sendWhatsAppMessage(sender, `✅ Numéro *+${rawNumber}* ajouté avec succès aux alertes !\n👥 Total destinataires actifs : *${total}*.\nUn message de bienvenue lui a été envoyé.`);
+    return;
+  }
+
+  // --------------------------------------------------------------------------
+  // COMMANDE 4 : !retirer <tel> / !supprimer <tel> / !del <tel>
+  // --------------------------------------------------------------------------
+  if (cmd === '!retirer' || cmd === '!supprimer' || cmd === '!del') {
+    const rawNumber = parts.slice(1).join('').replace(/[^0-9]/g, '');
+    if (!rawNumber) {
+      await sendWhatsAppMessage(sender, "⚠️ Précisez le numéro à retirer. Exemple : *!retirer 213555123456*");
+      return;
+    }
+    const cfg = loadConfig();
+    cfg.targetPhones = (cfg.targetPhones || []).filter(p => p.replace(/[^0-9]/g, '') !== rawNumber);
+    cfg.subscribers = (cfg.subscribers || []).filter(s => s.replace(/[^0-9]/g, '') !== rawNumber);
+    if (cfg.targetPhone && cfg.targetPhone.replace(/[^0-9]/g, '') === rawNumber) {
+      cfg.targetPhone = '';
+    }
+    saveConfig(cfg);
+    await sendWhatsAppMessage(sender, `✅ Numéro *+${rawNumber}* retiré des alertes.`);
+    return;
+  }
+
+  // --------------------------------------------------------------------------
+  // COMMANDE 5 : !destinataires / !users / !membres / !liste
+  // --------------------------------------------------------------------------
+  if (cmd === '!destinataires' || cmd === '!users' || cmd === '!membres' || cmd === '!liste') {
+    const targets = getAllTargetJids();
+    const self = getSelfJid();
+
+    let text = `👥 *Destinataires des alertes WhatsApp* (${targets.length}) :\n\n`;
+    targets.forEach((j, idx) => {
+      const num = j.replace('@s.whatsapp.net', '');
+      const isSelf = j === self ? ' 👑 (Bot / Vous)' : '';
+      text += `${idx + 1}. *+${num}*${isSelf}\n`;
+    });
+
+    text += `\n👉 Pour ajouter un proche : *!ajouter <numéro>*\n` +
+            `👉 Pour retirer un numéro : *!retirer <numéro>*\n` +
+            `👉 Ou demandez-lui d'envoyer *!rejoindre* directement au bot !`;
+    await sendWhatsAppMessage(sender, text);
+    return;
+  }
+
+  // --------------------------------------------------------------------------
+  // COMMANDE 6 : !rejoindre / !start / !sub / !moi
+  // --------------------------------------------------------------------------
+  if (cmd === '!rejoindre' || cmd === '!start' || cmd === '!sub' || cmd === '!moi') {
+    const cfg = loadConfig();
+    const senderClean = sender.replace(/[^0-9]/g, '');
+    const currentSubs = new Set(cfg.subscribers || []);
+    currentSubs.add(senderClean);
+    cfg.subscribers = Array.from(currentSubs);
+    saveConfig(cfg);
+
+    await sendWhatsAppMessage(sender,
+      `🎉 *Bienvenue dans les alertes du Carnet d'Entretien !*\n\n` +
+      `Votre numéro (*+${senderClean}*) est maintenant inscrit.\n` +
+      `Vous recevrez toutes les alertes d'entretien et les rappels kilométriques tous les 15 jours pour vos véhicules partagés.\n\n` +
+      `💡 Tapez *!test* pour tester la réception ou *!statut* pour voir vos véhicules.`
+    );
+    return;
+  }
+
+  // --------------------------------------------------------------------------
+  // COMMANDE 7 : !broadcast <texte> / !diffuser <texte>
+  // --------------------------------------------------------------------------
+  if (cmd === '!broadcast' || cmd === '!diffuser') {
+    const bcastText = parts.slice(1).join(' ').trim();
+    if (!bcastText) {
+      await sendWhatsAppMessage(sender, "⚠️ Veuillez écrire le message à diffuser. Exemple : *!broadcast Pensez à relever les compteurs ce soir !*");
+      return;
+    }
+    const fullMsg = `📢 *MESSAGE DU CARNET D'ENTRETIEN*\n\n${bcastText}\n\n_Envoyé à tous les membres_`;
+    const res = await broadcastMessage(fullMsg);
+    await sendWhatsAppMessage(sender, `✅ Message diffusé à *${res.sent}/${res.total}* utilisateur(s).`);
+    return;
+  }
+
+  // --------------------------------------------------------------------------
+  // COMMANDE 8 : !tel <numero>
+  // --------------------------------------------------------------------------
   if (cmd === '!tel') {
     const newPhone = parts[1]?.trim();
     if (!newPhone) {
@@ -567,17 +842,23 @@ async function handleIncomingMessage(msg) {
       return;
     }
     saveConfig({ targetPhone: newPhone });
-    await sendWhatsAppMessage(sender, `✅ Numéro de destination configuré : *+${newPhone}*`);
+    await sendWhatsAppMessage(sender, `✅ Numéro principal configuré : *+${newPhone}*`);
     return;
   }
 
+  // --------------------------------------------------------------------------
+  // COMMANDE 9 : !verif
+  // --------------------------------------------------------------------------
   if (cmd === '!verif') {
-    await sendWhatsAppMessage(sender, "⏳ Vérification manuelle des échéances en cours...");
+    await sendWhatsAppMessage(sender, "⏳ Vérification manuelle des échéances en cours pour tous les utilisateurs...");
     await runReminderChecks();
     await sendWhatsAppMessage(sender, "✅ Vérification effectuée.");
     return;
   }
 
+  // --------------------------------------------------------------------------
+  // COMMANDE 10 : !statut
+  // --------------------------------------------------------------------------
   if (cmd === '!statut') {
     const cfg = loadConfig();
     if (!cfg.roomId) {
@@ -596,27 +877,29 @@ async function handleIncomingMessage(msg) {
       return;
     }
 
+    const targets = getAllTargetJids();
     let report = `📋 *État de votre Carnet d'Entretien* :\n\n`;
+    report += `• Salle active : *${cfg.roomId}*\n`;
+    report += `• Destinataires notifiés : *${targets.length}*\n\n`;
+
     for (const v of data.vehicles) {
-      report += `🚗 *${v.name || v.brand + ' ' + v.model}* (${v.currentKm?.toLocaleString('fr-FR')} km)\n`;
+      report += `🚗 *${v.name || v.brand + ' ' + v.model}* (${(v.currentKm || 0).toLocaleString('fr-FR')} km)\n`;
       const vItems = data.items.filter(i => i.vehicleId === v.id && !i.deleted);
       if (vItems.length > 0) {
         report += `• Entretiens surveillés : ${vItems.length}\n`;
       }
     }
-    report += `\nPour marquer un entretien comme "Fait", ouvrez votre carnet d'entretien Web !`;
+    report += `\nPour tester l'envoi à tous les utilisateurs : tapez *!test*`;
     await sendWhatsAppMessage(sender, report);
     return;
   }
 
-  // Réponse automatique amicale si commande inconnue
-  if (rawText.startsWith('!')) {
-    await sendWhatsAppMessage(sender, `🤖 Commande inconnue. Tapez *!aide* pour voir les commandes disponibles.`);
-  }
+  // Réponse automatique si commande '!' inconnue
+  await sendWhatsAppMessage(sender, `🤖 Commande inconnue. Tapez *!aide* pour voir les commandes disponibles.`);
 }
 
 // ============================================================================
-// 5. CONNEXION BAILEYS WHATSAPP MULTI-DEVICE
+// 6. CONNEXION BAILEYS WHATSAPP MULTI-DEVICE
 // ============================================================================
 
 async function startWhatsAppBot() {
@@ -627,7 +910,7 @@ async function startWhatsAppBot() {
   const { version } = await fetchLatestBaileysVersion();
 
   console.log(`-----------------------------------------------------`);
-  console.log(`  Démarrage du Bot WhatsApp Carnet d'Entretien v1.0   `);
+  console.log(`  Démarrage du Bot WhatsApp Carnet d'Entretien v1.1   `);
   console.log(`  Version Baileys : ${version.join('.')}             `);
   console.log(`-----------------------------------------------------`);
 
@@ -660,10 +943,8 @@ async function startWhatsAppBot() {
       console.log('\n✅ Connecté avec succès à WhatsApp ! Le bot est opérationnel.');
 
       const cfg = loadConfig();
-      const targetJid = getTargetJid();
-      if (targetJid) {
-        console.log(`[WhatsApp] Destinataire des alertes configuré : ${targetJid}`);
-      }
+      const allTargets = getAllTargetJids();
+      console.log(`[WhatsApp] Destinataires des alertes configurés (${allTargets.length}) : ${allTargets.join(', ')}`);
 
       // Première vérification après 3 secondes si une salle est déjà configurée
       if (cfg.roomId) {

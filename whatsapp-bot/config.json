@@ -1,5 +1,7 @@
 {
   "targetPhone": "",
+  "targetPhones": [],
+  "subscribers": [],
   "roomId": "roommv13dgxrc6c448ac3b69",
   "projectId": "entretien-auto-tracker",
   "apiKey": "AIzaSyA7qjZi_aWunCo15Y96BbvsZfX7n7O8LO8",
