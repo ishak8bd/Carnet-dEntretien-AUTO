@@ -29,10 +29,9 @@
           <span>Suivi intelligent &amp; prédictif</span>
         </div>
       </div>
-      <div class="header-sync-status" id="headerSyncStatus" role="button" tabindex="0" title="Synchronisation Multi-Appareils (Cliquez pour configurer)">
-        <span class="sync-dot" id="headerSyncDot"></span>
-        <span class="sync-icon" id="headerSyncIcon">☁️</span>
-        <span class="sync-text" id="headerSyncText">Local</span>
+      <div id="roomSyncBadge" class="room-sync-badge hidden">
+        <span class="sync-dot sync-green"></span>
+        <span id="roomSyncText">En ligne</span>
       </div>
     </header>
 
@@ -242,6 +241,22 @@
           <!-- Rempli dynamiquement en JS -->
         </div>
       </section>
+
+      <!-- SECTION FIL D'ACTIVITÉ DE LA SALLE FAMILIALE -->
+      <section class="card activity-feed-card hidden" id="activityFeedSection">
+        <div class="card-header">
+          <div class="card-title">
+            <span>📢 Fil d'Activité Familiale</span>
+          </div>
+          <span class="vehicle-meta-badge" id="activityCountBadge">En direct</span>
+        </div>
+        <p class="card-subtitle" style="margin-bottom: 12px;">
+          Dernières actions des membres sur les véhicules partagés.
+        </p>
+        <div class="activity-feed-list" id="activityFeedList">
+          <div style="text-align: center; color: var(--text-muted); padding: 12px;">Aucune activité récente.</div>
+        </div>
+      </section>
     </div> <!-- /viewDashboard -->
 
     <!-- VUE 2 : HABITUDES DE CONDUITE (ÉCRAN 3b) -->
@@ -416,6 +431,9 @@
         </p>
       </div>
 
+      <!-- SECTION SALLE FAMILIALE & SYNCHRONISATION MULTI-APPAREILS -->
+      <div id="settingsRoomContainer"></div>
+
       <!-- CARTE 1 : Sauvegarde & Restauration JSON -->
       <section class="card settings-card">
         <div class="card-header">
@@ -443,112 +461,6 @@
             <span>Restaurer sauvegarde</span>
           </label>
           <input type="file" id="backupFileInput" accept=".json,application/json" class="hidden">
-        </div>
-      </section>
-
-      <!-- CARTE : Synchronisation Multi-Appareils (GitHub Gist) -->
-      <section class="card settings-card" id="settingsSyncCard">
-        <div class="card-header">
-          <div class="card-title">
-            <span>☁️ Synchronisation Multi-Appareils</span>
-          </div>
-          <span class="vehicle-meta-badge" id="syncStatusBadge">⚪ Non synchronisé</span>
-        </div>
-        <p class="card-subtitle">
-          Retrouvez les mêmes données sur votre PC, iPhone ou Android en temps réel grâce à votre compte GitHub (Gist privé et sécurisé).
-        </p>
-
-        <!-- Vue quand la synchronisation est CONNECTÉE -->
-        <div id="syncConnectedView" class="hidden">
-          <div class="sync-info-box">
-            <div class="sync-info-row">
-              <span class="sync-label">Statut Cloud :</span>
-              <span class="sync-value text-success font-bold" id="syncConnectedStatusText">🟢 Connecté &amp; Synchronisé</span>
-            </div>
-            <div class="sync-info-row" style="margin-top: 6px;">
-              <span class="sync-label">Dernière synchro :</span>
-              <strong class="sync-value" id="syncLastTimeDisplay">À l'instant</strong>
-            </div>
-            <div class="sync-info-row" style="margin-top: 6px;">
-              <span class="sync-label">ID du Gist :</span>
-              <span class="sync-value" style="display: flex; align-items: center; gap: 6px;">
-                <code id="syncGistIdShort" style="background: var(--bg-main); padding: 3px 8px; border-radius: 4px; font-size: 0.78rem; border: 1px solid var(--border-color);">-</code>
-                <button type="button" id="btnCopyGistId" class="btn-icon-xs" title="Copier l'ID du Gist">📋</button>
-              </span>
-            </div>
-          </div>
-
-          <div class="settings-actions-row" style="margin-bottom: 10px;">
-            <button type="button" id="btnSyncNow" class="btn-primary" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <span>🔄</span>
-              <span>Synchroniser maintenant</span>
-            </button>
-            <button type="button" id="btnShowQrSync" class="btn-secondary" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <span>📱</span>
-              <span>QR Code mobile</span>
-            </button>
-          </div>
-
-          <div style="display: flex; gap: 8px;">
-            <button type="button" id="btnCopyMobileLink" class="btn-secondary" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.82rem;">
-              <span>🔗</span>
-              <span>Copier lien de connexion rapide</span>
-            </button>
-            <button type="button" id="btnDisconnectSync" class="btn-danger" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.82rem;">
-              <span>🔌</span>
-              <span>Déconnecter</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Formulaire de configuration (quand non connecté) -->
-        <div id="syncSetupView">
-          <div class="sync-help-box">
-            <div style="font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-              <span>💡</span>
-              <span>Comment activer la synchronisation ?</span>
-            </div>
-            <p style="margin: 0 0 8px 0; font-size: 0.82rem; line-height: 1.45; color: var(--text-muted);">
-              Vos données sont stockées dans un <strong>Gist privé</strong> sur votre GitHub. Toute modification sur un appareil est envoyée automatiquement.
-            </p>
-            <ol style="margin: 0 0 10px 0; padding-left: 18px; font-size: 0.8rem; line-height: 1.5; color: var(--text-muted);">
-              <li>Générez un jeton d'accès GitHub personnel avec la permission <code>gist</code> (30 secondes).</li>
-              <li>Collez le jeton ci-dessous et cliquez sur <em>Activer la synchronisation</em>.</li>
-              <li>Pour votre 2e appareil (smartphone), il vous suffira de scanner le QR Code affiché !</li>
-            </ol>
-            <div>
-              <a href="https://github.com/settings/tokens/new?scopes=gist&description=Carnet+Entretien+Auto+Sync" target="_blank" rel="noopener noreferrer" class="btn-sm btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-size: 0.78rem; padding: 6px 12px;">
-                <span>🔑</span>
-                <span>Créer mon jeton GitHub (permission gist pré-cochée)</span>
-                <span>↗</span>
-              </a>
-            </div>
-          </div>
-
-          <form id="gistSyncForm">
-            <div class="form-group" style="margin-top: 10px;">
-              <label class="form-label" for="syncGithubToken">
-                Jeton GitHub personnel (Personal Access Token) <span style="color: var(--danger);">*</span>
-              </label>
-              <input type="password" id="syncGithubToken" class="form-input" placeholder="ghp_... ou github_pat_..." autocomplete="off" required>
-              <span class="form-help">Votre jeton reste strictement stocké en local dans votre navigateur.</span>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="syncGistIdInput">
-                ID du Gist (Optionnel)
-              </label>
-              <input type="text" id="syncGistIdInput" class="form-input" placeholder="Laisser vide pour créer un nouveau Gist automatiquement">
-              <span class="form-help">Laissez vide sur le 1er appareil. Sur un 2e appareil, vous pouvez entrer l'ID du Gist ou simplement ouvrir le lien direct / QR Code.</span>
-            </div>
-
-            <div style="margin-top: 14px;">
-              <button type="submit" id="btnSubmitGistSync" class="btn-primary" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
-                <span>🚀</span>
-                <span>Activer la synchronisation multi-appareils</span>
-              </button>
-            </div>
-          </form>
         </div>
       </section>
 
@@ -832,92 +744,268 @@
   <!-- MODAL / ONBOARDING: Premier lancement (0 véhicule) -->
   <div id="onboardingModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
     <div class="modal-content">
+      
+      <!-- Étape 1 : Choix du mode (Solo, Créer salle, Rejoindre salle) -->
+      <div id="onboardingChoiceSection">
+        <div class="modal-header">
+          <h2 class="modal-title">Bienvenue sur Carnet d'Entretien 👋</h2>
+        </div>
+        <p class="card-subtitle">
+          Choisissez votre mode d'utilisation pour démarrer le suivi intelligent :
+        </p>
+
+        <div class="onboarding-choice-grid">
+          <button type="button" id="btnChoiceCreateRoom" class="onboarding-choice-card">
+            <span class="onboarding-choice-icon">🏠</span>
+            <div>
+              <div class="onboarding-choice-title">Créer une salle familiale</div>
+              <div class="onboarding-choice-desc">Partagez vos véhicules avec vos proches (père, frères, mère...), synchronisé en direct sans mot de passe.</div>
+            </div>
+          </button>
+
+          <button type="button" id="btnChoiceJoinRoom" class="onboarding-choice-card">
+            <span class="onboarding-choice-icon">🔗</span>
+            <div>
+              <div class="onboarding-choice-title">Rejoindre une salle existante</div>
+              <div class="onboarding-choice-desc">Vous avez reçu un code ou un lien WhatsApp ? Rejoignez la salle de votre famille en 1 clic.</div>
+            </div>
+          </button>
+
+          <button type="button" id="btnChoiceSolo" class="onboarding-choice-card">
+            <span class="onboarding-choice-icon">👤</span>
+            <div>
+              <div class="onboarding-choice-title">Utiliser seul (sans salle)</div>
+              <div class="onboarding-choice-desc">Mode local 100% autonome sur cet appareil uniquement.</div>
+            </div>
+          </button>
+        </div>
+
+        <div style="margin-top: 14px;">
+          <button type="button" id="btnLoadDemoFromOnboard" class="btn-secondary" style="width: 100%;">
+            🧪 Tester avec les données d'exemple (Démo)
+          </button>
+        </div>
+      </div>
+
+      <!-- Étape 2 : Formulaire véhicule Solo (initialement masqué) -->
+      <div id="onboardingFormSection" class="hidden">
+        <div style="margin-bottom: 12px;">
+          <button type="button" id="btnBackToChoice" class="btn-secondary btn-sm">
+            ← Changer de mode
+          </button>
+        </div>
+        <div class="modal-header">
+          <h2 class="modal-title">Configurer mon véhicule 🚗</h2>
+        </div>
+        <p class="card-subtitle">
+          Ajoutez votre véhicule pour démarrer le suivi intelligent et les prédictions d'entretien.
+        </p>
+
+        <form id="onboardingForm">
+          <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="onboardBrand">Marque</label>
+              <input type="text" id="onboardBrand" class="form-input" placeholder="Ex: Renault" required>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="onboardModel">Modèle</label>
+              <input type="text" id="onboardModel" class="form-input" placeholder="Ex: Symbol" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="onboardKm">Kilométrage actuel (obligatoire)</label>
+            <input type="number" id="onboardKm" class="form-input" placeholder="Ex: 85000" min="0" step="1" required>
+            <span class="form-help">L'application n'utilise aucune estimation manuelle : elle apprend de vos vrais relevés.</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="onboardFrequency">Fréquence des rappels</label>
+            <select id="onboardFrequency" class="form-select">
+              <option value="weekly">Hebdomadaire (recommandé)</option>
+              <option value="daily">Quotidienne</option>
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="onboardYear">Année</label>
+              <input type="number" id="onboardYear" class="form-input" placeholder="2018" min="1980" max="2035">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="onboardPlate">Immatriculation</label>
+              <input type="text" id="onboardPlate" class="form-input" placeholder="Optionnel">
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 0.84rem; color: var(--text-muted); margin-top: 4px;">
+            <input type="checkbox" id="onboardRecurringReminder" style="accent-color: var(--primary); width: 16px; height: 16px;">
+            <label for="onboardRecurringReminder" style="cursor: pointer;">Exporter aussi le rappel régulier vers mon agenda (.ics)</label>
+          </div>
+
+          <div class="modal-actions" style="margin-top: 14px;">
+            <button type="submit" class="btn-primary" style="width: 100%;">Démarrer mon suivi</button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: Créer une salle familiale -->
+  <div id="modalCreateRoom" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
       <div class="modal-header">
-        <h2 class="modal-title">Bienvenue sur Carnet d'Entretien 👋</h2>
+        <h2 class="modal-title">Créer une salle familiale 🏠</h2>
+        <button type="button" class="modal-close" id="btnCloseCreateRoom" aria-label="Fermer">✕</button>
       </div>
       <p class="card-subtitle">
-        Commencez par ajouter votre véhicule pour démarrer le suivi intelligent et les prédictions d'entretien.
+        Créez votre espace partagé pour synchroniser vos véhicules entre proches sans mot de passe.
       </p>
 
-      <form id="onboardingForm">
-        <div style="display: flex; gap: 10px;">
-          <div class="form-group" style="flex: 1;">
-            <label class="form-label" for="onboardBrand">Marque</label>
-            <input type="text" id="onboardBrand" class="form-input" placeholder="Ex: Renault" required>
-          </div>
-          <div class="form-group" style="flex: 1;">
-            <label class="form-label" for="onboardModel">Modèle</label>
-            <input type="text" id="onboardModel" class="form-input" placeholder="Ex: Symbol" required>
-          </div>
+      <form id="formCreateRoom">
+        <div class="form-group">
+          <label class="form-label" for="createRoomName">Nom de la salle</label>
+          <input type="text" id="createRoomName" class="form-input" placeholder="Ex: Famille Benali, Maison..." required maxlength="100">
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="onboardKm">Kilométrage actuel (obligatoire)</label>
-          <input type="number" id="onboardKm" class="form-input" placeholder="Ex: 85000" min="0" step="1" required>
-          <span class="form-help">L'application n'utilise aucune estimation manuelle : elle apprend de vos vrais relevés.</span>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="onboardFrequency">Fréquence des rappels</label>
-          <select id="onboardFrequency" class="form-select">
-            <option value="weekly">Hebdomadaire (recommandé)</option>
-            <option value="daily">Quotidienne</option>
-          </select>
+          <label class="form-label" for="createOwnerName">Votre prénom</label>
+          <input type="text" id="createOwnerName" class="form-input" placeholder="Ex: Karim, Papa..." required maxlength="100">
+          <span class="form-help">Visible par tous les membres lorsqu'un relevé ou entretien est ajouté.</span>
         </div>
 
         <div style="display: flex; gap: 10px;">
           <div class="form-group" style="flex: 1;">
-            <label class="form-label" for="onboardYear">Année</label>
-            <input type="number" id="onboardYear" class="form-input" placeholder="2018" min="1980" max="2035">
+            <label class="form-label" for="createExpiryHours">Validité du lien</label>
+            <select id="createExpiryHours" class="form-select">
+              <option value="24" selected>24 heures (recommandé)</option>
+              <option value="48">48 heures</option>
+              <option value="168">7 jours</option>
+            </select>
           </div>
           <div class="form-group" style="flex: 1;">
-            <label class="form-label" for="onboardPlate">Immatriculation</label>
-            <input type="text" id="onboardPlate" class="form-input" placeholder="Optionnel">
+            <label class="form-label" for="createMaxUses">Membres max</label>
+            <select id="createMaxUses" class="form-select">
+              <option value="5" selected>5 personnes (défaut)</option>
+              <option value="2">2 personnes</option>
+              <option value="10">10 personnes</option>
+              <option value="20">20 personnes</option>
+            </select>
           </div>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.84rem; color: var(--text-muted); margin-top: 4px;">
-          <input type="checkbox" id="onboardRecurringReminder" style="accent-color: var(--primary); width: 16px; height: 16px;">
-          <label for="onboardRecurringReminder" style="cursor: pointer;">Exporter aussi le rappel régulier vers mon agenda (.ics)</label>
+        <div id="createMigrateGroup" style="display: none; align-items: center; gap: 8px; font-size: 0.86rem; color: var(--text-main); margin: 10px 0; background: var(--bg-input); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+          <input type="checkbox" id="createMigrateLocal" style="accent-color: var(--primary); width: 16px; height: 16px;" checked>
+          <label for="createMigrateLocal" style="cursor: pointer;">
+            Importer mes véhicules locaux actuels dans cette salle partagée (sauvegarde automatique incluse)
+          </label>
         </div>
 
-        <div class="modal-actions" style="flex-direction: column; gap: 10px; margin-top: 12px;">
-          <button type="submit" class="btn-primary" style="width: 100%;">Démarrer mon suivi</button>
-          <button type="button" id="btnLoadDemoFromOnboard" class="btn-secondary" style="width: 100%;">
-            Charger les données d'exemple (Démo)
-          </button>
+        <div class="modal-actions" style="margin-top: 16px;">
+          <button type="submit" class="btn-primary" style="flex: 1;">Créer &amp; Inviter</button>
+          <button type="button" id="btnCancelCreateRoom" class="btn-secondary">Annuler</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- MODAL: QR Code & Lien de synchronisation mobile -->
-  <div id="syncQrModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-content" style="max-width: 380px; text-align: center;">
+  <!-- MODAL: Rejoindre une salle -->
+  <div id="modalJoinRoom" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
       <div class="modal-header">
-        <h2 class="modal-title">📱 Connexion Mobile</h2>
-        <button type="button" class="btn-icon" id="btnCloseSyncQrModal" aria-label="Fermer">✕</button>
+        <h2 class="modal-title">Rejoindre une salle familiale 🔗</h2>
+        <button type="button" class="modal-close" id="btnCloseJoinRoom" aria-label="Fermer">✕</button>
       </div>
+      <p class="card-subtitle">
+        Entrez votre prénom et le code d'invitation (ou lien WhatsApp) pour demander l'accès à la salle.
+      </p>
 
-      <div style="padding: 10px 0;">
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
-          Scannez ce QR Code avec l'appareil photo de votre smartphone pour synchroniser instantanément vos données !
-        </p>
-        <div id="syncQrContainer" style="background: #ffffff; padding: 14px; border-radius: var(--radius-md); display: inline-block; margin: 0 auto; box-shadow: var(--shadow-md);">
-          <img id="syncQrImage" alt="QR Code de synchronisation" style="width: 210px; height: 210px; display: block; border-radius: 4px;">
+      <form id="formJoinRoom">
+        <div class="form-group">
+          <label class="form-label" for="joinMemberName">Votre prénom</label>
+          <input type="text" id="joinMemberName" class="form-input" placeholder="Ex: Amine, Maman, Yacine..." required maxlength="100">
+          <span class="form-help">Ce prénom permettra au propriétaire de vous identifier et de valider votre demande.</span>
         </div>
-        <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 12px; line-height: 1.4;">
-          Ce code configure automatiquement le carnet sur votre téléphone. Aucune saisie requise !
-        </p>
+
+        <div class="form-group">
+          <label class="form-label" for="joinInviteCode">Code d'invitation ou lien reçu</label>
+          <input type="text" id="joinInviteCode" class="form-input" placeholder="Ex: room123_inv456 ou collez le lien complet" required>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 16px;">
+          <button type="submit" class="btn-primary" style="flex: 1;">Demander l'accès</button>
+          <button type="button" id="btnCancelJoinRoom" class="btn-secondary">Annuler</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: En attente d'approbation -->
+  <div id="modalPendingApproval" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="waiting-pulse-box">
+        <div class="waiting-spinner"></div>
+        <div>
+          <h2 class="modal-title" style="margin-bottom: 6px;">Demande transmise ! ⏳</h2>
+          <p class="card-subtitle">
+            Vous avez demandé à rejoindre la salle <strong id="pendingRoomName" style="color: var(--primary);">Salle Familiale</strong> avec le prénom <strong id="pendingMemberName" style="color: var(--text-main);">Membre</strong>.
+          </p>
+        </div>
+
+        <div class="waiting-info-card">
+          Le propriétaire de la salle a reçu votre demande sur son téléphone. Dès qu'il clique sur <strong>Accepter</strong>, votre application se mettra à jour automatiquement avec tous les véhicules de la famille.
+        </div>
+
+        <div style="width: 100%; margin-top: 8px;">
+          <button type="button" id="btnCancelPendingJoin" class="btn-secondary" style="width: 100%;">
+            Annuler la demande et revenir en mode local
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Partager l'invitation -->
+  <div id="modalShareInvite" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Inviter vos proches 📲</h2>
+        <button type="button" class="modal-close" id="btnCloseShareInvite" aria-label="Fermer">✕</button>
+      </div>
+      <p class="card-subtitle">
+        Salle : <strong id="shareInviteRoomTitle" style="color: var(--primary);">Famille</strong><br>
+        Envoyez ce lien à vos proches. Ils n'auront qu'à entrer leur prénom pour demander l'accès.
+      </p>
+
+      <div class="share-invite-box">
+        <button type="button" id="btnShareWhatsApp" class="btn-whatsapp">
+          <span>💬 Partager directement sur WhatsApp</span>
+        </button>
+
+        <div class="form-group" style="margin-top: 6px;">
+          <label class="form-label">Lien d'invitation complet</label>
+          <div class="share-copy-group">
+            <input type="text" id="shareInviteUrl" readonly>
+            <button type="button" id="btnCopyInviteLink" class="btn-secondary btn-sm">Copier</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Code d'accès court</label>
+          <div class="share-copy-group">
+            <input type="text" id="shareInviteCode" readonly>
+            <button type="button" id="btnCopyInviteCode" class="btn-secondary btn-sm">Copier</button>
+          </div>
+        </div>
+
+        <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; background: var(--bg-input); padding: 8px 10px; border-radius: var(--radius-sm);">
+          🔒 <strong>Sécurité renforcée :</strong> Ce lien expire dans 24h et nécessite votre approbation personnelle avant d'ouvrir l'accès aux véhicules.
+        </div>
       </div>
 
-      <div class="modal-actions" style="flex-direction: column; gap: 8px; margin-top: 8px;">
-        <button type="button" id="btnCopyQrDirectLink" class="btn-primary" style="width: 100%;">
-          📋 Copier le lien direct de synchronisation
-        </button>
-        <button type="button" id="btnDismissSyncQrModal" class="btn-secondary" style="width: 100%;">
-          Fermer
-        </button>
+      <div class="modal-actions" style="margin-top: 14px;">
+        <button type="button" id="btnCloseShareModalBtn" class="btn-primary" style="width: 100%;">Terminer</button>
       </div>
     </div>
   </div>
@@ -945,7 +1033,8 @@
   <!-- Conteneur des notifications Toast -->
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
-  <!-- Script principal de l'application -->
+  <!-- Scripts de l'application -->
+  <script type="module" src="room.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

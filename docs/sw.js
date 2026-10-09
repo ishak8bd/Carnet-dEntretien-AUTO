@@ -1,15 +1,21 @@
-// Service Worker - Suivi Entretien Véhicule PWA (100% Hors-Ligne)
-const CACHE_NAME = 'entretien-v8';
+// Service Worker - Suivi Entretien Véhicule PWA (100% Hors-Ligne & Support Firebase)
+const CACHE_NAME = 'entretien-v11';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './style.css',
   './app.js',
+  './room.js',
+  './firebase-config.js',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable.png',
-  './icons/icon.svg'
+  './icons/icon.svg',
+  // Fichiers SDK Firebase versionnés et épinglés pour démarrage 100% hors-ligne
+  'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js',
+  'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js',
+  'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js'
 ];
 
 // Installation : mise en cache initiale
@@ -36,10 +42,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  // Ne pas intercepter les requêtes d'API externes (GitHub API, QR server, etc.)
+  // Filtrer les requêtes : accepter l'origine locale et le CDN officiel Firebase
   try {
     const requestUrl = new URL(event.request.url);
-    if (requestUrl.origin !== self.location.origin) return;
+    const isLocal = requestUrl.origin === self.location.origin;
+    const isFirebaseCdn = requestUrl.origin === 'https://www.gstatic.com' && requestUrl.pathname.startsWith('/firebasejs/11.4.0/');
+    if (!isLocal && !isFirebaseCdn) return;
   } catch (e) {
     return;
   }
@@ -65,7 +73,8 @@ self.addEventListener('fetch', (event) => {
           if (rootCached) return rootCached;
         }
 
-        return null;
+        // Retourner une réponse d'erreur valide au lieu de null pour éviter une TypeError dans respondWith
+        return Response.error();
       })
   );
 });

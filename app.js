@@ -37,15 +37,34 @@ let appState = {
   activeVehicleId: null,
   history: [],
   settings: {
-    defaultIntervals: DEFAULT_MAINTENANCE_TYPES,
+    defaultIntervals: JSON.parse(JSON.stringify(DEFAULT_MAINTENANCE_TYPES)),
     lastBackupDate: null
   },
   isDemo: false
 };
 
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'appState', {
+    get() { return appState; },
+    set(val) { appState = val; },
+    configurable: true
+  });
+}
+
 // ============================================================================
 // 2. UTILITAIRES (FORMATAGE DATES, DISTANCES & MONNAIE)
 // ============================================================================
+
+/** Échappe les caractères HTML réservés pour prévenir les attaques XSS */
+function escapeHtml(text) {
+  if (text === null || text === undefined) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
 /** Formate une date ISO (YYYY-MM-DD) en format français DD/MM/YYYY */
 function formatDate(dateStr) {
@@ -156,71 +175,60 @@ function updateViewToggleButtons(toggleId, activeMode) {
 function saveState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-    if (typeof scheduleAutoSyncPush === 'function') {
-      scheduleAutoSyncPush();
-    }
   } catch (err) {
     console.error('Erreur lors de la sauvegarde dans localStorage:', err);
     showToast("Erreur d'enregistrement : stockage local saturé ou désactivé.", 'error');
   }
 }
 
-/** Charge l'état depuis le localStorage ou initialise les données de seed */
+/** Charge l'état depuis le localStorage ou initialise les données */
 function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return false;
+
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      // Migration éventuelle de schéma
-      if (!parsed.schemaVersion || parsed.schemaVersion < SCHEMA_VERSION) {
-        parsed.schemaVersion = SCHEMA_VERSION;
-      }
-      if (!Array.isArray(parsed.history)) {
-        parsed.history = [];
-      }
-      if (!parsed.settings) {
-        parsed.settings = {
-          defaultIntervals: DEFAULT_MAINTENANCE_TYPES,
-          lastBackupDate: null
-        };
-      } else if (!parsed.settings.defaultIntervals) {
-        parsed.settings.defaultIntervals = DEFAULT_MAINTENANCE_TYPES;
-      }
-
-      // Rétro-compatibilité : si l'historique est vide et qu'on a un véhicule de démo ou existant
-      if (parsed.vehicles && parsed.vehicles.length > 0 && parsed.history.length === 0) {
-        const isDemoVeh = parsed.isDemo || parsed.vehicles.some(v =>
-          (v.brand && v.brand.toLowerCase().includes('renault')) ||
-          (v.model && v.model.toLowerCase().includes('symbol')) ||
-          (v.name && v.name.toLowerCase().includes('voiture'))
-        );
-        if (isDemoVeh) {
-          const vehId = parsed.activeVehicleId || parsed.vehicles[0].id;
-          parsed.history = createSeedHistory(vehId);
-          parsed.isDemo = true;
-          appState = parsed;
-          saveState();
-          return true;
-        }
-      }
-
-      // Si un seul véhicule, s'assurer que les historiques pointent bien vers son id
-      if (parsed.vehicles && parsed.vehicles.length === 1 && parsed.history && parsed.history.length > 0) {
-        const singleVehId = parsed.vehicles[0].id;
-        parsed.history.forEach(h => {
-          if (!parsed.vehicles.some(v => v.id === h.vehicleId)) {
-            h.vehicleId = singleVehId;
-          }
-        });
-      }
-
-      appState = parsed;
-      return true;
+    const parsed = JSON.parse(raw);
+    // Migration éventuelle de schéma
+    if (!parsed.schemaVersion || parsed.schemaVersion < SCHEMA_VERSION) {
+      parsed.schemaVersion = SCHEMA_VERSION;
     }
+    if (!Array.isArray(parsed.history)) {
+      parsed.history = [];
+    }
+    if (!parsed.settings) {
+      parsed.settings = {
+        defaultIntervals: JSON.parse(JSON.stringify(DEFAULT_MAINTENANCE_TYPES)),
+        lastBackupDate: null
+      };
+    } else if (!parsed.settings.defaultIntervals) {
+      parsed.settings.defaultIntervals = JSON.parse(JSON.stringify(DEFAULT_MAINTENANCE_TYPES));
+    }
+
+    // Si un seul véhicule, s'assurer que les historiques pointent bien vers son id
+    if (parsed.vehicles && parsed.vehicles.length === 1 && parsed.history && parsed.history.length > 0) {
+      const singleVehId = parsed.vehicles[0].id;
+      parsed.history.forEach(h => {
+        if (!parsed.vehicles.some(v => v.id === h.vehicleId)) {
+          h.vehicleId = singleVehId;
+        }
+      });
+    }
+
+    // S'assurer que le drapeau isDemo reflète l'état des véhicules
+    parsed.isDemo = Boolean(parsed.vehicles && parsed.vehicles.some(v => v.isDemo));
+
+    appState = parsed;
+    return true;
   } catch (err) {
-    console.warn('Impossible de lire les données sauvegardées. Réinitialisation.', err);
+    console.error('Données corrompues détectées dans le stockage local:', err);
+    try {
+      const backupKey = `carnet_entretien_corrupt_${Date.now()}`;
+      localStorage.setItem(backupKey, raw);
+      console.warn(`Sauvegarde des données brutes corrompues dans ${backupKey}`);
+    } catch (e) {}
+    showToast("⚠️ Données locales corrompues. Une copie de sécurité a été archivée.", 'error', 7000);
+    return false;
   }
-  return false;
 }
 
 /** Génère les interventions d'historique de démonstration */
@@ -229,43 +237,47 @@ function createSeedHistory(vehicleId) {
   return [
     {
       id: 'hist_1',
-      vehicleId: vehicleId,
+      vehicleId: vId,
       type: 'Vidange (moteur)',
       date: getDateMinusDays(180),
       km: 109000,
       cost: 6500,
       garage: 'Garage El Bahia',
-      notes: 'Huile 10W40 Total + filtre à huile Purflux'
+      notes: 'Huile 10W40 Total + filtre à huile Purflux',
+      isDemo: true
     },
     {
       id: 'hist_2',
-      vehicleId: vehicleId,
+      vehicleId: vId,
       type: 'Filtre à air',
       date: getDateMinusDays(20),
       km: 117500,
       cost: 1200,
       garage: 'Fait soi-même',
-      notes: "Remplacement cartouche d'origine"
+      notes: "Remplacement cartouche d'origine",
+      isDemo: true
     },
     {
       id: 'hist_3',
-      vehicleId: vehicleId,
+      vehicleId: vId,
       type: 'Bougies',
       date: getDateMinusDays(600),
       km: 75000,
       cost: 4500,
       garage: 'Station Naftal',
-      notes: 'Lot de 4 bougies NGK neuves'
+      notes: 'Lot de 4 bougies NGK neuves',
+      isDemo: true
     },
     {
       id: 'hist_4',
-      vehicleId: vehicleId,
+      vehicleId: vId,
       type: 'Assurance',
       date: getDateMinusDays(40),
       km: 116500,
       cost: 18000,
       garage: 'SAA Assurances',
-      notes: 'Contrat tous risques 1 an'
+      notes: 'Contrat tous risques 1 an',
+      isDemo: true
     }
   ];
 }
@@ -323,7 +335,7 @@ function createSeedVehicle() {
   });
 
   return {
-    id: 'veh_' + Date.now(),
+    id: 'veh_demo',
     name: 'Ma voiture',
     brand: 'Renault',
     model: 'Symbol',
@@ -331,6 +343,7 @@ function createSeedVehicle() {
     plate: '12345 115 16',
     currentKm: 118000,
     updateFrequency: 'weekly', // Rappel hebdomadaire
+    isDemo: true,
     kmLog: logs,
     maintenanceItems: maintenanceItems
   };
@@ -346,7 +359,9 @@ function initDemoState() {
     activeVehicleId: seedVeh.id,
     history: seedHist,
     settings: {
-      defaultIntervals: DEFAULT_MAINTENANCE_TYPES,
+      defaultIntervals: (appState && appState.settings && appState.settings.defaultIntervals)
+        ? JSON.parse(JSON.stringify(appState.settings.defaultIntervals))
+        : JSON.parse(JSON.stringify(DEFAULT_MAINTENANCE_TYPES)),
       lastBackupDate: null
     },
     isDemo: true
@@ -566,11 +581,11 @@ function computePredictionEngine(vehicle) {
   // Kilométrage actuel estimé si non mis à jour aujourd'hui (jamais sauvegardé)
   const estimatedKm = Math.round(lastLog.km + blendedDailyRate * daysSinceLastLog);
 
-  // Précision moyenne sur les relevés récents
+  // Précision moyenne sur les relevés récents (inclut les prédictions parfaites où l'erreur est 0)
   let errorSum = 0;
   let errorCount = 0;
   logs.forEach(l => {
-    if (l.predictedKm && l.predictedKm !== l.km) {
+    if (typeof l.predictedKm === 'number' && !isNaN(l.predictedKm)) {
       errorSum += Math.abs(l.km - l.predictedKm);
       errorCount++;
     }
@@ -939,16 +954,23 @@ function handleQuickKmSubmit(e) {
 
   const existingLogIndex = vehicle.kmLog.findIndex(log => log.date === todayIso);
 
+  const currentProfile = (window.FamilyRoom && typeof window.FamilyRoom.getStoredRoomProfile === 'function')
+    ? window.FamilyRoom.getStoredRoomProfile()
+    : null;
+  const currentAuthorName = (currentProfile && currentProfile.myName) ? currentProfile.myName : null;
+
   if (existingLogIndex !== -1) {
+    // Une correction le même jour conserve le predictedKm d'origine de cette journée
     vehicle.kmLog[existingLogIndex].km = newKm;
-    vehicle.kmLog[existingLogIndex].predictedKm = predicted;
+    if (currentAuthorName) vehicle.kmLog[existingLogIndex].authorName = currentAuthorName;
     showToast(`Correction du jour enregistrée : ${formatKm(newKm)}.`, 'info');
     showKmSuccess(`Relevé du jour mis à jour à ${formatKm(newKm)} (remplacement).`);
   } else {
     vehicle.kmLog.push({
       date: todayIso,
       km: newKm,
-      predictedKm: predicted
+      predictedKm: predicted,
+      authorName: currentAuthorName
     });
 
     vehicle.kmLog.sort((a, b) => a.date.localeCompare(b.date));
@@ -958,6 +980,13 @@ function handleQuickKmSubmit(e) {
 
   vehicle.currentKm = newKm;
   saveState();
+
+  // Synchronisation avec la salle familiale si active (Point 10)
+  if (window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive()) {
+    window.FamilyRoom.recordKmReading(vehicle.id, newKm, todayIso, predicted).catch(err => {
+      console.warn("Erreur synchronisation relevé salle:", err);
+    });
+  }
 
   input.value = '';
 
@@ -1141,6 +1170,10 @@ function handleVehicleFormSubmit(e) {
       veh.plate = plate;
       veh.updateFrequency = frequency;
       showToast('Véhicule mis à jour avec succès.', 'success');
+
+      if (window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive()) {
+        window.FamilyRoom.saveVehicle(veh).catch(err => console.warn('Erreur mise à jour véhicule salle:', err));
+      }
     }
   } else {
     // Création
@@ -1168,7 +1201,11 @@ function handleVehicleFormSubmit(e) {
       currentKm: kmVal,
       updateFrequency: frequency,
       kmLog: [{ date: todayIso, km: kmVal, predictedKm: kmVal }],
-      maintenanceItems: DEFAULT_MAINTENANCE_TYPES.map(def => ({
+      maintenanceItems: (
+        (appState && appState.settings && Array.isArray(appState.settings.defaultIntervals))
+          ? appState.settings.defaultIntervals
+          : DEFAULT_MAINTENANCE_TYPES
+      ).map(def => ({
         id: def.id,
         name: def.name,
         intervalKm: def.intervalKm,
@@ -1182,6 +1219,10 @@ function handleVehicleFormSubmit(e) {
     appState.activeVehicleId = newVeh.id;
     appState.isDemo = false; // Tout ajout désactive le mode démo
     showToast('Véhicule ajouté avec succès !', 'success');
+
+    if (window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive()) {
+      window.FamilyRoom.saveVehicle(newVeh).catch(err => console.warn('Erreur création véhicule salle:', err));
+    }
   }
 
   saveState();
@@ -1198,6 +1239,10 @@ function handleDeleteVehicle() {
 
   const confirmDel = window.confirm(`Supprimer définitivement le véhicule "${veh.name}" et son historique ?`);
   if (!confirmDel) return;
+
+  if (window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive()) {
+    window.FamilyRoom.deleteVehicle(editId).catch(err => console.warn('Erreur suppression véhicule salle:', err));
+  }
 
   appState.vehicles = appState.vehicles.filter(v => v.id !== editId);
   if (appState.history) {
@@ -1219,48 +1264,35 @@ function handleDeleteVehicle() {
   }
 }
 
-/** Supprime définitivement les données de démonstration de la Renault Symbol */
+/** Supprime définitivement les données de démonstration */
 function handleDeleteDemoData() {
   const confirmClean = window.confirm(
-    "Voulez-vous supprimer définitivement la Renault Symbol et l'ensemble de ses interventions de démonstration pour repartir de zéro avec votre propre véhicule ?"
+    "Voulez-vous supprimer définitivement le véhicule et les interventions de démonstration pour repartir de zéro avec votre propre véhicule ?"
   );
   if (!confirmClean) return;
 
-  // Trouver l'index de la Renault Symbol
-  const demoVehIndex = (appState.vehicles || []).findIndex(v =>
-    (v.brand && v.brand.toLowerCase().includes('renault')) ||
-    (v.model && v.model.toLowerCase().includes('symbol')) ||
-    (v.name && v.name.toLowerCase().includes('symbol'))
+  const demoVehicleIds = new Set(
+    (appState.vehicles || []).filter(v => v.isDemo).map(v => v.id)
   );
 
-  let demoVehId = null;
-  if (demoVehIndex !== -1) {
-    demoVehId = appState.vehicles[demoVehIndex].id;
-    appState.vehicles.splice(demoVehIndex, 1);
-  } else {
-    // Si démo sans nom spécifique
-    demoVehId = appState.activeVehicleId;
-    appState.vehicles = [];
-  }
+  // Supprimer les véhicules de démo
+  appState.vehicles = (appState.vehicles || []).filter(v => !v.isDemo);
 
-  // Nettoyer l'historique associé au véhicule supprimé
-  if (demoVehId) {
-    appState.history = (appState.history || []).filter(h => h.vehicleId !== demoVehId);
-  } else if (appState.vehicles.length === 0) {
-    appState.history = [];
-  }
+  // Supprimer les historiques de démo
+  appState.history = (appState.history || []).filter(h => !h.isDemo && !demoVehicleIds.has(h.vehicleId));
 
   appState.isDemo = false;
 
   if (appState.vehicles.length > 0) {
-    appState.activeVehicleId = appState.vehicles[0].id;
+    if (!appState.vehicles.some(v => v.id === appState.activeVehicleId)) {
+      appState.activeVehicleId = appState.vehicles[0].id;
+    }
   } else {
     appState.activeVehicleId = null;
-    appState.history = [];
   }
 
   saveState();
-  showToast("Données de la Renault Symbol supprimées avec succès.", 'info');
+  showToast("Données de démonstration supprimées avec succès.", 'info');
   renderApp();
 
   if (currentView === 'settings') {
@@ -1276,7 +1308,12 @@ function handleDeleteDemoData() {
 
 function checkOnboarding() {
   const modal = document.getElementById('onboardingModal');
-  if (!appState.vehicles || appState.vehicles.length === 0) {
+  const hasRoom = window.FamilyRoom && window.FamilyRoom.getStoredRoomProfile();
+  if ((!appState.vehicles || appState.vehicles.length === 0) && !hasRoom) {
+    const choiceSec = document.getElementById('onboardingChoiceSection');
+    const formSec = document.getElementById('onboardingFormSection');
+    if (choiceSec) choiceSec.classList.remove('hidden');
+    if (formSec) formSec.classList.add('hidden');
     modal.classList.remove('hidden');
   } else {
     modal.classList.add('hidden');
@@ -1314,7 +1351,11 @@ function handleOnboardingSubmit(e) {
     currentKm: kmVal,
     updateFrequency: frequency,
     kmLog: [{ date: todayIso, km: kmVal, predictedKm: kmVal }],
-    maintenanceItems: DEFAULT_MAINTENANCE_TYPES.map(def => ({
+    maintenanceItems: (
+      (appState && appState.settings && Array.isArray(appState.settings.defaultIntervals))
+        ? appState.settings.defaultIntervals
+        : DEFAULT_MAINTENANCE_TYPES
+    ).map(def => ({
       id: def.id,
       name: def.name,
       intervalKm: def.intervalKm,
@@ -1835,8 +1876,8 @@ function renderMaintenanceList(vehicle, engine) {
       card.innerHTML = `
         <div class="item-card-top">
           <div class="item-info">
-            <span class="item-name">${item.name}</span>
-            <span class="item-interval">${intervalDesc}</span>
+            <span class="item-name">${escapeHtml(item.name)}</span>
+            <span class="item-interval">${escapeHtml(intervalDesc)}</span>
           </div>
           ${badgeHtml}
         </div>
@@ -1875,14 +1916,14 @@ function renderMaintenanceList(vehicle, engine) {
     });
   });
 
-  listEl.querySelectorAll('.btn-open-done').forEach(btn => {
+  container.querySelectorAll('.btn-open-done').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.getAttribute('data-id');
       openDoneModal(id);
     });
   });
 
-  listEl.querySelectorAll('.btn-edit-maint').forEach(btn => {
+  container.querySelectorAll('.btn-edit-maint').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.getAttribute('data-id');
       openEditMaintenanceItemModal(id);
@@ -2025,9 +2066,9 @@ function renderHabitudesScreen(vehicle, engine) {
   const kpiAcc = document.getElementById('kpiAccuracy');
   const kpiAccSub = document.getElementById('kpiAccuracySub');
 
-  if (kpiDaily) kpiDaily.textContent = `${Math.round(engine.dailyRate)} km`;
-  if (kpiWeekly) kpiWeekly.textContent = `${Math.round(engine.weeklyRate)} km`;
-  if (kpiMonthly) kpiMonthly.textContent = `${Math.round(engine.monthlyRate)} km`;
+  if (kpiDaily) kpiDaily.textContent = engine.hasSufficientData ? `${Math.round(engine.dailyRate)} km` : 'Estimation indisponible';
+  if (kpiWeekly) kpiWeekly.textContent = engine.hasSufficientData ? `${Math.round(engine.weeklyRate)} km` : 'Estimation indisponible';
+  if (kpiMonthly) kpiMonthly.textContent = engine.hasSufficientData ? `${Math.round(engine.monthlyRate)} km` : 'Estimation indisponible';
 
   if (kpiAcc) {
     if (engine.accuracy !== null) {
@@ -2286,6 +2327,7 @@ function handleMaintenanceItemSubmit(e) {
 
   if (!vehicle.maintenanceItems) vehicle.maintenanceItems = [];
 
+  let itemToSync = null;
   if (editId) {
     const existing = vehicle.maintenanceItems.find(i => i.id === editId);
     if (existing) {
@@ -2294,6 +2336,7 @@ function handleMaintenanceItemSubmit(e) {
       existing.intervalMonths = monthsVal;
       existing.lastKm = lastKm;
       existing.lastDate = lastDate || null;
+      itemToSync = existing;
       showToast(`Entretien "${name}" mis à jour.`, 'success');
     }
   } else {
@@ -2306,10 +2349,17 @@ function handleMaintenanceItemSubmit(e) {
       lastDate: lastDate || null
     };
     vehicle.maintenanceItems.push(newItem);
+    itemToSync = newItem;
     showToast(`Entretien "${name}" ajouté avec succès.`, 'success');
   }
 
   saveState();
+
+  if (itemToSync && window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive()) {
+    itemToSync.vehicleId = vehicle.id;
+    window.FamilyRoom.saveMaintenanceItem(itemToSync).catch(err => console.warn('Erreur enregistrement entretien salle:', err));
+  }
+
   closeMaintenanceItemModal();
   renderApp();
 }
@@ -2326,6 +2376,10 @@ function handleDeleteMaintenanceItem() {
 
   const confirmDel = window.confirm(`Supprimer l'élément d'entretien "${item.name}" ?`);
   if (!confirmDel) return;
+
+  if (window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive()) {
+    window.FamilyRoom.deleteMaintenanceItem(editId).catch(err => console.warn('Erreur suppression entretien salle:', err));
+  }
 
   vehicle.maintenanceItems = vehicle.maintenanceItems.filter(i => i.id !== editId);
   saveState();
@@ -2439,24 +2493,30 @@ function handleDoneFormSubmit(e) {
 
   // Si le kilométrage saisi dépasse le kilométrage actuel du véhicule
   if (kmVal > vehicle.currentKm) {
-    const previousKm = vehicle.currentKm;
     vehicle.currentKm = kmVal;
 
     if (!vehicle.kmLog) vehicle.kmLog = [];
     const existingLogIdx = vehicle.kmLog.findIndex(l => l.date === dateVal);
     if (existingLogIdx >= 0) {
+      // Même jour : conserver le predictedKm d'origine de cette journée
       vehicle.kmLog[existingLogIdx].km = kmVal;
     } else {
+      const realPredicted = typeof predictKmForDate === 'function' ? predictKmForDate(vehicle, dateVal) : null;
       vehicle.kmLog.push({
         date: dateVal,
         km: kmVal,
-        predictedKm: previousKm
+        predictedKm: (typeof realPredicted === 'number' && !isNaN(realPredicted)) ? realPredicted : null
       });
       vehicle.kmLog.sort((a, b) => a.date.localeCompare(b.date));
     }
   }
 
-  // 5. Création de l'enregistrement d'historique
+  const currentProfile = (window.FamilyRoom && typeof window.FamilyRoom.getStoredRoomProfile === 'function')
+    ? window.FamilyRoom.getStoredRoomProfile()
+    : null;
+  const currentAuthorName = (currentProfile && currentProfile.myName) ? currentProfile.myName : null;
+
+  // 5. Création de l'enregistrement d'historique (avec auteur si en salle partagée)
   const record = {
     id: 'hist_' + Date.now(),
     vehicleId: vehicle.id,
@@ -2465,13 +2525,22 @@ function handleDoneFormSubmit(e) {
     km: kmVal,
     cost: costVal,
     garage: garageVal || '',
-    notes: notesVal || ''
+    notes: notesVal || '',
+    authorName: currentAuthorName
   };
 
   if (!appState.history) appState.history = [];
   appState.history.unshift(record);
 
   saveState();
+
+  // Synchronisation avec la salle familiale si active (Point 10)
+  if (window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive()) {
+    window.FamilyRoom.recordHistoryEntry(record, item).catch(err => {
+      console.warn("Erreur synchronisation intervention salle:", err);
+    });
+  }
+
   closeDoneModal();
   showToast(`✅ Entretien "${item.name}" enregistré avec succès !`, 'success');
 
@@ -2494,21 +2563,6 @@ function renderHistoryScreen() {
   const totalCountEl = document.getElementById('histTotalCount');
 
   if (!container) return;
-
-  // Auto-amorçage : si l'historique est vide et qu'on a un véhicule (démo ou existant)
-  if ((!appState.history || appState.history.length === 0) && appState.vehicles && appState.vehicles.length > 0) {
-    const isDemoVeh = appState.isDemo || appState.vehicles.some(v =>
-      (v.brand && v.brand.toLowerCase().includes('renault')) ||
-      (v.model && v.model.toLowerCase().includes('symbol')) ||
-      (v.name && v.name.toLowerCase().includes('voiture'))
-    );
-    if (isDemoVeh) {
-      const vehId = appState.activeVehicleId || appState.vehicles[0].id;
-      appState.history = createSeedHistory(vehId);
-      appState.isDemo = true;
-      saveState();
-    }
-  }
 
   // Si un seul véhicule, s'assurer que les historiques pointent bien vers son id
   if (appState.vehicles && appState.vehicles.length === 1 && appState.history && appState.history.length > 0) {
@@ -2682,7 +2736,10 @@ function renderHistoryScreen() {
       tr.innerHTML = `
         <td><strong>${formatDate(record.date)}</strong></td>
         <td><strong class="table-col-name">${escapeHtml(record.type)}</strong></td>
-        <td><span class="table-col-sub">🚗 ${escapeHtml(vehName)}</span></td>
+        <td>
+          <span class="table-col-sub">🚗 ${escapeHtml(vehName)}</span>
+          ${record.authorName ? `<br><span class="table-col-sub" style="color:var(--primary); font-weight:600; font-size:0.75rem;">👤 ${escapeHtml(record.authorName)}</span>` : ''}
+        </td>
         <td><span style="font-weight:700;">📍 ${formatKm(record.km)}</span></td>
         <td>${costHtml}</td>
         <td>${garageHtml}</td>
@@ -2717,6 +2774,10 @@ function renderHistoryScreen() {
         ? `<span class="history-pill history-pill-cost">💰 ${formatCost(record.cost)}</span>`
         : '';
 
+      const authorBadge = record.authorName
+        ? `<span class="history-pill history-pill-author">👤 ${escapeHtml(record.authorName)}</span>`
+        : '';
+
       const garageHtml = record.garage
         ? `<span class="history-pill">🏢 ${escapeHtml(record.garage)}</span>`
         : '';
@@ -2739,13 +2800,14 @@ function renderHistoryScreen() {
         <div class="history-card-pills">
           <span class="history-pill">📍 ${formatKm(record.km)}</span>
           ${costBadge}
+          ${authorBadge}
           ${garageHtml}
         </div>
 
         ${notesHtml}
 
         <div class="history-card-footer">
-          <span>Opération effectuée</span>
+          <span>Opération effectuée${record.authorName ? ` par <strong>${escapeHtml(record.authorName)}</strong>` : ''}</span>
           <button type="button" class="btn-sm btn-delete-hist" data-id="${record.id}" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
             🗑️ Supprimer
           </button>
@@ -2771,6 +2833,10 @@ function deleteHistoryRecord(id) {
 
   const confirmDel = window.confirm(`Supprimer cette intervention "${record.type}" du ${formatDate(record.date)} de l'historique ?`);
   if (!confirmDel) return;
+
+  if (window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive()) {
+    window.FamilyRoom.deleteHistoryEntry(id).catch(err => console.warn('Erreur suppression historique salle:', err));
+  }
 
   appState.history = appState.history.filter(h => h.id !== id);
   saveState();
@@ -2815,6 +2881,42 @@ function escapeIcsText(text) {
     .replace(/\r\n|\n|\r/g, '\\n');
 }
 
+/**
+ * Plie une ligne iCalendar à 75 octets maximum conformément au RFC 5545 (Section 3.1).
+ * Chaque ligne de continuation débute par un saut de ligne CRLF et une espace.
+ */
+function foldIcsLine(line) {
+  if (typeof TextEncoder === 'undefined') {
+    if (line.length <= 75) return line;
+    const parts = [line.slice(0, 75)];
+    for (let i = 75; i < line.length; i += 74) {
+      parts.push(' ' + line.slice(i, i + 74));
+    }
+    return parts.join('\r\n');
+  }
+
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const bytes = encoder.encode(line);
+  if (bytes.length <= 75) return line;
+
+  const parts = [];
+  let offset = 0;
+  while (offset < bytes.length) {
+    const maxLen = offset === 0 ? 75 : 74;
+    let end = Math.min(offset + maxLen, bytes.length);
+    if (end < bytes.length) {
+      while (end > offset && (bytes[end] & 0xC0) === 0x80) {
+        end--;
+      }
+    }
+    const chunkStr = decoder.decode(bytes.slice(offset, end));
+    parts.push(offset === 0 ? chunkStr : ' ' + chunkStr);
+    offset = end;
+  }
+  return parts.join('\r\n');
+}
+
 /** Déclenche le téléchargement côté client d'un fichier .ics */
 function downloadIcsFile(filename, content) {
   if (typeof document === 'undefined' || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
@@ -2840,7 +2942,8 @@ function generateSingleItemIcs(vehicle, item, due) {
   const dtStamp = getIcsTimestamp();
   const dtStart = formatIcsDate(due.targetDate);
   const dtEnd = formatIcsDate(addDaysToDate(due.targetDate, 1));
-  const uid = `maint-${item.id}-${vehicle.id}-${Date.now()}@carnet-entretien`;
+  // UID stable pour permettre la mise à jour de l'événement lors des ré-imports
+  const uid = `maint-${item.id}-${vehicle.id}@carnet-entretien`;
 
   const isEstimated = Boolean(due.isDateEstimated);
   const summary = `${item.name} - ${vehicle.brand} ${vehicle.model}${isEstimated ? ' (estimation)' : ''}`;
@@ -2896,20 +2999,32 @@ function generateSingleItemIcs(vehicle, item, due) {
     'END:VCALENDAR'
   ];
 
-  return lines.join('\r\n') + '\r\n';
+  return lines.map(foldIcsLine).join('\r\n') + '\r\n';
 }
 
 /** Génère le contenu iCalendar pour toutes les échéances prévues d'un véhicule */
 function generateAllItemsIcs(vehicle, itemsWithDue) {
-  const valid = itemsWithDue.filter(x => x.due && x.due.targetDate && x.due.status !== 'grey');
+  const todayIso = getTodayIsoString();
+  // Choix architectural : l'export global n'inclut que les échéances à venir ou échues aujourd'hui (targetDate >= todayIso).
+  // Les échéances antérieures sont exclues pour ne pas encombrer l'agenda avec des dates passées obsolètes.
+  const valid = itemsWithDue.filter(x => x.due && x.due.targetDate && x.due.status !== 'grey' && x.due.targetDate >= todayIso);
   if (valid.length === 0) return null;
 
   const dtStamp = getIcsTimestamp();
 
-  const events = valid.map(({ item, due }) => {
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Carnet d\'Entretien Automobile//FR',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH'
+  ];
+
+  valid.forEach(({ item, due }) => {
     const dtStart = formatIcsDate(due.targetDate);
     const dtEnd = formatIcsDate(addDaysToDate(due.targetDate, 1));
-    const uid = `maint-${item.id}-${vehicle.id}-${Date.now()}@carnet-entretien`;
+    // UID stable pour synchroniser/mettre à jour les événements existants
+    const uid = `maint-${item.id}-${vehicle.id}@carnet-entretien`;
     const isEstimated = Boolean(due.isDateEstimated);
     const summary = `${item.name} - ${vehicle.brand} ${vehicle.model}${isEstimated ? ' (estimation)' : ''}`;
 
@@ -2930,7 +3045,7 @@ function generateAllItemsIcs(vehicle, itemsWithDue) {
     descParts.push('', 'Généré par Carnet d\'Entretien Automobile.');
     const description = descParts.join('\n');
 
-    return [
+    lines.push(
       'BEGIN:VEVENT',
       `UID:${uid}`,
       `DTSTAMP:${dtStamp}`,
@@ -2950,20 +3065,11 @@ function generateAllItemsIcs(vehicle, itemsWithDue) {
       'TRIGGER:-P1D',
       'END:VALARM',
       'END:VEVENT'
-    ].join('\r\n');
+    );
   });
 
-  const lines = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Carnet d\'Entretien Automobile//FR',
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH',
-    events.join('\r\n'),
-    'END:VCALENDAR'
-  ];
-
-  return lines.join('\r\n') + '\r\n';
+  lines.push('END:VCALENDAR');
+  return lines.map(foldIcsLine).join('\r\n') + '\r\n';
 }
 
 /** Génère un rappel récurrent (RRULE) pour la saisie du kilométrage */
@@ -2972,7 +3078,7 @@ function generateRecurringReminderIcs(vehicle) {
   const todayIso = getTodayIsoString();
   const dtStart = formatIcsDate(todayIso);
   const dtEnd = formatIcsDate(addDaysToDate(todayIso, 1));
-  const uid = `rappel-km-${vehicle.id}-${Date.now()}@carnet-entretien`;
+  const uid = `rappel-km-${vehicle.id}@carnet-entretien`;
 
   const freq = vehicle.updateFrequency === 'daily' ? 'DAILY' : 'WEEKLY';
   const freqLabel = vehicle.updateFrequency === 'daily' ? 'quotidien' : 'hebdomadaire';
@@ -3004,7 +3110,7 @@ function generateRecurringReminderIcs(vehicle) {
     'END:VCALENDAR'
   ];
 
-  return lines.join('\r\n') + '\r\n';
+  return lines.map(foldIcsLine).join('\r\n') + '\r\n';
 }
 
 function exportSingleMaintenanceItemIcs(itemId) {
@@ -3047,13 +3153,14 @@ function exportAllMaintenanceItemsIcs() {
     due: calculateItemDueStatus(vehicle, item, engine)
   }));
 
-  const validItems = itemsWithDue.filter(x => x.due && x.due.targetDate && x.due.status !== 'grey');
+  const todayIso = getTodayIsoString();
+  const validItems = itemsWithDue.filter(x => x.due && x.due.targetDate && x.due.status !== 'grey' && x.due.targetDate >= todayIso);
   if (validItems.length === 0) {
-    showToast("Aucune échéance calculable pour l'agenda. Renseignez d'abord vos derniers entretiens.", 'warning');
+    showToast("Aucune échéance à venir à exporter vers l'agenda.", 'warning');
     return;
   }
 
-  const ics = generateAllItemsIcs(vehicle, itemsWithDue);
+  const ics = generateAllItemsIcs(vehicle, validItems);
   if (!ics) {
     showToast("Impossible de générer le fichier iCalendar.", 'error');
     return;
@@ -3156,9 +3263,14 @@ function renderKmLogList(vehicle) {
     const delta = entry.predictedKm ? entry.km - entry.predictedKm : 0;
     const deltaText = delta === 0 ? 'prévu pile' : (delta > 0 ? `+${delta} km vs prévu` : `${delta} km vs prévu`);
 
+    const authorHtml = entry.authorName
+      ? `<span class="kmlog-author">👤 ${escapeHtml(entry.authorName)}</span>`
+      : '';
+
     item.innerHTML = `
       <div class="kmlog-item-left">
         <span class="kmlog-date">${formatDate(entry.date)}</span>
+        ${authorHtml}
         <span class="kmlog-pred">Prédit : ${entry.predictedKm ? formatKm(entry.predictedKm) : '--'}</span>
       </div>
       <div class="kmlog-item-right">
@@ -3258,11 +3370,8 @@ function renderSettingsScreen() {
     }
   }
 
-  // 2. Statut réseau & Synchronisation Cloud
+  // 2. Statut réseau
   updateNetworkStatus();
-  if (typeof renderGistSyncSettings === 'function') {
-    renderGistSyncSettings();
-  }
 
   // 3. Liste ou Tableau des intervalles par défaut
   const container = document.getElementById('defaultIntervalsContainer') || document.getElementById('defaultIntervalsList');
@@ -3347,14 +3456,10 @@ function renderSettingsScreen() {
     }
   }
 
-  // 4. Carte Données de démonstration (Renault Symbol)
+  // 4. Carte Données de démonstration
   const demoCard = document.getElementById('settingsDemoCard');
   if (demoCard) {
-    const hasDemo = appState.isDemo || (appState.vehicles && appState.vehicles.some(v =>
-      (v.brand && v.brand.toLowerCase().includes('renault')) ||
-      (v.model && v.model.toLowerCase().includes('symbol')) ||
-      (v.name && v.name.toLowerCase().includes('symbol'))
-    ));
+    const hasDemo = Boolean(appState.isDemo || (appState.vehicles && appState.vehicles.some(v => v.isDemo)));
     if (hasDemo) {
       demoCard.classList.remove('hidden');
     } else {
@@ -3430,15 +3535,70 @@ function handleImportJsonBackup(event) {
         throw new Error("Structure manquante : aucun tableau 'vehicles' trouvé.");
       }
 
-      // Valider les véhicules
-      const areVehiclesValid = parsed.vehicles.every(v => v && v.id && v.name && typeof v.currentKm === 'number');
-      if (!areVehiclesValid) {
-        throw new Error("Un ou plusieurs véhicules dans la sauvegarde ont un format invalide.");
-      }
+      // Validation approfondie des véhicules
+      parsed.vehicles.forEach((v, vIdx) => {
+        if (!v || typeof v !== 'object') {
+          throw new Error(`Le véhicule #${vIdx + 1} n'est pas un objet valide.`);
+        }
+        if (!v.id || typeof v.id !== 'string') {
+          throw new Error(`Le véhicule #${vIdx + 1} n'a pas d'identifiant valide.`);
+        }
+        if (!v.name || typeof v.name !== 'string') {
+          throw new Error(`Le véhicule #${vIdx + 1} n'a pas de nom valide.`);
+        }
+        if (typeof v.currentKm !== 'number' || isNaN(v.currentKm) || v.currentKm < 0) {
+          throw new Error(`Kilométrage actuel invalide pour le véhicule "${v.name || v.id}".`);
+        }
+
+        // Validation des relevés kilométriques kmLog
+        if (!Array.isArray(v.kmLog)) {
+          throw new Error(`Le carnet de relevés kilométriques est manquant pour le véhicule "${v.name}".`);
+        }
+        v.kmLog.forEach((log, logIdx) => {
+          if (!log || typeof log !== 'object') {
+            throw new Error(`Relevé kilométrique #${logIdx + 1} invalide pour le véhicule "${v.name}".`);
+          }
+          if (typeof log.date !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(log.date)) {
+            throw new Error(`Date de relevé invalide (${log.date || 'vide'}) pour le véhicule "${v.name}". Format attendu : AAAA-MM-JJ.`);
+          }
+          if (typeof log.km !== 'number' || isNaN(log.km) || log.km < 0) {
+            throw new Error(`Valeur kilométrique invalide (${log.km}) pour le véhicule "${v.name}".`);
+          }
+        });
+
+        // Validation des éléments d'entretien maintenanceItems
+        if (!Array.isArray(v.maintenanceItems)) {
+          throw new Error(`La liste des éléments d'entretien est manquante pour le véhicule "${v.name}".`);
+        }
+        v.maintenanceItems.forEach((item, itemIdx) => {
+          if (!item || typeof item !== 'object') {
+            throw new Error(`Élément d'entretien #${itemIdx + 1} invalide pour le véhicule "${v.name}".`);
+          }
+          if (!item.id || typeof item.id !== 'string') {
+            throw new Error(`Identifiant d'entretien manquant pour l'élément #${itemIdx + 1}.`);
+          }
+          if (!item.name || typeof item.name !== 'string') {
+            throw new Error(`Nom d'entretien manquant pour l'élément "${item.id}".`);
+          }
+          if (item.intervalKm !== null && (typeof item.intervalKm !== 'number' || isNaN(item.intervalKm) || item.intervalKm <= 0)) {
+            throw new Error(`Intervalle kilométrique invalide pour "${item.name}" (nombre positif ou null attendu).`);
+          }
+          if (item.intervalMonths !== null && (typeof item.intervalMonths !== 'number' || isNaN(item.intervalMonths) || item.intervalMonths <= 0)) {
+            throw new Error(`Intervalle calendaire en mois invalide pour "${item.name}" (nombre positif ou null attendu).`);
+          }
+        });
+      });
 
       // Valider l'historique
-      if (parsed.history && !Array.isArray(parsed.history)) {
-        throw new Error("Format du journal d'historique invalide.");
+      if (parsed.history) {
+        if (!Array.isArray(parsed.history)) {
+          throw new Error("Format du journal d'historique invalide (tableau attendu).");
+        }
+        parsed.history.forEach((h, hIdx) => {
+          if (!h || typeof h !== 'object' || !h.id || typeof h.type !== 'string' || typeof h.date !== 'string') {
+            throw new Error(`Intervention #${hIdx + 1} invalide dans l'historique.`);
+          }
+        });
       }
 
       // Demande de confirmation avant écrasement
@@ -3593,422 +3753,8 @@ function updateNetworkStatus() {
   }
 }
 
-// ============================================================================
-// 12b. SYNCHRONISATION MULTI-APPAREILS (GITHUB GIST)
-// ============================================================================
 
-const GIST_SYNC_KEY = 'carnet_entretien_gist_sync_config';
-const GIST_SYNC_FILENAME = 'carnet_entretien_data.json';
-let gistSyncDebounceTimer = null;
-let isGistSyncing = false;
 
-function getGistSyncConfig() {
-  try {
-    const raw = localStorage.getItem(GIST_SYNC_KEY);
-    if (raw) {
-      const cfg = JSON.parse(raw);
-      if (cfg && cfg.token && cfg.gistId) return cfg;
-    }
-  } catch (e) {}
-  return null;
-}
-
-function saveGistSyncConfig(cfg) {
-  try {
-    localStorage.setItem(GIST_SYNC_KEY, JSON.stringify(cfg));
-  } catch (e) {}
-}
-
-function clearGistSyncConfig() {
-  try {
-    localStorage.removeItem(GIST_SYNC_KEY);
-  } catch (e) {}
-}
-
-function formatSyncRelativeTime(dateStr) {
-  if (!dateStr) return 'Jamais';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return 'Jamais';
-  const now = new Date();
-  const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000);
-  if (diffSec < 30) return "À l'instant";
-  if (diffSec < 60) return "Il y a moins d'une minute";
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `Il y a ${diffMin} min`;
-  const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) return `Il y a ${diffHours} h`;
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const hours = String(d.getHours()).padStart(2, '0');
-  const mins = String(d.getMinutes()).padStart(2, '0');
-  return `${day}/${month} à ${hours}:${mins}`;
-}
-
-function updateHeaderSyncUI(status, label) {
-  const headerBtn = document.getElementById('headerSyncStatus');
-  const headerText = document.getElementById('headerSyncText');
-  if (!headerBtn) return;
-
-  headerBtn.className = 'header-sync-status';
-  if (status === 'synced') {
-    headerBtn.classList.add('synced');
-    if (headerText) headerText.textContent = label || 'Sync 🟢';
-  } else if (status === 'syncing') {
-    headerBtn.classList.add('syncing');
-    if (headerText) headerText.textContent = label || 'Sync...';
-  } else if (status === 'error') {
-    headerBtn.classList.add('error');
-    if (headerText) headerText.textContent = label || 'Erreur ⚠️';
-  } else if (status === 'offline') {
-    headerBtn.classList.add('offline');
-    if (headerText) headerText.textContent = label || 'Hors-ligne';
-  } else {
-    if (headerText) headerText.textContent = 'Local';
-  }
-}
-
-function renderGistSyncSettings() {
-  const cfg = getGistSyncConfig();
-  const connectedView = document.getElementById('syncConnectedView');
-  const setupView = document.getElementById('syncSetupView');
-  const badge = document.getElementById('syncStatusBadge');
-  const gistIdShort = document.getElementById('syncGistIdShort');
-  const lastTime = document.getElementById('syncLastTimeDisplay');
-
-  if (cfg && cfg.token && cfg.gistId) {
-    if (connectedView) connectedView.classList.remove('hidden');
-    if (setupView) setupView.classList.add('hidden');
-    if (gistIdShort) {
-      gistIdShort.textContent = cfg.gistId.slice(0, 10) + '...';
-      gistIdShort.title = cfg.gistId;
-    }
-    if (lastTime) {
-      lastTime.textContent = formatSyncRelativeTime(cfg.lastSyncTime);
-    }
-    if (badge) {
-      badge.textContent = "Connecté 🟢";
-      badge.className = "vehicle-meta-badge status-badge-green";
-    }
-    updateHeaderSyncUI('synced', 'Sync 🟢');
-  } else {
-    if (connectedView) connectedView.classList.add('hidden');
-    if (setupView) setupView.classList.remove('hidden');
-    if (badge) {
-      badge.textContent = "Non synchronisé ⚪";
-      badge.className = "vehicle-meta-badge";
-    }
-    updateHeaderSyncUI('disconnected', 'Local');
-  }
-}
-
-async function pushStateToGist(force = false) {
-  const cfg = getGistSyncConfig();
-  if (!cfg || !cfg.token || !cfg.gistId) return;
-
-  if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
-    updateHeaderSyncUI('offline', 'Hors-ligne');
-    return;
-  }
-
-  const payloadString = JSON.stringify(appState, null, 2);
-  if (!force && cfg.lastSyncDataString === payloadString) {
-    return;
-  }
-
-  isGistSyncing = true;
-  updateHeaderSyncUI('syncing', 'Envoi...');
-
-  try {
-    const res = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
-      method: 'PATCH',
-      headers: {
-        'Accept': 'application/vnd.github+json',
-        'Authorization': `Bearer ${cfg.token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        description: 'Carnet d\'Entretien Auto - Synchronisation Cloud',
-        files: {
-          [GIST_SYNC_FILENAME]: {
-            content: payloadString
-          }
-        }
-      })
-    });
-
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.message || `Erreur HTTP ${res.status}`);
-    }
-
-    cfg.lastSyncTime = new Date().toISOString();
-    cfg.lastSyncDataString = payloadString;
-    saveGistSyncConfig(cfg);
-
-    updateHeaderSyncUI('synced', 'Sync 🟢');
-    renderGistSyncSettings();
-  } catch (err) {
-    console.error('Erreur push GitHub Gist:', err);
-    updateHeaderSyncUI('error', 'Erreur synchro');
-    const badge = document.getElementById('syncStatusBadge');
-    if (badge) {
-      badge.textContent = "Erreur de synchro ⚠️";
-      badge.className = "vehicle-meta-badge status-badge-orange";
-    }
-  } finally {
-    isGistSyncing = false;
-  }
-}
-
-async function pullStateFromGist(silent = false) {
-  const cfg = getGistSyncConfig();
-  if (!cfg || !cfg.token || !cfg.gistId) return;
-
-  if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
-    updateHeaderSyncUI('offline', 'Hors-ligne');
-    return;
-  }
-
-  isGistSyncing = true;
-  updateHeaderSyncUI('syncing', 'Vérification...');
-
-  try {
-    const res = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/vnd.github+json',
-        'Authorization': `Bearer ${cfg.token}`
-      }
-    });
-
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.message || `Erreur HTTP ${res.status}`);
-    }
-
-    const data = await res.json();
-    const file = data.files && data.files[GIST_SYNC_FILENAME];
-    if (!file || !file.content) {
-      await pushStateToGist(true);
-      return;
-    }
-
-    const remoteContent = file.content.trim();
-    const localContent = JSON.stringify(appState, null, 2);
-
-    if (remoteContent !== localContent && remoteContent !== cfg.lastSyncDataString) {
-      const parsed = JSON.parse(remoteContent);
-      if (parsed && Array.isArray(parsed.vehicles)) {
-        appState = parsed;
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-        } catch (e) {}
-
-        cfg.lastSyncTime = new Date().toISOString();
-        cfg.lastSyncDataString = remoteContent;
-        saveGistSyncConfig(cfg);
-
-        renderApp();
-        if (currentView === 'history') renderHistoryScreen();
-        if (currentView === 'habitudes') renderHabitudes();
-        if (currentView === 'settings') renderSettingsScreen();
-
-        if (!silent) {
-          showToast("☁️ Données synchronisées avec succès depuis votre autre appareil !", "success");
-        }
-      }
-    } else {
-      cfg.lastSyncTime = new Date().toISOString();
-      cfg.lastSyncDataString = remoteContent;
-      saveGistSyncConfig(cfg);
-    }
-
-    updateHeaderSyncUI('synced', 'Sync 🟢');
-    renderGistSyncSettings();
-  } catch (err) {
-    console.error('Erreur pull GitHub Gist:', err);
-    updateHeaderSyncUI('error', 'Erreur synchro');
-    if (!silent) {
-      showToast(`Échec de la synchronisation : ${err.message}`, "error");
-    }
-  } finally {
-    isGistSyncing = false;
-  }
-}
-
-function scheduleAutoSyncPush() {
-  const cfg = getGistSyncConfig();
-  if (!cfg || !cfg.token || !cfg.gistId) return;
-
-  if (gistSyncDebounceTimer) {
-    clearTimeout(gistSyncDebounceTimer);
-  }
-  gistSyncDebounceTimer = setTimeout(() => {
-    pushStateToGist();
-  }, 1200);
-}
-
-async function handleGistSyncFormSubmit(e) {
-  e.preventDefault();
-  const tokenInput = document.getElementById('syncGithubToken');
-  const gistIdInput = document.getElementById('syncGistIdInput');
-  const submitBtn = document.getElementById('btnSubmitGistSync');
-
-  const token = tokenInput ? tokenInput.value.trim() : '';
-  let gistId = gistIdInput ? gistIdInput.value.trim() : '';
-
-  if (!token) {
-    showToast("Veuillez renseigner votre jeton GitHub personnel.", "warning");
-    return;
-  }
-
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span>⏳ Connexion en cours...</span>';
-  }
-
-  try {
-    if (!gistId) {
-      const payloadString = JSON.stringify(appState, null, 2);
-      const createRes = await fetch('https://api.github.com/gists', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/vnd.github+json',
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          description: 'Carnet d\'Entretien Auto - Synchronisation Cloud',
-          public: false,
-          files: {
-            [GIST_SYNC_FILENAME]: {
-              content: payloadString
-            }
-          }
-        })
-      });
-
-      if (!createRes.ok) {
-        const errData = await createRes.json().catch(() => ({}));
-        throw new Error(errData.message || `Impossible de créer le Gist (${createRes.status})`);
-      }
-
-      const createdGist = await createRes.json();
-      gistId = createdGist.id;
-    }
-
-    const cfg = {
-      token: token,
-      gistId: gistId,
-      lastSyncTime: new Date().toISOString(),
-      lastSyncDataString: JSON.stringify(appState, null, 2)
-    };
-    saveGistSyncConfig(cfg);
-
-    await pullStateFromGist(true);
-
-    showToast("🎉 Synchronisation multi-appareils activée avec succès !", "success");
-    renderGistSyncSettings();
-  } catch (err) {
-    console.error('Erreur configuration synchro Gist:', err);
-    showToast(`Erreur : ${err.message}. Vérifiez que le jeton possède la permission 'gist'.`, "error", 6000);
-  } finally {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = '<span>🚀 Activer la synchronisation multi-appareils</span>';
-    }
-  }
-}
-
-function handleDisconnectSync() {
-  const confirmDisc = window.confirm("Déconnecter la synchronisation Cloud ? Vos données actuelles resteront enregistrées sur cet appareil.");
-  if (!confirmDisc) return;
-
-  clearGistSyncConfig();
-  renderGistSyncSettings();
-  showToast("Synchronisation Cloud désactivée.", "info");
-}
-
-function getMobileSyncUrl() {
-  const cfg = getGistSyncConfig();
-  if (!cfg) return null;
-  const baseUrl = window.location.origin + window.location.pathname;
-  return `${baseUrl}?syncToken=${encodeURIComponent(cfg.token)}&gistId=${encodeURIComponent(cfg.gistId)}`;
-}
-
-function handleShowQrSync() {
-  const syncUrl = getMobileSyncUrl();
-  if (!syncUrl) {
-    showToast("La synchronisation n'est pas configurée.", "warning");
-    return;
-  }
-
-  const modal = document.getElementById('syncQrModal');
-  const qrImg = document.getElementById('syncQrImage');
-  if (qrImg) {
-    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(syncUrl)}`;
-  }
-  if (modal) {
-    modal.classList.remove('hidden');
-  }
-}
-
-function handleCloseQrModal() {
-  const modal = document.getElementById('syncQrModal');
-  if (modal) {
-    modal.classList.add('hidden');
-  }
-}
-
-function handleCopyMobileLink() {
-  const syncUrl = getMobileSyncUrl();
-  if (!syncUrl) {
-    showToast("La synchronisation n'est pas configurée.", "warning");
-    return;
-  }
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(syncUrl)
-      .then(() => showToast("📋 Lien copié ! Ouvrez ce lien sur votre autre appareil pour vous connecter instantanément.", "success", 4500))
-      .catch(() => promptCopyFallback(syncUrl));
-  } else {
-    promptCopyFallback(syncUrl);
-  }
-}
-
-function promptCopyFallback(text) {
-  window.prompt("Copiez ce lien pour ouvrir l'application synchronisée sur un autre appareil :", text);
-}
-
-function handleSyncUrlParams() {
-  try {
-    const urlParams = new URLSearchParams(window.location.search);
-    const syncToken = urlParams.get('syncToken');
-    const gistId = urlParams.get('gistId');
-
-    if (syncToken && gistId) {
-      const cfg = {
-        token: syncToken,
-        gistId: gistId,
-        lastSyncTime: null,
-        lastSyncDataString: null
-      };
-      saveGistSyncConfig(cfg);
-
-      const cleanUrl = window.location.origin + window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
-
-      showToast("🔑 Identifiants de synchronisation configurés !", "info");
-      pullStateFromGist(false);
-      return true;
-    }
-  } catch (e) {
-    console.warn('Erreur analyse URL sync:', e);
-  }
-  return false;
-}
-
-// ============================================================================
 // 13. ENREGISTREMENT DES ÉVÉNEMENTS (LISTENERS)
 // ============================================================================
 
@@ -4088,7 +3834,10 @@ function attachEventListeners() {
   [
     document.getElementById('vehicleModal'),
     document.getElementById('maintenanceItemModal'),
-    document.getElementById('doneModal')
+    document.getElementById('doneModal'),
+    document.getElementById('modalCreateRoom'),
+    document.getElementById('modalJoinRoom'),
+    document.getElementById('modalShareInvite')
   ].forEach(modal => {
     if (modal) {
       modal.addEventListener('click', (e) => {
@@ -4105,10 +3854,190 @@ function attachEventListeners() {
       closeVehicleModal();
       closeMaintenanceItemModal();
       closeDoneModal();
+      document.getElementById('modalCreateRoom')?.classList.add('hidden');
+      document.getElementById('modalJoinRoom')?.classList.add('hidden');
+      document.getElementById('modalShareInvite')?.classList.add('hidden');
     }
   });
 
-  // Formulaire onboarding
+  // Étape 3 : Onboarding & Choix du mode
+  document.getElementById('btnChoiceSolo')?.addEventListener('click', () => {
+    document.getElementById('onboardingChoiceSection')?.classList.add('hidden');
+    document.getElementById('onboardingFormSection')?.classList.remove('hidden');
+  });
+
+  document.getElementById('btnBackToChoice')?.addEventListener('click', () => {
+    document.getElementById('onboardingFormSection')?.classList.add('hidden');
+    document.getElementById('onboardingChoiceSection')?.classList.remove('hidden');
+  });
+
+  document.getElementById('btnChoiceCreateRoom')?.addEventListener('click', () => {
+    document.getElementById('onboardingModal')?.classList.add('hidden');
+    const migrateGrp = document.getElementById('createMigrateGroup');
+    if (migrateGrp) {
+      migrateGrp.style.display = (appState.vehicles && appState.vehicles.length > 0) ? 'flex' : 'none';
+    }
+    document.getElementById('modalCreateRoom')?.classList.remove('hidden');
+  });
+
+  document.getElementById('btnChoiceJoinRoom')?.addEventListener('click', () => {
+    document.getElementById('onboardingModal')?.classList.add('hidden');
+    document.getElementById('modalJoinRoom')?.classList.remove('hidden');
+  });
+
+  document.getElementById('btnCloseCreateRoom')?.addEventListener('click', () => {
+    document.getElementById('modalCreateRoom')?.classList.add('hidden');
+    if (!appState.vehicles || appState.vehicles.length === 0) {
+      document.getElementById('onboardingModal')?.classList.remove('hidden');
+    }
+  });
+
+  document.getElementById('btnCancelCreateRoom')?.addEventListener('click', () => {
+    document.getElementById('modalCreateRoom')?.classList.add('hidden');
+    if (!appState.vehicles || appState.vehicles.length === 0) {
+      document.getElementById('onboardingModal')?.classList.remove('hidden');
+    }
+  });
+
+  document.getElementById('btnCloseJoinRoom')?.addEventListener('click', () => {
+    document.getElementById('modalJoinRoom')?.classList.add('hidden');
+    if (!appState.vehicles || appState.vehicles.length === 0) {
+      document.getElementById('onboardingModal')?.classList.remove('hidden');
+    }
+  });
+
+  document.getElementById('btnCancelJoinRoom')?.addEventListener('click', () => {
+    document.getElementById('modalJoinRoom')?.classList.add('hidden');
+    if (!appState.vehicles || appState.vehicles.length === 0) {
+      document.getElementById('onboardingModal')?.classList.remove('hidden');
+    }
+  });
+
+  // Formulaire Créer une salle
+  const formCreate = document.getElementById('formCreateRoom');
+  if (formCreate) {
+    formCreate.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!window.FamilyRoom) {
+        showToast("Le module Salle Familiale est en cours d'initialisation...", "warning");
+        return;
+      }
+      const roomName = document.getElementById('createRoomName').value.trim();
+      const ownerName = document.getElementById('createOwnerName').value.trim();
+      const expiryHours = parseInt(document.getElementById('createExpiryHours').value, 10) || 24;
+      const maxUses = parseInt(document.getElementById('createMaxUses').value, 10) || 5;
+      const migrateLocal = document.getElementById('createMigrateLocal')?.checked || false;
+
+      const submitBtn = formCreate.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Création en cours...";
+
+      try {
+        const res = await window.FamilyRoom.createFamilyRoom({
+          roomName,
+          ownerName,
+          expiryHours,
+          maxUses,
+          migrateLocal
+        });
+        document.getElementById('modalCreateRoom')?.classList.add('hidden');
+        window.FamilyRoom.showShareInviteModal({
+          inviteUrl: res.inviteUrl,
+          inviteCode: res.inviteCode,
+          roomName: res.profile.roomName
+        });
+        showToast("Salle familiale créée avec succès !", "success");
+        renderApp();
+        window.FamilyRoom.renderSettingsRoomSection();
+      } catch (err) {
+        showToast("Erreur lors de la création : " + err.message, "error");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Créer & Inviter";
+      }
+    });
+  }
+
+  // Formulaire Rejoindre une salle
+  const formJoin = document.getElementById('formJoinRoom');
+  if (formJoin) {
+    formJoin.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!window.FamilyRoom) {
+        showToast("Le module Salle Familiale est en cours d'initialisation...", "warning");
+        return;
+      }
+      const memberName = document.getElementById('joinMemberName').value.trim();
+      const inviteInput = document.getElementById('joinInviteCode').value.trim();
+
+      const submitBtn = formJoin.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Vérification...";
+
+      try {
+        const res = await window.FamilyRoom.joinFamilyRoom({
+          inviteInput,
+          memberName
+        });
+        document.getElementById('modalJoinRoom')?.classList.add('hidden');
+        window.FamilyRoom.showPendingApprovalModal(res.roomName, res.profile.myName);
+        showToast("Demande d'accès envoyée au propriétaire !", "info");
+      } catch (err) {
+        showToast("Erreur d'accès : " + err.message, "error");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Demander l'accès";
+      }
+    });
+  }
+
+  // Annuler la demande d'accès en attente
+  document.getElementById('btnCancelPendingJoin')?.addEventListener('click', async () => {
+    if (confirm("Voulez-vous annuler votre demande d'accès ?")) {
+      if (window.FamilyRoom) await window.FamilyRoom.leaveRoom();
+      document.getElementById('modalPendingApproval')?.classList.add('hidden');
+      renderApp();
+    }
+  });
+
+  // Modale Partage d'invitation
+  ['btnCloseShareInvite', 'btnCloseShareModalBtn'].forEach(id => {
+    document.getElementById(id)?.addEventListener('click', () => {
+      document.getElementById('modalShareInvite')?.classList.add('hidden');
+    });
+  });
+
+  document.getElementById('btnShareWhatsApp')?.addEventListener('click', () => {
+    const url = document.getElementById('shareInviteUrl')?.value;
+    const roomTitle = document.getElementById('shareInviteRoomTitle')?.textContent;
+    if (window.FamilyRoom && url) {
+      window.FamilyRoom.shareInviteLink(url, roomTitle);
+    }
+  });
+
+  document.getElementById('btnCopyInviteLink')?.addEventListener('click', () => {
+    const url = document.getElementById('shareInviteUrl')?.value;
+    if (url) {
+      navigator.clipboard.writeText(url).then(() => {
+        showToast("Lien d'invitation copié !", "success");
+      }).catch(() => {
+        showToast("Impossible de copier automatiquement.", "warning");
+      });
+    }
+  });
+
+  document.getElementById('btnCopyInviteCode')?.addEventListener('click', () => {
+    const code = document.getElementById('shareInviteCode')?.value;
+    if (code) {
+      navigator.clipboard.writeText(code).then(() => {
+        showToast("Code d'accès copié !", "success");
+      }).catch(() => {
+        showToast("Impossible de copier automatiquement.", "warning");
+      });
+    }
+  });
+
+  // Formulaire onboarding classique
   document.getElementById('onboardingForm').addEventListener('submit', handleOnboardingSubmit);
   document.getElementById('btnLoadDemoFromOnboard').addEventListener('click', handleLoadDemoFromOnboard);
 
@@ -4186,69 +4115,6 @@ function attachEventListeners() {
     });
   });
 
-  // Synchronisation Multi-Appareils (GitHub Gist)
-  const gistForm = document.getElementById('gistSyncForm');
-  if (gistForm) gistForm.addEventListener('submit', handleGistSyncFormSubmit);
-
-  const btnSyncNow = document.getElementById('btnSyncNow');
-  if (btnSyncNow) btnSyncNow.addEventListener('click', () => {
-    showToast("Synchronisation en cours...", "info", 1500);
-    pullStateFromGist(false);
-  });
-
-  const btnShowQr = document.getElementById('btnShowQrSync');
-  if (btnShowQr) btnShowQr.addEventListener('click', handleShowQrSync);
-
-  const btnCopyMobLink = document.getElementById('btnCopyMobileLink');
-  if (btnCopyMobLink) btnCopyMobLink.addEventListener('click', handleCopyMobileLink);
-
-  const btnCopyQrLink = document.getElementById('btnCopyQrDirectLink');
-  if (btnCopyQrLink) btnCopyQrLink.addEventListener('click', handleCopyMobileLink);
-
-  const btnDiscSync = document.getElementById('btnDisconnectSync');
-  if (btnDiscSync) btnDiscSync.addEventListener('click', handleDisconnectSync);
-
-  const btnCloseQr = document.getElementById('btnCloseSyncQrModal');
-  if (btnCloseQr) btnCloseQr.addEventListener('click', handleCloseQrModal);
-
-  const btnDismissQr = document.getElementById('btnDismissSyncQrModal');
-  if (btnDismissQr) btnDismissQr.addEventListener('click', handleCloseQrModal);
-
-  const qrModal = document.getElementById('syncQrModal');
-  if (qrModal) {
-    qrModal.addEventListener('click', (e) => {
-      if (e.target === qrModal) handleCloseQrModal();
-    });
-  }
-
-  const btnCopyGist = document.getElementById('btnCopyGistId');
-  if (btnCopyGist) {
-    btnCopyGist.addEventListener('click', () => {
-      const cfg = getGistSyncConfig();
-      if (cfg && cfg.gistId) {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(cfg.gistId).then(() => showToast("ID du Gist copié !", "success"));
-        } else {
-          promptCopyFallback(cfg.gistId);
-        }
-      }
-    });
-  }
-
-  // Clic sur l'indicateur de synchronisation dans l'en-tête
-  const headerSync = document.getElementById('headerSyncStatus');
-  if (headerSync) {
-    headerSync.addEventListener('click', () => {
-      switchView('settings');
-      const card = document.getElementById('settingsSyncCard');
-      if (card) {
-        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        card.style.transition = 'outline 0.3s ease';
-        card.style.outline = '2px solid var(--primary)';
-        setTimeout(() => { card.style.outline = 'none'; }, 1500);
-      }
-    });
-  }
 }
 
 // ============================================================================
@@ -4258,50 +4124,14 @@ function attachEventListeners() {
 window.addEventListener('DOMContentLoaded', () => {
   const hasData = loadState();
   if (!hasData) {
-    // Premier lancement : charger les données de démonstration de la Renault Symbol
-    initDemoState();
+    // Premier lancement : aucun véhicule chargé, ce qui affichera l'onboarding au renderApp()
   }
-
-  // Vérifier la présence de paramètres de synchronisation dans l'URL (?syncToken=...&gistId=...)
-  handleSyncUrlParams();
 
   attachEventListeners();
   renderApp();
 
-  // Si la synchronisation est configurée, vérifier immédiatement les mises à jour distantes
-  const syncCfg = getGistSyncConfig();
-  if (syncCfg) {
-    pullStateFromGist(true);
-  }
-
-  // Synchronisation réactive au focus et au changement de visibilité d'onglet
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && getGistSyncConfig()) {
-      pullStateFromGist(true);
-    }
-  });
-
-  window.addEventListener('focus', () => {
-    if (getGistSyncConfig()) {
-      pullStateFromGist(true);
-    }
-  });
-
-  // Vérification périodique automatique toutes les 20 secondes en arrière-plan
-  setInterval(() => {
-    if (!document.hidden && navigator.onLine && getGistSyncConfig()) {
-      pullStateFromGist(true);
-    }
-  }, 20000);
-
   // Détection connectivité réseau (En ligne / Hors-ligne)
-  window.addEventListener('online', () => {
-    updateNetworkStatus();
-    if (getGistSyncConfig()) {
-      pushStateToGist();
-      pullStateFromGist(true);
-    }
-  });
+  window.addEventListener('online', updateNetworkStatus);
   window.addEventListener('offline', updateNetworkStatus);
   updateNetworkStatus();
 

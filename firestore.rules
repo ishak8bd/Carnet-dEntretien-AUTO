@@ -1,0 +1,422 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: rooms/{roomId}
+    // Fields:
+    //   - name: string (1-100 chars, required) - Room / family display name
+    //   - ownerUid: string (UID, required, immutable) - Creator and primary owner
+    //   - createdAt: timestamp (required, immutable) - Room creation timestamp
+    //   - lastActivityAt: timestamp (required) - Last activity / ping timestamp
+    //   - schemaVersion: number (required) - Database schema version
+    //
+    // Subcollection: rooms/{roomId}/members/{uid}
+    // Document ID: Firebase Auth UID of member
+    // Fields:
+    //   - name: string (1-100 chars, required) - Member display name
+    //   - role: string ("owner" | "member", required) - Member permission role
+    //   - status: string ("pending" | "approved", required) - Member approval state
+    //   - joinedAt: timestamp (required, immutable) - When membership record was created
+    //   - lastSeenAt: timestamp (required) - Last activity timestamp of this user
+    //
+    // Subcollection: rooms/{roomId}/invites/{inviteId}
+    // Document ID: High-entropy URL-safe token (>= 128-bit)
+    // Fields:
+    //   - inviteId: string (16-128 chars, required, immutable) - Invite identifier
+    //   - expiresAt: timestamp (required) - Expiration timestamp
+    //   - maxUses: number (>= 1, required) - Maximum allowed redemptions
+    //   - uses: number (>= 0, required) - Current number of uses
+    //   - active: bool (required) - Soft toggle to disable invite
+    //   - createdBy: string (UID, required, immutable) - Owner who created the invite
+    //
+    // Subcollection: rooms/{roomId}/vehicles/{vehicleId}
+    // Fields:
+    //   - name: string (1-100 chars, required) - Vehicle nickname
+    //   - brand: string (1-100 chars, required) - Make / brand
+    //   - model: string (1-100 chars, required) - Vehicle model
+    //   - year: number (1900-2100, required) - Manufacture year
+    //   - plate: string (0-30 chars, optional) - License plate
+    //   - currentKm: number (>= 0, required) - Current odometer reading
+    //   - updateFrequency: string|number (optional) - Expected reading interval
+    //   - isDemo: bool (required) - Flag for demo / sample vehicles
+    //   - updatedAt: timestamp (required) - Last modification timestamp
+    //   - updatedBy: string (UID, required) - UID of editor
+    //
+    // Subcollection: rooms/{roomId}/kmLogs/{logId}
+    // Fields:
+    //   - vehicleId: string (1-100 chars, required) - Associated vehicle ID
+    //   - date: string|timestamp (required) - Reading date
+    //   - km: number (>= 0, required) - Recorded odometer km
+    //   - predictedKm: number (>= 0, required) - Predicted odometer km
+    //   - authorUid: string (UID, required, immutable) - Submitter UID
+    //   - authorName: string (1-100 chars, required) - Submitter display name
+    //   - createdAt: timestamp (required, immutable) - Record creation timestamp
+    //
+    // Subcollection: rooms/{roomId}/items/{itemId}
+    // Fields:
+    //   - vehicleId: string (1-100 chars, required) - Associated vehicle ID
+    //   - name: string (1-100 chars, required) - Maintenance component name
+    //   - intervalKm: number|null (optional) - Km replacement interval (null if time-only)
+    //   - intervalMonths: number (>= 0, required) - Calendar months interval
+    //   - lastDate: string|timestamp (required) - Date of last service
+    //   - lastKm: number (>= 0, required) - Odometer reading at last service
+    //   - updatedAt: timestamp (required) - Last modification timestamp
+    //   - updatedBy: string (UID, required) - UID of editor
+    //   - deleted: bool (required) - Soft delete flag
+    //
+    // Subcollection: rooms/{roomId}/history/{historyId}
+    // Fields:
+    //   - vehicleId: string (1-100 chars, required) - Associated vehicle ID
+    //   - type: string (1-50 chars, required) - Operation type (e.g. vidange, plaquettes)
+    //   - date: string|timestamp (required) - Date of intervention
+    //   - km: number (>= 0, required) - Odometer at intervention
+    //   - cost: number (>= 0, required) - Cost of operation
+    //   - garage: string (0-150 chars, required) - Workshop / garage name
+    //   - notes: string (0-1000 chars, required) - Additional notes
+    //   - authorUid: string (UID, required, immutable) - Submitter UID
+    //   - authorName: string (1-100 chars, required) - Submitter display name
+    //   - createdAt: timestamp (required, immutable) - Record creation timestamp
+    //
+    // Subcollection: rooms/{roomId}/activity/{activityId}
+    // Fields:
+    //   - text: string (1-500 chars, required) - Human-readable activity message
+    //   - authorUid: string (UID, required, immutable) - Submitter UID
+    //   - authorName: string (1-100 chars, required) - Submitter display name
+    //   - createdAt: timestamp (required, immutable) - Activity log timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function isRoomOwner(roomId) {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/rooms/$(roomId)) &&
+         request.auth.uid == get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid) ||
+        (existsAfter(/databases/$(database)/documents/rooms/$(roomId)) &&
+         request.auth.uid == getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid)
+      );
+    }
+
+    function isApprovedMember(roomId) {
+      return isAuthenticated() && (
+        isRoomOwner(roomId) ||
+        (
+          exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid)).data.status == 'approved'
+        )
+      );
+    }
+
+    function isValidDate(val) {
+      return (val is string && val.size() >= 8 && val.size() <= 35) || val is timestamp;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidRoom(data) {
+      return data.keys().hasAll(['name', 'ownerUid', 'createdAt', 'lastActivityAt', 'schemaVersion']) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128 &&
+        data.createdAt is timestamp &&
+        data.lastActivityAt is timestamp &&
+        data.schemaVersion is number;
+    }
+
+    function isValidMember(data) {
+      return data.keys().hasAll(['name', 'role', 'status', 'joinedAt', 'lastSeenAt']) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        data.role in ['owner', 'member'] &&
+        data.status in ['pending', 'approved'] &&
+        data.joinedAt is timestamp &&
+        data.lastSeenAt is timestamp;
+    }
+
+    function isValidInvite(data) {
+      return data.keys().hasAll(['inviteId', 'expiresAt', 'maxUses', 'uses', 'active', 'createdBy']) &&
+        data.inviteId is string && data.inviteId.size() >= 16 && data.inviteId.size() <= 128 &&
+        data.expiresAt is timestamp &&
+        data.maxUses is number && data.maxUses >= 1 &&
+        data.uses is number && data.uses >= 0 &&
+        data.active is bool &&
+        data.createdBy is string && data.createdBy.size() >= 1 && data.createdBy.size() <= 128;
+    }
+
+    function isValidVehicle(data) {
+      return data.keys().hasAll(['name', 'brand', 'model', 'year', 'currentKm', 'isDemo', 'updatedAt', 'updatedBy']) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        data.brand is string && data.brand.size() >= 1 && data.brand.size() <= 100 &&
+        data.model is string && data.model.size() >= 1 && data.model.size() <= 100 &&
+        data.year is number && data.year >= 1900 && data.year <= 2100 &&
+        (!('plate' in data) || (data.plate is string && data.plate.size() <= 30)) &&
+        data.currentKm is number && data.currentKm >= 0 &&
+        (!('updateFrequency' in data) || (data.updateFrequency is string && data.updateFrequency.size() <= 50) || data.updateFrequency is number) &&
+        data.isDemo is bool &&
+        data.updatedAt is timestamp &&
+        data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 128;
+    }
+
+    function isValidKmLog(data) {
+      return data.keys().hasAll(['vehicleId', 'date', 'km', 'predictedKm', 'authorUid', 'authorName', 'createdAt']) &&
+        data.vehicleId is string && data.vehicleId.size() >= 1 && data.vehicleId.size() <= 100 &&
+        isValidDate(data.date) &&
+        data.km is number && data.km >= 0 &&
+        (data.predictedKm == null || (data.predictedKm is number && data.predictedKm >= 0)) &&
+        data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 &&
+        data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 100 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidItem(data) {
+      return data.keys().hasAll(['vehicleId', 'name', 'intervalMonths', 'lastDate', 'lastKm', 'updatedAt', 'updatedBy', 'deleted']) &&
+        data.vehicleId is string && data.vehicleId.size() >= 1 && data.vehicleId.size() <= 100 &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        (!('intervalKm' in data) || data.intervalKm == null || (data.intervalKm is number && data.intervalKm > 0)) &&
+        data.intervalMonths is number && data.intervalMonths >= 0 &&
+        (data.lastDate == null || isValidDate(data.lastDate)) &&
+        (data.lastKm == null || (data.lastKm is number && data.lastKm >= 0)) &&
+        data.updatedAt is timestamp &&
+        data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 128 &&
+        data.deleted is bool;
+    }
+
+    function isValidHistory(data) {
+      return data.keys().hasAll(['vehicleId', 'type', 'date', 'km', 'cost', 'garage', 'notes', 'authorUid', 'authorName', 'createdAt']) &&
+        data.vehicleId is string && data.vehicleId.size() >= 1 && data.vehicleId.size() <= 100 &&
+        data.type is string && data.type.size() >= 1 && data.type.size() <= 50 &&
+        isValidDate(data.date) &&
+        data.km is number && data.km >= 0 &&
+        (data.cost == null || (data.cost is number && data.cost >= 0)) &&
+        data.garage is string && data.garage.size() <= 150 &&
+        data.notes is string && data.notes.size() <= 1000 &&
+        data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 &&
+        data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 100 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidActivity(data) {
+      return data.keys().hasAll(['text', 'authorUid', 'authorName', 'createdAt']) &&
+        data.text is string && data.text.size() >= 1 && data.text.size() <= 500 &&
+        data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 &&
+        data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 100 &&
+        data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Root Rule: Default Deny
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // Collection: rooms
+    // ===============================================================
+    match /rooms/{roomId} {
+      // Read: allowed if room owner or approved member
+      allow read: if isRoomOwner(roomId) || isApprovedMember(roomId);
+
+      // Create: user creates room and sets themselves as ownerUid
+      allow create: if isAuthenticated() &&
+                    request.resource.data.ownerUid == request.auth.uid &&
+                    isValidRoom(request.resource.data);
+
+      // Update:
+      // - Room owner can update room details (ownerUid and createdAt immutable)
+      // - Approved members can only update lastActivityAt
+      allow update: if (
+        isRoomOwner(roomId) &&
+        isValidRoom(request.resource.data) &&
+        request.resource.data.ownerUid == resource.data.ownerUid &&
+        request.resource.data.createdAt == resource.data.createdAt
+      ) || (
+        isApprovedMember(roomId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActivityAt']) &&
+        request.resource.data.lastActivityAt is timestamp
+      );
+
+      // Delete: only room owner
+      allow delete: if isRoomOwner(roomId);
+
+      // -------------------------------------------------------------
+      // Subcollection: members
+      // -------------------------------------------------------------
+      match /members/{uid} {
+        // Read: approved members can list members; users can read their own status (including pending)
+        allow read: if isApprovedMember(roomId) || isSelf(uid);
+
+        // Create:
+        // - Owner self-creates initial owner doc (role == 'owner', status == 'approved')
+        // - Joiner self-creates pending member doc (role == 'member', status == 'pending')
+        allow create: if isValidMember(request.resource.data) && (
+          (
+            isSelf(uid) &&
+            request.resource.data.role == 'owner' &&
+            request.resource.data.status == 'approved' &&
+            isRoomOwner(roomId)
+          ) || (
+            isSelf(uid) &&
+            request.resource.data.role == 'member' &&
+            request.resource.data.status == 'pending'
+          )
+        );
+
+        // Update:
+        // - Room owner can approve members and manage roles (joinedAt immutable)
+        // - Self can update name or lastSeenAt without modifying role or status
+        allow update: if isValidMember(request.resource.data) &&
+          request.resource.data.joinedAt == resource.data.joinedAt && (
+            isRoomOwner(roomId) ||
+            (
+              isSelf(uid) &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeenAt', 'name']) &&
+              request.resource.data.role == resource.data.role &&
+              request.resource.data.status == resource.data.status
+            )
+          );
+
+        // Delete: room owner can remove members; members can leave the room
+        allow delete: if isRoomOwner(roomId) || isSelf(uid);
+      }
+
+      // -------------------------------------------------------------
+      // Subcollection: invites
+      // -------------------------------------------------------------
+      match /invites/{inviteId} {
+        // Read: approved members can view invites; joiners can read active, unexpired, unexhausted invites
+        allow read: if isApprovedMember(roomId) || (
+          isAuthenticated() &&
+          resource.data.active == true &&
+          resource.data.expiresAt > request.time &&
+          resource.data.uses < resource.data.maxUses
+        );
+
+        // Create: only room owner
+        allow create: if isRoomOwner(roomId) &&
+                         isValidInvite(request.resource.data) &&
+                         request.resource.data.createdBy == request.auth.uid;
+
+        // Update:
+        // - Room owner can edit invite details (inviteId and createdBy immutable)
+        // - Joiner can atomically increment uses (+1) on active, valid invites
+        allow update: if (
+          isRoomOwner(roomId) &&
+          isValidInvite(request.resource.data) &&
+          request.resource.data.inviteId == resource.data.inviteId &&
+          request.resource.data.createdBy == resource.data.createdBy
+        ) || (
+          isAuthenticated() &&
+          resource.data.active == true &&
+          resource.data.expiresAt > request.time &&
+          resource.data.uses < resource.data.maxUses &&
+          request.resource.data.uses == resource.data.uses + 1 &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uses'])
+        );
+
+        // Delete: only room owner
+        allow delete: if isRoomOwner(roomId);
+      }
+
+      // -------------------------------------------------------------
+      // Subcollection: vehicles
+      // -------------------------------------------------------------
+      match /vehicles/{vehicleId} {
+        allow read: if isApprovedMember(roomId);
+
+        allow create: if isApprovedMember(roomId) &&
+                         isValidVehicle(request.resource.data) &&
+                         request.resource.data.updatedBy == request.auth.uid;
+
+        allow update: if isApprovedMember(roomId) &&
+                         isValidVehicle(request.resource.data) &&
+                         request.resource.data.updatedBy == request.auth.uid;
+
+        allow delete: if isApprovedMember(roomId);
+      }
+
+      // -------------------------------------------------------------
+      // Subcollection: items (Maintenance items, supports soft delete)
+      // -------------------------------------------------------------
+      match /items/{itemId} {
+        allow read: if isApprovedMember(roomId);
+
+        allow create: if isApprovedMember(roomId) &&
+                         isValidItem(request.resource.data) &&
+                         request.resource.data.updatedBy == request.auth.uid;
+
+        allow update: if isApprovedMember(roomId) &&
+                         isValidItem(request.resource.data) &&
+                         request.resource.data.updatedBy == request.auth.uid &&
+                         request.resource.data.vehicleId == resource.data.vehicleId;
+
+        allow delete: if isApprovedMember(roomId);
+      }
+
+      // -------------------------------------------------------------
+      // Subcollection: history (Intervention history log)
+      // -------------------------------------------------------------
+      match /history/{historyId} {
+        allow read: if isApprovedMember(roomId);
+
+        allow create: if isApprovedMember(roomId) &&
+                         isValidHistory(request.resource.data) &&
+                         request.resource.data.authorUid == request.auth.uid;
+
+        allow update: if isApprovedMember(roomId) &&
+                         isValidHistory(request.resource.data) &&
+                         request.resource.data.authorUid == resource.data.authorUid &&
+                         request.resource.data.createdAt == resource.data.createdAt &&
+                         request.resource.data.vehicleId == resource.data.vehicleId;
+
+        allow delete: if isApprovedMember(roomId);
+      }
+
+      // -------------------------------------------------------------
+      // Subcollection: kmLogs (Odometer logs, append-only)
+      // -------------------------------------------------------------
+      match /kmLogs/{logId} {
+        allow read: if isApprovedMember(roomId);
+
+        allow create: if isApprovedMember(roomId) &&
+                         request.resource.data.authorUid == request.auth.uid &&
+                         isValidKmLog(request.resource.data);
+
+        // Km logs are append-only; updates prohibited
+        allow update: if false;
+
+        // Delete allowed by room owner or original author
+        allow delete: if isRoomOwner(roomId) ||
+                         (isAuthenticated() && resource.data.authorUid == request.auth.uid);
+      }
+
+      // -------------------------------------------------------------
+      // Subcollection: activity (Audit activity trail, append-only)
+      // -------------------------------------------------------------
+      match /activity/{activityId} {
+        allow read: if isApprovedMember(roomId);
+
+        allow create: if isApprovedMember(roomId) &&
+                         request.resource.data.authorUid == request.auth.uid &&
+                         isValidActivity(request.resource.data);
+
+        // Activity log is strictly append-only; updates and deletes prohibited
+        allow update, delete: if false;
+      }
+    }
+  }
+}

@@ -2213,137 +2213,327 @@ body {
 }
 
 /* ==========================================================================
-   Synchronisation Multi-Appareils (GitHub Gist)
+   Étape 3 : Salle Familiale (Family Room) - Modales, Bannières & Choix
    ========================================================================== */
 
-/* Indicateur de synchro dans l'en-tête */
-.header-sync-status {
-  display: inline-flex;
+.onboarding-choice-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.onboarding-choice-card {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border-radius: var(--radius-full);
+  gap: 14px;
   background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: var(--transition);
-  user-select: none;
-}
-
-.header-sync-status:hover {
-  background-color: var(--bg-card-subtle);
-  border-color: var(--primary);
-  color: var(--text-main);
-}
-
-.header-sync-status .sync-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: var(--text-muted);
-  display: inline-block;
-  transition: var(--transition);
-}
-
-.header-sync-status.synced {
-  border-color: rgba(16, 185, 129, 0.4);
-  color: var(--success-text);
-  background-color: var(--success-subtle);
-}
-
-.header-sync-status.synced .sync-dot {
-  background-color: var(--success);
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
-}
-
-.header-sync-status.syncing {
-  border-color: rgba(59, 130, 246, 0.4);
-  color: var(--primary-light);
-  background-color: rgba(59, 130, 246, 0.1);
-}
-
-.header-sync-status.syncing .sync-dot {
-  background-color: var(--primary);
-  animation: pulseDot 1s infinite alternate;
-}
-
-.header-sync-status.syncing .sync-icon {
-  display: inline-block;
-  animation: spin 1.2s linear infinite;
-}
-
-.header-sync-status.error {
-  border-color: rgba(239, 68, 68, 0.4);
-  color: var(--danger-text);
-  background-color: var(--danger-subtle);
-}
-
-.header-sync-status.error .sync-dot {
-  background-color: var(--danger);
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes pulseDot {
-  from { opacity: 0.4; transform: scale(0.85); }
-  to { opacity: 1; transform: scale(1.2); }
-}
-
-/* Carte de synchronisation */
-.sync-info-box {
-  background-color: var(--bg-card-subtle);
-  border: 1px solid var(--border-color);
+  border: 1.5px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 12px 14px;
-  margin-bottom: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  width: 100%;
 }
 
-.sync-info-row {
+.onboarding-choice-card:hover {
+  border-color: var(--primary);
+  background-color: var(--bg-card-hover, rgba(59, 130, 246, 0.08));
+  transform: translateY(-1px);
+}
+
+.onboarding-choice-icon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-input);
+  border-radius: var(--radius-sm);
+}
+
+.onboarding-choice-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 2px;
+}
+
+.onboarding-choice-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+/* Bannière des demandes d'approbation pour le propriétaire */
+.owner-pending-banner {
+  background: linear-gradient(135deg, rgba(234, 88, 12, 0.15), rgba(249, 115, 22, 0.08));
+  border: 1.5px solid #ea580c;
+  border-radius: var(--radius-md);
+  margin: 12px 16px;
+  padding: 12px 14px;
+  animation: fadeIn 0.3s ease;
+}
+
+.pending-banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pending-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: var(--text-main);
+  flex-wrap: wrap;
+}
+
+.pending-badge {
+  background-color: #ea580c;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.pending-banner-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pending-user-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background-color: var(--bg-card);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  gap: 10px;
+}
+
+.pending-user-name {
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+
+.pending-user-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-approve {
+  background-color: #16a34a;
+  color: #fff;
+  border: none;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-reject {
+  background-color: #dc2626;
+  color: #fff;
+  border: none;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-approve:hover, .btn-reject:hover {
+  opacity: 0.88;
+}
+
+/* Modale en attente d'approbation */
+.waiting-pulse-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 20px 10px;
+  gap: 16px;
+}
+
+.waiting-spinner {
+  width: 56px;
+  height: 56px;
+  border: 4px solid var(--border-color);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.waiting-info-card {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+/* Boîte de partage d'invitation */
+.share-invite-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.share-copy-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.share-copy-group input {
+  flex: 1;
+  font-family: monospace;
+  font-size: 0.82rem;
+  background-color: var(--bg-input);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+.btn-whatsapp {
+  background-color: #25d366;
+  color: #fff;
+  border: none;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-whatsapp:hover {
+  opacity: 0.9;
+}
+
+/* ==========================================================================
+   Étape 4 : Synchronisation Temps Réel, Fil d'Activité & Auteurs
+   ========================================================================== */
+
+/* Badge de statut de synchronisation dans l'en-tête */
+.room-sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.sync-green {
+  background-color: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+
+.sync-orange {
+  background-color: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+
+.sync-gray {
+  background-color: #64748b;
+}
+
+/* Auteurs des relevés et historiques */
+.kmlog-author {
+  display: inline-block;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin-top: 2px;
+}
+
+.history-pill-author {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+  color: var(--primary) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  font-weight: 600;
+}
+
+/* Fil d'Activité Familiale */
+.activity-feed-card {
+  margin-top: 14px;
+}
+
+.activity-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.activity-feed-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
   font-size: 0.84rem;
 }
 
-.sync-label {
-  color: var(--text-muted);
+.activity-feed-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
-.sync-value {
+.activity-feed-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.activity-feed-text {
   color: var(--text-main);
+  line-height: 1.35;
 }
 
-.sync-help-box {
-  background-color: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(59, 130, 246, 0.22);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
-  margin-bottom: 14px;
-}
-
-.btn-icon-xs {
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  padding: 2px 5px;
+.activity-feed-time {
   font-size: 0.74rem;
   color: var(--text-muted);
-  transition: var(--transition);
 }
 
-.btn-icon-xs:hover {
-  background-color: var(--bg-card);
-  color: var(--text-main);
-  border-color: var(--primary);
-}
-
-#syncQrContainer img {
-  image-rendering: pixelated;
-}

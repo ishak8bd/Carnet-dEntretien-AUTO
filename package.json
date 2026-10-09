@@ -1,0 +1,29 @@
+{
+  "name": "maintenace-tracker",
+  "version": "1.0.0",
+  "description": "Application web progressive (PWA) personnelle et 100% autonome pour le suivi intelligent et prédictif de l'entretien de vos véhicules (1 à 3 véhicules).",
+  "main": "app.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "node test/smoke-test.js",
+    "test:rules": "firebase emulators:exec --only firestore \"node --test test/firestore-rules.test.js\"",
+    "sync-docs": "node scripts/sync-docs.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ishak8bd/Carnet-dEntretien-AUTO.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ishak8bd/Carnet-dEntretien-AUTO/issues"
+  },
+  "homepage": "https://github.com/ishak8bd/Carnet-dEntretien-AUTO#readme",
+  "devDependencies": {
+    "jsdom": "^30.1.2"
+  }
+}
