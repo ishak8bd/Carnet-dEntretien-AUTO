@@ -1367,8 +1367,8 @@ export function renderOwnerPendingBanner(pendingList, roomId) {
     banner = document.createElement('div');
     banner.id = 'ownerPendingBanner';
     banner.className = 'owner-pending-banner';
-    const main = document.querySelector('main') || document.body;
-    main.prepend(banner);
+    const host = document.querySelector('.app-container') || document.querySelector('main') || document.body;
+    host.prepend(banner);
   }
 
   if (!pendingList || pendingList.length === 0) {
@@ -1500,11 +1500,20 @@ export function renderSettingsRoomSection() {
                     Retirer
                   </button>
                 </div>
+              ` : ((isOwner && m.uid !== profile.myUid && m.status === 'pending') ? `
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <button type="button" class="btn-approve btn-xs btn-approve-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}">
+                    Accepter
+                  </button>
+                  <button type="button" class="btn-reject btn-xs btn-remove-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}">
+                    Refuser
+                  </button>
+                </div>
               ` : ((isOwner && m.uid !== profile.myUid) ? `
                 <button type="button" class="btn-reject btn-xs btn-remove-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}">
                   Retirer
                 </button>
-              ` : '')}
+              ` : ''))}
             </div>
           `).join('')}
         </div>
@@ -1553,6 +1562,20 @@ export function renderSettingsRoomSection() {
       showTransferOwnershipModal(otherApprovedMembers);
       const sel = document.getElementById('transferSuccessorSelect');
       if (sel) sel.value = btn.dataset.uid;
+    };
+  });
+
+  // Gestion de l'approbation des membres en attente depuis la liste des membres
+  container.querySelectorAll('.btn-approve-member').forEach(btn => {
+    btn.onclick = async () => {
+      btn.disabled = true;
+      try {
+        await approveMember(profile.roomId, btn.dataset.uid);
+      } catch (e) {
+        console.error(e);
+        if (window.showToast) window.showToast("Erreur approbation: " + e.message, "error");
+        btn.disabled = false;
+      }
     };
   });
 
