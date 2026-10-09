@@ -1,0 +1,44 @@
+name: Rappels d'Entretien par E-mail
+
+on:
+  # Exécution automatique chaque matin à 08h00 UTC (09h00 CET)
+  schedule:
+    - cron: '0 8 * * *'
+  # Possibilité de déclencher manuellement depuis l'onglet Actions sur GitHub
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: "Envoyer un e-mail de test immédiat ?"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  send-email-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+
+      - name: Configuration de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Installation des dépendances
+        run: npm install nodemailer
+
+      - name: Vérification des échéances et envoi des e-mails
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          FIREBASE_ROOM_ID: ${{ secrets.FIREBASE_ROOM_ID || 'roommv13dgxrc6c448ac3b69' }}
+          FIREBASE_PROJECT_ID: 'entretien-auto-tracker'
+          APP_URL: 'https://ishak8bd.github.io/Carnet-dEntretien-AUTO/'
+        run: |
+          if [ "${{ inputs.test_mode }}" = "true" ]; then
+            node scripts/send-email-reminders.js --test
+          else
+            node scripts/send-email-reminders.js
+          fi

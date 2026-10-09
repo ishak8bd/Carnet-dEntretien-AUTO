@@ -3941,6 +3941,7 @@ function attachEventListeners() {
       const roomName = document.getElementById('createRoomName')?.value.trim() || "Multi-utilisateurs";
       const ownerName = document.getElementById('createOwnerName').value.trim();
       const ownerPhone = document.getElementById('createOwnerPhone')?.value.trim() || '';
+      const ownerEmail = document.getElementById('createOwnerEmail')?.value.trim() || '';
       const expiryHours = parseInt(document.getElementById('createExpiryHours').value, 10) || 24;
       const maxUses = parseInt(document.getElementById('createMaxUses').value, 10) || 5;
       const migrateLocal = document.getElementById('createMigrateLocal')?.checked || false;
@@ -3954,6 +3955,7 @@ function attachEventListeners() {
           roomName,
           ownerName,
           ownerPhone,
+          ownerEmail,
           expiryHours,
           maxUses,
           migrateLocal
@@ -3987,6 +3989,7 @@ function attachEventListeners() {
       }
       const memberName = document.getElementById('joinMemberName').value.trim();
       const memberPhone = document.getElementById('joinMemberPhone')?.value.trim() || '';
+      const memberEmail = document.getElementById('joinMemberEmail')?.value.trim() || '';
       const inviteInput = document.getElementById('joinInviteCode').value.trim();
 
       const submitBtn = formJoin.querySelector('button[type="submit"]');
@@ -3997,7 +4000,8 @@ function attachEventListeners() {
         const res = await window.FamilyRoom.joinFamilyRoom({
           inviteInput,
           memberName,
-          memberPhone
+          memberPhone,
+          memberEmail
         });
         document.getElementById('modalJoinRoom')?.classList.add('hidden');
         window.FamilyRoom.showPendingApprovalModal(res.roomName, res.profile.myName);

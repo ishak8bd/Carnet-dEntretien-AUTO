@@ -878,6 +878,12 @@
           <span class="form-help">Pour recevoir automatiquement les alertes du Bot WhatsApp (relevé tous les 15j et entretiens).</span>
         </div>
 
+        <div class="form-group">
+          <label class="form-label" for="createOwnerEmail">Adresse E-mail (optionnel)</label>
+          <input type="email" id="createOwnerEmail" class="form-input" placeholder="Ex: conducteur@gmail.com" maxlength="100">
+          <span class="form-help">Pour recevoir les rappels d'entretien directement dans votre boîte de réception.</span>
+        </div>
+
         <div style="display: flex; gap: 10px;">
           <div class="form-group" style="flex: 1;">
             <label class="form-label" for="createExpiryHours">Validité du lien</label>
@@ -935,6 +941,12 @@
           <label class="form-label" for="joinMemberPhone">Numéro WhatsApp (optionnel)</label>
           <input type="tel" id="joinMemberPhone" class="form-input" placeholder="Ex: 213555123456 ou +213555123456" maxlength="35">
           <span class="form-help">Pour recevoir les rappels WhatsApp lorsque votre accès sera approuvé.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="joinMemberEmail">Adresse E-mail (optionnel)</label>
+          <input type="email" id="joinMemberEmail" class="form-input" placeholder="Ex: conducteur@gmail.com" maxlength="100">
+          <span class="form-help">Pour recevoir les alertes d'entretien par e-mail en plus de WhatsApp.</span>
         </div>
 
         <div class="form-group">
@@ -1078,6 +1090,14 @@
           <input type="tel" id="editMemberPhoneInput" class="form-input" placeholder="Ex: 213555123456 ou +213555123456" maxlength="35">
           <span class="form-help">
             Ce numéro recevra les alertes du bot WhatsApp (relevé tous les 15 jours et entretiens proches).
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editMemberEmailInput">Adresse E-mail</label>
+          <input type="email" id="editMemberEmailInput" class="form-input" placeholder="Ex: conducteur@gmail.com" maxlength="100">
+          <span class="form-help">
+            Cette adresse recevra les rappels d'entretien par e-mail automatiquement (même si votre PC est éteint).
           </span>
         </div>
 

@@ -6,7 +6,14 @@ Thumbs.db
 .idea/
 node_modules/
 
-# WhatsApp Bot (Baileys)
+# WhatsApp Bot & Email Secrets
 whatsapp-bot/.env
 whatsapp-bot/auth_info_baileys/
 whatsapp-bot/notification_history.json
+whatsapp-bot/bot_firebase_auth.json
+scripts/email-config.json
+*email-config.json
+serviceAccountKey.json
+*serviceAccount*.json
+.env
+.env.*

@@ -14,6 +14,7 @@
  * 7. Append-only protections on kmLogs and activity feeds.
  * 8. Nullable values validation.
  * 9. Optional WhatsApp phone number on members and self-update permissions.
+ * 10. Optional email address on members and self-update permissions.
  */
 
 const fs = require('fs');
@@ -800,6 +801,96 @@ describe('Family Room Car Maintenance Tracker - Firestore Security Rules', () =>
 
       await assertFails(patchDoc(approvedDb, 'rooms/room_1/members/user_owner', {
         phone: '+33699999999',
+      }));
+    });
+  });
+
+  // -------------------------------------------------------------
+  // 10. Member Email Field and Self-Update Validation
+  // -------------------------------------------------------------
+  describe('10. Member email field and self-update validation', () => {
+    it('allows member to update their own email with a valid string (<= 100 chars)', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      await assertSucceeds(patchDoc(approvedDb, 'rooms/room_1/members/user_approved', {
+        email: 'bob.member@example.com',
+      }));
+    });
+
+    it('allows member to set email to null or clear it', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      await assertSucceeds(patchDoc(approvedDb, 'rooms/room_1/members/user_approved', {
+        email: null,
+      }));
+    });
+
+    it('rejects member updating email if length exceeds 100 chars', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      const tooLongEmail = 'a'.repeat(90) + '@example.com'; // 102 chars (> 100 chars)
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/members/user_approved', {
+        email: tooLongEmail,
+      }));
+    });
+
+    it('rejects member updating email if type is non-string and non-null', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/members/user_approved', {
+        email: 123456,
+      }));
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/members/user_approved', {
+        email: true,
+      }));
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/members/user_approved', {
+        email: ['bob@example.com'],
+      }));
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/members/user_approved', {
+        email: { address: 'bob@example.com' },
+      }));
+    });
+
+    it('rejects member updating email when attempting to modify protected fields like role or status', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/members/user_approved', {
+        email: 'bob@example.com',
+        role: 'owner',
+      }));
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/members/user_approved', {
+        email: 'bob@example.com',
+        status: 'pending',
+      }));
+    });
+
+    it('allows room owner to update a member email and details', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+
+      await assertSucceeds(patchDoc(ownerDb, 'rooms/room_1/members/user_approved', {
+        email: 'bob.updated.by.owner@example.com',
+      }));
+    });
+
+    it('denies a member from updating another member email', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/members/user_owner', {
+        email: 'hacked.owner.email@example.com',
       }));
     });
   });

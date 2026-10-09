@@ -23,6 +23,7 @@ service cloud.firestore {
     //   - joinedAt: timestamp (required, immutable) - When membership record was created
     //   - lastSeenAt: timestamp (required) - Last activity timestamp of this user
     //   - phone: string (0-35 chars, optional) - WhatsApp phone number for maintenance reminders
+    //   - email: string (0-100 chars, optional) - Member email for maintenance reminder alerts
     //
     // Subcollection: rooms/{roomId}/invites/{inviteId}
     // Document ID: High-entropy URL-safe token (>= 128-bit)
@@ -146,7 +147,8 @@ service cloud.firestore {
         data.status in ['pending', 'approved'] &&
         data.joinedAt is timestamp &&
         data.lastSeenAt is timestamp &&
-        (!('phone' in data) || data.phone == null || (data.phone is string && data.phone.size() <= 35));
+        (!('phone' in data) || data.phone == null || (data.phone is string && data.phone.size() <= 35)) &&
+        (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 100));
     }
 
     function isValidInvite(data) {
@@ -289,13 +291,13 @@ service cloud.firestore {
 
         // Update:
         // - Room owner can approve members and manage roles (joinedAt immutable)
-        // - Self can update name, phone, or lastSeenAt without modifying role or status
+        // - Self can update name, phone, email, or lastSeenAt without modifying role or status
         allow update: if isValidMember(request.resource.data) &&
           request.resource.data.joinedAt == resource.data.joinedAt && (
             isRoomOwner(roomId) ||
             (
               isSelf(uid) &&
-              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeenAt', 'name', 'phone']) &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeenAt', 'name', 'phone', 'email']) &&
               request.resource.data.role == resource.data.role &&
               request.resource.data.status == resource.data.status
             )

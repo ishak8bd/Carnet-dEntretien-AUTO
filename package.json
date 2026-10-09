@@ -25,5 +25,8 @@
   "homepage": "https://github.com/ishak8bd/Carnet-dEntretien-AUTO#readme",
   "devDependencies": {
     "jsdom": "^30.1.2"
+  },
+  "dependencies": {
+    "nodemailer": "^10.0.16"
   }
 }

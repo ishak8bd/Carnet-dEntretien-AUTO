@@ -1,0 +1,560 @@
+// scripts/send-email-reminders.mjs
+// Envoi automatique des rappels d'entretien et de kilométrage par e-mail (Gmail / Nodemailer)
+// Compatible avec exécution locale ou planifiée sans serveur via GitHub Actions (Cron gratuit)
+//
+// Usage:
+//   node scripts/send-email-reminders.mjs           (Vérifie les échéances et envoie si nécessaire)
+//   node scripts/send-email-reminders.mjs --test    (Envoie un e-mail de test immédiat)
+//   node scripts/send-email-reminders.mjs --dry-run (Affiche le diagnostic sans envoyer)
+
+import nodemailer from 'nodemailer';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Fichiers de configuration
+const LOCAL_CONFIG_FILE = path.join(__dirname, 'email-config.json');
+const BOT_CONFIG_FILE = path.join(__dirname, '..', 'whatsapp-bot', 'config.json');
+const BOT_AUTH_CACHE = path.join(__dirname, '..', 'whatsapp-bot', 'bot_firebase_auth.json');
+
+/**
+ * Charge la configuration depuis l'environnement, email-config.json ou whatsapp-bot/config.json
+ */
+export function loadConfig() {
+  let cfg = {
+    gmailUser: process.env.GMAIL_USER || '',
+    gmailAppPassword: process.env.GMAIL_APP_PASSWORD || '',
+    roomId: process.env.FIREBASE_ROOM_ID || 'roommv13dgxrc6c448ac3b69',
+    projectId: process.env.FIREBASE_PROJECT_ID || 'entretien-auto-tracker',
+    apiKey: process.env.FIREBASE_API_KEY || 'AIzaSyA7qjZi_aWunCo15Y96BbvsZfX7n7O8LO8',
+    appUrl: process.env.APP_URL || 'https://ishak8bd.github.io/Carnet-dEntretien-AUTO/'
+  };
+
+  // Charger depuis scripts/email-config.json si présent
+  try {
+    if (fs.existsSync(LOCAL_CONFIG_FILE)) {
+      const fileData = JSON.parse(fs.readFileSync(LOCAL_CONFIG_FILE, 'utf-8'));
+      cfg = { ...cfg, ...fileData };
+    }
+  } catch (e) {}
+
+  // Charger les identifiants de salle depuis whatsapp-bot/config.json si non définis
+  try {
+    if (fs.existsSync(BOT_CONFIG_FILE)) {
+      const botCfg = JSON.parse(fs.readFileSync(BOT_CONFIG_FILE, 'utf-8'));
+      if (!cfg.roomId && botCfg.roomId) cfg.roomId = botCfg.roomId;
+      if (!cfg.projectId && botCfg.projectId) cfg.projectId = botCfg.projectId;
+      if (!cfg.apiKey && botCfg.apiKey) cfg.apiKey = botCfg.apiKey;
+    }
+  } catch (e) {}
+
+  return cfg;
+}
+
+/**
+ * Obtient un jeton d'authentification Firebase pour lire Firestore
+ */
+async function getFirebaseAuthToken(cfg) {
+  let cached = null;
+  // 1. Essayer le jeton en cache du bot s'il est encore valide
+  try {
+    if (fs.existsSync(BOT_AUTH_CACHE)) {
+      cached = JSON.parse(fs.readFileSync(BOT_AUTH_CACHE, 'utf-8'));
+      if (cached.expiresAt && Date.now() < cached.expiresAt - 60000 && cached.idToken) {
+        return cached.idToken;
+      }
+    }
+  } catch (e) {}
+
+  // 2. Si on a un refreshToken, renouveler le jeton de la même identité UID
+  if (cached && cached.refreshToken) {
+    try {
+      const refreshUrl = `https://securetoken.googleapis.com/v1/token?key=${cfg.apiKey}`;
+      const refreshRes = await fetch(refreshUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `grant_type=refresh_token&refresh_token=${cached.refreshToken}`
+      });
+      if (refreshRes.ok) {
+        const refreshData = await refreshRes.json();
+        const updated = {
+          idToken: refreshData.id_token,
+          localId: refreshData.user_id || cached.localId,
+          refreshToken: refreshData.refresh_token || cached.refreshToken,
+          expiresAt: Date.now() + (parseInt(refreshData.expires_in || '3600', 10) - 300) * 1000
+        };
+        try {
+          fs.writeFileSync(BOT_AUTH_CACHE, JSON.stringify(updated, null, 2), 'utf-8');
+        } catch (e) {}
+        return updated.idToken;
+      }
+    } catch (err) {
+      console.warn("Échec rafraîchissement jeton Firebase:", err.message);
+    }
+  }
+
+  // 3. Sinon, générer une session anonyme avec l'API Key Firebase
+  try {
+    const signupUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${cfg.apiKey}`;
+    const res = await fetch(signupUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ returnSecureToken: true })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const tokenObj = {
+        idToken: data.idToken,
+        localId: data.localId,
+        refreshToken: data.refreshToken,
+        expiresAt: Date.now() + (parseInt(data.expiresIn || '3600', 10) - 300) * 1000
+      };
+      try {
+        fs.writeFileSync(BOT_AUTH_CACHE, JSON.stringify(tokenObj, null, 2), 'utf-8');
+      } catch (e) {}
+      return tokenObj.idToken;
+    }
+  } catch (e) {
+    console.warn("Échec d'authentification REST Firebase:", e.message);
+  }
+
+  return null;
+}
+
+/**
+ * Récupère une sous-collection Firestore sous rooms/{roomId}/{subcollection}
+ */
+async function fetchFirestoreCollection(subcollection, idToken, cfg) {
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/rooms/${cfg.roomId}/${subcollection}`;
+    const headers = {};
+    if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
+
+    const res = await fetch(url, { headers });
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    if (!data.documents) return [];
+
+    return data.documents.map(doc => {
+      const fields = doc.fields || {};
+      const out = { id: doc.name.split('/').pop() };
+      for (const [k, v] of Object.entries(fields)) {
+        if ('stringValue' in v) out[k] = v.stringValue;
+        else if ('integerValue' in v) out[k] = parseInt(v.integerValue, 10);
+        else if ('doubleValue' in v) out[k] = parseFloat(v.doubleValue);
+        else if ('booleanValue' in v) out[k] = v.booleanValue;
+        else if ('timestampValue' in v) out[k] = v.timestampValue;
+        else if ('nullValue' in v) out[k] = null;
+      }
+      return out;
+    });
+  } catch (err) {
+    console.warn(`Erreur récupération ${subcollection}:`, err.message);
+    return [];
+  }
+}
+
+/**
+ * Crée le transporteur Nodemailer pour Gmail
+ */
+function createEmailTransporter(cfg) {
+  if (!cfg.gmailUser || !cfg.gmailAppPassword) {
+    throw new Error(
+      "Identifiants Gmail manquants ! Veuillez renseigner GMAIL_USER et GMAIL_APP_PASSWORD dans vos variables d'environnement ou dans scripts/email-config.json."
+    );
+  }
+
+  // Nettoyer les espaces souvent présents lors du copier-coller du mot de passe d'application Google (ex: "abcd efgh ijkl mnop")
+  const cleanPass = cfg.gmailAppPassword.replace(/\s+/g, '');
+
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: cfg.gmailUser,
+      pass: cleanPass
+    }
+  });
+}
+
+/**
+ * Construit le template HTML soigné et responsive pour les e-mails
+ */
+function buildEmailHtml({ title, subtitle, badges = [], sections = [], appUrl }) {
+  const badgeHtml = badges.map(b => `
+    <span style="display: inline-block; background: ${b.bg || '#3b82f6'}; color: #ffffff; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; margin-right: 6px; margin-bottom: 6px;">
+      ${b.text}
+    </span>
+  `).join('');
+
+  const sectionsHtml = sections.map(s => `
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+      <h3 style="margin-top: 0; margin-bottom: 10px; color: #1e293b; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+        ${s.title}
+      </h3>
+      <div style="font-size: 14px; color: #475569; line-height: 1.6;">
+        ${s.content}
+      </div>
+    </div>
+  `).join('');
+
+  return `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 25px 10px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+          
+          <!-- En-tête -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 26px 28px; text-align: left;">
+              <div style="font-size: 26px; margin-bottom: 4px;">🚗</div>
+              <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">
+                Carnet d'Entretien Automobile
+              </h1>
+              <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 13px;">
+                Système d'alertes &amp; suivi prédictif
+              </p>
+            </td>
+          </tr>
+
+          <!-- Contenu principal -->
+          <tr>
+            <td style="padding: 28px; background-color: #f8fafc;">
+              <div style="margin-bottom: 14px;">
+                ${badgeHtml}
+              </div>
+
+              <h2 style="margin: 0 0 8px 0; color: #0f172a; font-size: 18px; font-weight: 700;">
+                ${title}
+              </h2>
+              ${subtitle ? `<p style="margin: 0 0 20px 0; color: #64748b; font-size: 14px; line-height: 1.5;">${subtitle}</p>` : ''}
+
+              <!-- Cartes des interventions / rappels -->
+              ${sectionsHtml}
+
+              <!-- Bouton d'action -->
+              <div style="text-align: center; margin-top: 26px; margin-bottom: 10px;">
+                <a href="${appUrl}" target="_blank" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 13px 28px; font-size: 15px; font-weight: 600; border-radius: 8px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);">
+                  Ouvrir mon Carnet d'Entretien ➔
+                </a>
+                <p style="font-size: 12px; color: #94a3b8; margin-top: 10px; margin-bottom: 0;">
+                  Une fois l'intervention faite, cliquez sur « Fait » dans l'application pour clore ce rappel.
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Pied de page -->
+          <tr>
+            <td style="padding: 20px 28px; background-color: #ffffff; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #94a3b8; line-height: 1.5;">
+              Ce rappel automatique a été généré pour vos véhicules enregistrés.<br>
+              Pour modifier vos destinataires ou vos numéros WhatsApp, rendez-vous dans les <strong>Paramètres</strong> de l'application.
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Fonction principale d'évaluation des rappels et d'envoi des e-mails
+ */
+export async function runEmailReminders({ isTest = false, isDryRun = false } = {}) {
+  console.log(`\n======================================================`);
+  console.log(`  RAPPELS AUTOMATIQUES PAR E-MAIL - CARNET D'ENTRETIEN`);
+  console.log(`  Date : ${new Date().toLocaleString('fr-FR')}`);
+  console.log(`======================================================`);
+
+  const cfg = loadConfig();
+
+  if (!cfg.gmailUser || !cfg.gmailAppPassword) {
+    if (isDryRun) {
+      console.log("ℹ️ Identifiants Gmail non configurés. Mode Simulation (--dry-run) actif.");
+      cfg.gmailUser = cfg.gmailUser || 'simulation@gmail.com';
+    } else {
+      console.error("❌ Identifiants Gmail non configurés.");
+      console.error("👉 Créez scripts/email-config.json ou définissez GMAIL_USER et GMAIL_APP_PASSWORD.");
+      return { success: false, error: 'missing_credentials' };
+    }
+  }
+
+  console.log(`📧 Expéditeur configuré : ${cfg.gmailUser}`);
+  console.log(`🏠 Salle Firestore : ${cfg.roomId}`);
+
+  const idToken = await getFirebaseAuthToken(cfg);
+  const vehicles = await fetchFirestoreCollection('vehicles', idToken, cfg);
+  const items = await fetchFirestoreCollection('items', idToken, cfg);
+  const kmLogs = await fetchFirestoreCollection('kmLogs', idToken, cfg);
+  const members = await fetchFirestoreCollection('members', idToken, cfg);
+
+  console.log(`📊 Données récupérées : ${vehicles.length} véhicule(s), ${items.length} entretien(s), ${kmLogs.length} relevé(s), ${members.length} membre(s).`);
+
+  // Extraire la liste des destinataires e-mail
+  const emailRecipients = new Set();
+  members.forEach(m => {
+    if (m.email && (m.status === 'approved' || m.role === 'owner')) {
+      const clean = m.email.trim().toLowerCase();
+      if (clean.includes('@')) emailRecipients.add(clean);
+    }
+  });
+
+  // Toujours inclure l'expéditeur Gmail / compte admin si aucun e-mail membre n'est présent
+  if (cfg.gmailUser && emailRecipients.size === 0) {
+    emailRecipients.add(cfg.gmailUser.trim().toLowerCase());
+  }
+
+  const recipientList = Array.from(emailRecipients);
+  console.log(`📬 Destinataire(s) e-mail (${recipientList.length}) :`, recipientList.join(', '));
+
+  if (recipientList.length === 0) {
+    console.warn("⚠️ Aucun destinataire e-mail trouvé.");
+    return { success: false, error: 'no_recipients' };
+  }
+
+  const transporter = !isDryRun ? createEmailTransporter(cfg) : null;
+
+  // --------------------------------------------------------------------------
+  // CAS 1 : MODE TEST DIRECT (--test)
+  // --------------------------------------------------------------------------
+  if (isTest) {
+    console.log("🧪 Mode Test activé : Envoi d'un e-mail de validation...");
+    const sampleVeh = vehicles.length > 0 ? vehicles[0] : { name: 'Renault Symbol', brand: 'Renault', model: 'Symbol', currentKm: 250000 };
+    const vehName = sampleVeh.name || `${sampleVeh.brand} ${sampleVeh.model}`.trim();
+    const currentKm = sampleVeh.currentKm || 250000;
+
+    const testHtml = buildEmailHtml({
+      title: "Test de notification E-mail réussi !",
+      subtitle: "Vos alertes d'entretien par e-mail sont maintenant parfaitement configurées.",
+      badges: [
+        { text: "🟢 SYSTÈME OPÉRATIONNEL", bg: "#16a34a" },
+        { text: `🚗 ${vehName}`, bg: "#2563eb" }
+      ],
+      sections: [
+        {
+          title: "📊 Données synchronisées en direct",
+          content: `
+            • <strong>Salle de partage :</strong> <code>${cfg.roomId}</code><br>
+            • <strong>Véhicule surveillé :</strong> ${vehName}<br>
+            • <strong>Compteur actuel :</strong> ${currentKm.toLocaleString('fr-FR')} km<br>
+            • <strong>Entretiens suivis :</strong> ${items.length} opération(s)<br>
+            • <strong>Destinataires connectés :</strong> ${recipientList.length} adresse(s) e-mail
+          `
+        },
+        {
+          title: "🔔 Rappels automatisés actifs",
+          content: `
+            1️⃣ <strong>Mise à jour du compteur :</strong> Vous recevrez un e-mail tous les 15 jours si le kilométrage n'a pas été actualisé.<br><br>
+            2️⃣ <strong>Entretiens proches :</strong> Un e-mail d'alerte progressif sera envoyé dès qu'une vidange, des freins ou une courroie approchent de leur échéance !
+          `
+        }
+      ],
+      appUrl: cfg.appUrl
+    });
+
+    if (isDryRun) {
+      console.log("🔍 [Dry Run] E-mail de test prêt à être envoyé à :", recipientList);
+      return { success: true, count: recipientList.length, recipients: recipientList };
+    }
+
+    const info = await transporter.sendMail({
+      from: `"Carnet d'Entretien" <${cfg.gmailUser}>`,
+      to: recipientList.join(', '),
+      subject: `🚗 Test de Notification - Carnet d'Entretien Automobile`,
+      html: testHtml,
+      text: `Test de notification réussi ! Votre Carnet d'Entretien est synchronisé (${recipientList.length} destinataires). Ouvrez l'application : ${cfg.appUrl}`
+    });
+
+    console.log(`✅ E-mail de test envoyé avec succès ! MessageId : ${info.messageId}`);
+    return { success: true, messageId: info.messageId, recipients: recipientList };
+  }
+
+  // --------------------------------------------------------------------------
+  // CAS 2 : VÉRIFICATION ET ENVOI RÉEL DES RAPPELS
+  // --------------------------------------------------------------------------
+  const now = Date.now();
+  const alertsToSend = [];
+
+  for (const veh of vehicles) {
+    const vehId = veh.id;
+    const vehName = veh.name || `${veh.brand || ''} ${veh.model || ''}`.trim() || 'Véhicule';
+    const vehLogs = kmLogs
+      .filter(l => l.vehicleId === vehId)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    const lastLog = vehLogs.length > 0 ? vehLogs[vehLogs.length - 1] : null;
+    const currentKm = veh.currentKm || (lastLog ? lastLog.km : 0);
+
+    // 1. Rappel Relevé kilométrique tous les 15 jours
+    if (lastLog && lastLog.date) {
+      const lastLogDate = new Date(lastLog.date).getTime();
+      const daysElapsed = Math.floor((now - lastLogDate) / (1000 * 60 * 60 * 24));
+
+      if (daysElapsed >= 15) {
+        alertsToSend.push({
+          type: 'mileage',
+          vehicle: vehName,
+          title: `📅 Relevé de compteur à mettre à jour (${vehName})`,
+          level: 'mileage',
+          content: `
+            Votre dernier relevé kilométrique date d'il y a <strong>${daysElapsed} jours</strong> (le ${lastLog.date}).<br><br>
+            • Dernier kilométrage enregistré : <strong>${currentKm.toLocaleString('fr-FR')} km</strong><br><br>
+            Pensez à relever votre compteur et à l'actualiser dans l'application pour maintenir la précision de vos prédictions d'entretien !
+          `
+        });
+      }
+    }
+
+    // 2. Estimation de roulage journalier
+    let dailyRate = 35;
+    if (vehLogs.length >= 2) {
+      const first = vehLogs[0];
+      const last = vehLogs[vehLogs.length - 1];
+      const diffKm = last.km - first.km;
+      const diffDays = Math.max(1, Math.round((new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24)));
+      if (diffKm > 0 && diffDays > 0) {
+        dailyRate = Math.max(5, diffKm / diffDays);
+      }
+    }
+
+    // 3. Rappels d'entretiens proches
+    const vehItems = items.filter(i => i.vehicleId === vehId && !i.deleted);
+    for (const item of vehItems) {
+      if (item.lastDate === null && item.lastKm === null) continue;
+
+      let remainingKm = null;
+      let remainingDaysByKm = null;
+      let remainingDaysByDate = null;
+
+      if (item.intervalKm && item.lastKm !== null) {
+        const dueKm = item.lastKm + item.intervalKm;
+        remainingKm = dueKm - currentKm;
+        remainingDaysByKm = Math.round(remainingKm / dailyRate);
+      }
+
+      if (item.intervalMonths && item.lastDate) {
+        const lastD = new Date(item.lastDate);
+        const targetDate = new Date(lastD);
+        targetDate.setMonth(targetDate.getMonth() + item.intervalMonths);
+        remainingDaysByDate = Math.round((targetDate.getTime() - now) / (1000 * 60 * 60 * 24));
+      }
+
+      let effectiveRemainingDays = 999;
+      if (remainingDaysByKm !== null && remainingDaysByDate !== null) {
+        effectiveRemainingDays = Math.min(remainingDaysByKm, remainingDaysByDate);
+      } else if (remainingDaysByKm !== null) {
+        effectiveRemainingDays = remainingDaysByKm;
+      } else if (remainingDaysByDate !== null) {
+        effectiveRemainingDays = remainingDaysByDate;
+      }
+
+      if (effectiveRemainingDays <= 15 || (remainingKm !== null && remainingKm <= 500)) {
+        let level = 'info';
+        let levelLabel = 'ℹ️ À PRÉVOIR';
+        let badgeBg = '#0284c7';
+
+        if (effectiveRemainingDays <= 2 || (remainingKm !== null && remainingKm <= 100)) {
+          level = 'urgent';
+          levelLabel = '🚨 URGENT / RETARD';
+          badgeBg = '#dc2626';
+        } else if (effectiveRemainingDays <= 7 || (remainingKm !== null && remainingKm <= 250)) {
+          level = 'warning';
+          levelLabel = '⚠️ IMMINENT';
+          badgeBg = '#d97706';
+        }
+
+        const kmInfo = remainingKm !== null
+          ? (remainingKm <= 0 ? `<span style="color: #dc2626; font-weight: 700;">Dépassé de ${Math.abs(remainingKm)} km</span>` : `reste ${remainingKm.toLocaleString('fr-FR')} km`)
+          : '';
+
+        alertsToSend.push({
+          type: 'maintenance',
+          vehicle: vehName,
+          title: `${levelLabel} : ${item.name} (${vehName})`,
+          level,
+          badge: { text: levelLabel, bg: badgeBg },
+          content: `
+            • <strong>Opération :</strong> 🔧 ${item.name}<br>
+            • <strong>Véhicule :</strong> ${vehName}<br>
+            • <strong>Échéance estimée :</strong> ${effectiveRemainingDays <= 0 ? '<strong style="color: #dc2626;">DÉPASSÉE</strong>' : `dans environ <strong>${effectiveRemainingDays} jour(s)</strong>`} ${kmInfo ? `(${kmInfo})` : ''}<br><br>
+            Pensez à planifier cette intervention ou votre rendez-vous garage.
+          `
+        });
+      }
+    }
+  }
+
+  if (alertsToSend.length === 0) {
+    console.log("✅ Aucune échéance urgente ni relevé en retard détecté aujourd'hui. Aucun e-mail envoyé.");
+    return { success: true, count: 0 };
+  }
+
+  console.log(`🔔 ${alertsToSend.length} alerte(s) détectée(s). Préparation de l'e-mail de synthèse...`);
+
+  const hasUrgent = alertsToSend.some(a => a.level === 'urgent');
+  const subjectPrefix = hasUrgent ? "🚨 URGENT :" : "⚠️ RAPPEL :";
+  const subject = `${subjectPrefix} ${alertsToSend.length} entretien(s) & rappel(s) - Carnet d'Entretien`;
+
+  const badges = [
+    { text: `🔔 ${alertsToSend.length} ALERTE(S)`, bg: hasUrgent ? "#dc2626" : "#d97706" }
+  ];
+
+  const sections = alertsToSend.map(a => ({
+    title: a.title,
+    content: a.content
+  }));
+
+  const html = buildEmailHtml({
+    title: "Synthèse de vos échéances d'entretien",
+    subtitle: "Voici les interventions et relevés de compteur à prévoir pour vos véhicules partagés :",
+    badges,
+    sections,
+    appUrl: cfg.appUrl
+  });
+
+  if (isDryRun) {
+    console.log(`🔍 [Dry Run] E-mail prêt (${alertsToSend.length} alertes) pour :`, recipientList);
+    return { success: true, count: alertsToSend.length };
+  }
+
+  const info = await transporter.sendMail({
+    from: `"Carnet d'Entretien" <${cfg.gmailUser}>`,
+    to: recipientList.join(', '),
+    subject,
+    html,
+    text: `Carnet d'Entretien : ${alertsToSend.length} rappel(s) à consulter. Rendez-vous sur ${cfg.appUrl}`
+  });
+
+  console.log(`✅ E-mail envoyé avec succès à ${recipientList.length} destinataire(s) ! MessageId : ${info.messageId}`);
+  return { success: true, messageId: info.messageId, alertsCount: alertsToSend.length };
+}
+
+// Exécution directe en ligne de commande
+const isDirectExecution = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+if (isDirectExecution) {
+  const args = process.argv.slice(2);
+  const isTest = args.includes('--test');
+  const isDryRun = args.includes('--dry-run');
+
+  runEmailReminders({ isTest, isDryRun })
+    .then(() => process.exit(0))
+    .catch(err => {
+      console.error("❌ Erreur lors de l'exécution :", err.message);
+      process.exit(1);
+    });
+}

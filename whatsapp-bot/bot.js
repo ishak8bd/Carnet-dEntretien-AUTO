@@ -36,6 +36,13 @@ const SERVICE_ACCOUNT_FILE = path.join(__dirname, 'serviceAccountKey.json');
 const BOT_AUTH_CACHE_FILE = path.join(__dirname, 'bot_firebase_auth.json');
 const BOT_LOG_FILE = path.join(__dirname, 'bot.log');
 
+// Module optionnel d'alertes par e-mail
+let runEmailReminders = null;
+try {
+  const mailMod = await import('../scripts/send-email-reminders.mjs');
+  runEmailReminders = mailMod.runEmailReminders;
+} catch (e) {}
+
 // ============================================================================
 // CONFIGURATION DYNAMIQUE
 // ============================================================================
@@ -121,15 +128,44 @@ async function initFirebaseAdminIfAvailable() {
 // Authentification REST Firebase pour le Bot (si pas de service account)
 async function getBotFirebaseAuth() {
   const cfg = loadConfig();
+  let cached = null;
   try {
     if (fs.existsSync(BOT_AUTH_CACHE_FILE)) {
-      const cached = JSON.parse(fs.readFileSync(BOT_AUTH_CACHE_FILE, 'utf-8'));
-      if (cached.expiresAt && Date.now() < cached.expiresAt) {
+      cached = JSON.parse(fs.readFileSync(BOT_AUTH_CACHE_FILE, 'utf-8'));
+      if (cached.expiresAt && Date.now() < cached.expiresAt && cached.idToken) {
         return cached;
       }
     }
   } catch (e) {}
 
+  // Si un refreshToken est présent, renouveler la session de la même identité UID
+  if (cached && cached.refreshToken) {
+    try {
+      const refreshUrl = `https://securetoken.googleapis.com/v1/token?key=${cfg.apiKey}`;
+      const refreshRes = await fetch(refreshUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `grant_type=refresh_token&refresh_token=${cached.refreshToken}`
+      });
+      if (refreshRes.ok) {
+        const refreshData = await refreshRes.json();
+        const updated = {
+          idToken: refreshData.id_token,
+          localId: refreshData.user_id || cached.localId,
+          refreshToken: refreshData.refresh_token || cached.refreshToken,
+          expiresAt: Date.now() + (parseInt(refreshData.expires_in || '3600', 10) - 300) * 1000
+        };
+        try {
+          fs.writeFileSync(BOT_AUTH_CACHE_FILE, JSON.stringify(updated, null, 2), 'utf-8');
+        } catch (e) {}
+        return updated;
+      }
+    } catch (err) {
+      console.warn("Échec rafraîchissement jeton bot:", err.message);
+    }
+  }
+
+  // Sinon, générer un nouvel utilisateur anonyme
   const url = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${cfg.apiKey}`;
   const res = await fetch(url, {
     method: 'POST',
@@ -575,6 +611,13 @@ async function runReminderChecks() {
     }
   }
 
+  // Déclencher également la vérification et l'envoi des alertes par e-mail
+  if (runEmailReminders) {
+    try {
+      await runEmailReminders();
+    } catch (e) {}
+  }
+
   console.log(`✅ [${new Date().toLocaleString('fr-FR')}] Vérification terminée avec succès.\n`);
 }
 
@@ -669,8 +712,9 @@ async function handleIncomingMessage(msg) {
   if (cmd === '!aide' || cmd === '!help') {
     const help =
       `🤖 *Commandes du Bot Carnet d'Entretien* :\n\n` +
-      `• *!test* : Teste l'envoi d'une alerte à TOUS les utilisateurs.\n` +
-      `• *!destinataires* : Affiche tous les numéros qui reçoivent les alertes.\n` +
+      `• *!test* : Teste l'envoi d'une alerte WhatsApp à TOUS les utilisateurs.\n` +
+      `• *!email* : Teste l'envoi d'un e-mail d'alerte Gmail à tous les membres.\n` +
+      `• *!destinataires* : Affiche tous les numéros et e-mails enregistrés.\n` +
       `• *!ajouter <tel>* : Ajoute un proche aux alertes (ex: !ajouter 213555123456).\n` +
       `• *!retirer <tel>* : Supprime un numéro de la liste.\n` +
       `• *!statut* : Affiche vos véhicules et l'état de synchronisation.\n` +
@@ -680,6 +724,28 @@ async function handleIncomingMessage(msg) {
       `• *!room <id>* : Associe une nouvelle salle Firestore.\n` +
       `• *!aide* : Affiche ce menu d'aide.`;
     await sendWhatsAppMessage(sender, help);
+    return;
+  }
+
+  // --------------------------------------------------------------------------
+  // COMMANDE : !email / !testemail (TEST ENVOI GMAIL)
+  // --------------------------------------------------------------------------
+  if (cmd === '!email' || cmd === '!testemail') {
+    if (!runEmailReminders) {
+      await sendWhatsAppMessage(sender, "⚠️ Le module d'envoi d'e-mails n'est pas chargé sur le bot.");
+      return;
+    }
+    await sendWhatsAppMessage(sender, "⏳ Envoi d'un e-mail de test via Gmail à tous les membres...");
+    try {
+      const res = await runEmailReminders({ isTest: true });
+      if (res.success) {
+        await sendWhatsAppMessage(sender, `✅ *E-mail de test envoyé avec succès !*\n\n📬 Destinataire(s) notifié(s) :\n${res.recipients.map(e => `• ${e}`).join('\n')}`);
+      } else {
+        await sendWhatsAppMessage(sender, `⚠️ Impossible d'envoyer l'e-mail : ${res.error || 'Erreur inconnue'}.\n\n👉 Vérifiez que GMAIL_USER et GMAIL_APP_PASSWORD sont renseignés dans scripts/email-config.json.`);
+      }
+    } catch (err) {
+      await sendWhatsAppMessage(sender, `❌ Erreur lors de l'envoi de l'e-mail : ${err.message}`);
+    }
     return;
   }
 
@@ -812,15 +878,23 @@ async function handleIncomingMessage(msg) {
       const appMember = members.find(m => formatPhoneJid(m.phone) === j);
       let memberLabel = '';
       if (appMember) {
-        memberLabel = ` 👤 (${appMember.name}${appMember.role === 'owner' ? ' - Gestionnaire' : ''})`;
+        const emailTag = appMember.email ? ` | 📧 ${appMember.email}` : '';
+        memberLabel = ` 👤 (${appMember.name}${appMember.role === 'owner' ? ' - Gestionnaire' : ''}${emailTag})`;
       }
       text += `${idx + 1}. *+${num}*${isSelf || memberLabel}\n`;
     });
 
-    text += `\n👉 *Depuis l'application Web* : chaque membre peut modifier son nom et son numéro WhatsApp dans les Paramètres.\n` +
+    const emailMembers = members.filter(m => m.email && (m.status === 'approved' || m.role === 'owner'));
+    if (emailMembers.length > 0) {
+      text += `\n📧 *Destinataires des alertes par E-mail* (${emailMembers.length}) :\n`;
+      emailMembers.forEach((m, idx) => {
+        text += `• ${m.email} (${m.name})\n`;
+      });
+    }
+
+    text += `\n👉 *Depuis l'application Web* : chaque membre peut modifier son nom, numéro WhatsApp et e-mail dans les Paramètres.\n` +
             `👉 L'administrateur peut modifier le profil de tous les membres directement depuis l'application Web.\n` +
-            `👉 Pour ajouter un numéro depuis WhatsApp : *!ajouter <numéro>*\n` +
-            `👉 Pour retirer un numéro : *!retirer <numéro>*`;
+            `👉 Tapez *!test* pour tester WhatsApp ou *!email* pour tester l'envoi Gmail !`;
     await sendWhatsAppMessage(sender, text);
     return;
   }

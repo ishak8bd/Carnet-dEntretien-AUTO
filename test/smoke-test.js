@@ -506,13 +506,16 @@ try {
     );
   }
 
-  console.log('20. Vérification des éléments de profil membre et numéros WhatsApp dans le DOM');
+  console.log('20. Vérification des éléments de profil membre, numéros WhatsApp et e-mails dans le DOM');
   assert(document.getElementById('modalEditMemberProfile'), 'Modale modalEditMemberProfile présente');
   assert(document.getElementById('editMemberUid'), 'Input editMemberUid présent');
   assert(document.getElementById('editMemberNameInput'), 'Input editMemberNameInput présent');
   assert(document.getElementById('editMemberPhoneInput'), 'Input editMemberPhoneInput présent');
+  assert(document.getElementById('editMemberEmailInput'), 'Input editMemberEmailInput présent');
   assert(document.getElementById('createOwnerPhone'), 'Input createOwnerPhone présent');
+  assert(document.getElementById('createOwnerEmail'), 'Input createOwnerEmail présent');
   assert(document.getElementById('joinMemberPhone'), 'Input joinMemberPhone présent');
+  assert(document.getElementById('joinMemberEmail'), 'Input joinMemberEmail présent');
 
   console.log('✅ TOUS LES TESTS DU SMOKE TEST (20/20) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
