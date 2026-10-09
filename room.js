@@ -930,7 +930,7 @@ export function assembleRoomState() {
     const items = Array.from(roomItemsMap.values())
       .filter(it => it.vehicleId === v.id);
 
-    return {
+    const vehObj = {
       id: v.id,
       name: v.name || `${v.brand} ${v.model}`,
       brand: v.brand || '',
@@ -943,6 +943,12 @@ export function assembleRoomState() {
       kmLog: logs,
       maintenanceItems: items
     };
+
+    if (typeof window.ensureVehicleMaintenanceDefaults === 'function') {
+      window.ensureVehicleMaintenanceDefaults(vehObj);
+    }
+
+    return vehObj;
   });
 
   const assembledHistory = Array.from(roomHistoryMap.values())
@@ -1583,52 +1589,58 @@ export function renderSettingsRoomSection() {
       </div>
 
       <!-- CARTE : Mon Profil Personnel (Conducteur) -->
-      <div style="background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 14px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <strong style="font-size: 0.88rem; color: var(--text-main);">👤 Mon Profil (Conducteur)</strong>
+      <div class="room-my-profile-card">
+        <div class="room-my-profile-header">
+          <div class="room-my-profile-title-group">
+            <span class="room-my-profile-avatar">👤</span>
+            <div>
+              <div class="room-my-profile-title">Mon Profil (Conducteur)</div>
+              <div class="room-my-profile-subtitle">Vos coordonnées de notification et de synchronisation</div>
+            </div>
+          </div>
           <button type="button" id="btnEditMySelfProfile" class="btn-secondary btn-xs">
             ✏️ Modifier mon profil
           </button>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.84rem;">
-          <div>
-            <span style="color: var(--text-muted);">Prénom : </span>
-            <strong style="color: var(--text-main);">${escapeHtml(myDisplayName)}</strong>
+        <div class="room-my-profile-grid">
+          <div class="room-my-profile-chip">
+            <span class="chip-label">Prénom</span>
+            <strong class="chip-val">${escapeHtml(myDisplayName)}</strong>
           </div>
-          <div>
-            <span style="color: var(--text-muted);">Numéro WhatsApp : </span>
-            ${myDisplayPhone ? `📱 <strong style="color: var(--text-main);">${escapeHtml(myDisplayPhone)}</strong>` : `<span style="color: var(--text-muted); font-style: italic;">Non configuré</span>`}
+          <div class="room-my-profile-chip">
+            <span class="chip-label">WhatsApp</span>
+            <strong class="chip-val">${myDisplayPhone ? `📱 ${escapeHtml(myDisplayPhone)}` : `<span style="color: var(--text-muted); font-style: italic;">Non configuré</span>`}</strong>
           </div>
-          <div>
-            <span style="color: var(--text-muted);">Adresse E-mail : </span>
-            ${myDisplayEmail ? `📧 <strong style="color: var(--text-main);">${escapeHtml(myDisplayEmail)}</strong>` : `<span style="color: var(--text-muted); font-style: italic;">Non configurée (cliquez sur Modifier pour l'ajouter)</span>`}
+          <div class="room-my-profile-chip">
+            <span class="chip-label">Adresse E-mail</span>
+            <strong class="chip-val">${myDisplayEmail ? `📧 ${escapeHtml(myDisplayEmail)}` : `<span style="color: var(--text-muted); font-style: italic;">Non configurée</span>`}</strong>
           </div>
         </div>
       </div>
 
       <!-- Liste des membres connectés -->
-      <div style="margin-top: 14px; border-top: 1px solid var(--border-color); padding-top: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <strong style="font-size: 0.88rem; color: var(--text-main);">Membres du partage (${roomMembersList.length || 1})</strong>
-          ${isOwner ? `<span style="font-size: 0.74rem; color: var(--text-muted);">💡 L'administrateur peut modifier tous les membres</span>` : ''}
+      <div class="room-members-container">
+        <div class="room-members-header">
+          <strong class="room-members-title">Membres du partage (${roomMembersList.length || 1})</strong>
+          ${isOwner ? `<span class="room-members-hint">💡 L'administrateur peut modifier tous les membres</span>` : ''}
         </div>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div class="room-members-list">
           ${(roomMembersList.length > 0 ? roomMembersList : [{ uid: profile.myUid, name: myDisplayName, phone: myDisplayPhone, email: myDisplayEmail, role: profile.role, status: profile.status }]).map(m => `
-            <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-input); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); flex-wrap: wrap; gap: 8px;">
-              <div>
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <span style="font-weight: 600; font-size: 0.86rem; color: var(--text-main);">👤 ${escapeHtml(m.name)}</span>
-                  <span style="font-size: 0.74rem; color: var(--text-muted);">
+            <div class="room-member-row">
+              <div class="room-member-info">
+                <div class="room-member-name-row">
+                  <span class="room-member-name">👤 ${escapeHtml(m.name)}</span>
+                  <span class="room-member-badge ${m.role === 'owner' ? 'badge-owner' : (m.status === 'pending' ? 'badge-pending' : 'badge-user')}">
                     ${m.role === 'owner' ? '👑 Gestionnaire' : (m.status === 'pending' ? '⏳ En attente' : '✅ Utilisateur')}
                   </span>
-                  ${m.uid === profile.myUid ? `<span style="font-size: 0.72rem; color: var(--primary); font-weight: 600;">(Vous)</span>` : ''}
+                  ${m.uid === profile.myUid ? `<span class="room-member-you">(Vous)</span>` : ''}
                 </div>
-                <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 3px; display: flex; flex-wrap: wrap; gap: 10px;">
-                  ${m.phone ? `<span>📱 WhatsApp : <strong style="color: var(--text-main);">${escapeHtml(m.phone)}</strong></span>` : `<span style="font-style: italic;">Pas de WhatsApp</span>`}
-                  ${m.email ? `<span>📧 E-mail : <strong style="color: var(--text-main);">${escapeHtml(m.email)}</strong></span>` : `<span style="font-style: italic;">Pas d'e-mail</span>`}
+                <div class="room-member-contact-row">
+                  ${m.phone ? `<span>📱 <strong class="contact-val">${escapeHtml(m.phone)}</strong></span>` : `<span style="font-style: italic; color: var(--text-muted);">Pas de WhatsApp</span>`}
+                  ${m.email ? `<span>📧 <strong class="contact-val">${escapeHtml(m.email)}</strong></span>` : `<span style="font-style: italic; color: var(--text-muted);">Pas d'e-mail</span>`}
                 </div>
               </div>
-              <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+              <div class="room-member-actions">
                 ${(isOwner || m.uid === profile.myUid) ? `
                   <button type="button" class="btn-secondary btn-xs btn-edit-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}" data-phone="${escapeHtml(m.phone || '')}" data-email="${escapeHtml(m.email || '')}" data-self="${m.uid === profile.myUid ? '1' : '0'}" title="Modifier le nom, numéro WhatsApp et e-mail">
                     ✏️ Modifier
@@ -1636,20 +1648,20 @@ export function renderSettingsRoomSection() {
                 ` : ''}
                 ${(isOwner && m.uid !== profile.myUid && m.status === 'approved') ? `
                   <button type="button" class="btn-secondary btn-xs btn-transfer-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}" title="Transférer la gestion à cet utilisateur">
-                    👑 Transférer gestion
+                    👑 Transférer
                   </button>
-                  <button type="button" class="btn-reject btn-xs btn-remove-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}">
+                  <button type="button" class="btn-reject btn-xs btn-remove-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}" title="Retirer ce membre">
                     Retirer
                   </button>
                 ` : ((isOwner && m.uid !== profile.myUid && m.status === 'pending') ? `
-                  <button type="button" class="btn-approve btn-xs btn-approve-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}">
+                  <button type="button" class="btn-approve btn-xs btn-approve-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}" title="Accepter la demande">
                     Accepter
                   </button>
-                  <button type="button" class="btn-reject btn-xs btn-remove-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}">
+                  <button type="button" class="btn-reject btn-xs btn-remove-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}" title="Refuser la demande">
                     Refuser
                   </button>
                 ` : ((isOwner && m.uid !== profile.myUid) ? `
-                  <button type="button" class="btn-reject btn-xs btn-remove-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}">
+                  <button type="button" class="btn-reject btn-xs btn-remove-member" data-uid="${m.uid}" data-name="${escapeHtml(m.name)}" title="Retirer ce membre">
                     Retirer
                   </button>
                 ` : ''))}

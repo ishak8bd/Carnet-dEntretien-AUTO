@@ -933,10 +933,11 @@ body {
 }
 
 .maint-section-heading {
-  font-size: 1.32rem;
+  font-size: 1.65rem;
   font-weight: 800;
   color: var(--text-main);
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
 }
 
 .section-actions {
@@ -2364,6 +2365,271 @@ body {
 
 .btn-approve:hover, .btn-reject:hover {
   opacity: 0.88;
+}
+
+/* Boutons extra-petits pour les actions secondaires et de liste */
+.btn-xs {
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  padding: 0 10px !important;
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  transition: var(--transition);
+}
+
+.btn-secondary.btn-xs {
+  background-color: var(--bg-card-subtle);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+}
+
+.btn-secondary.btn-xs:hover {
+  background-color: var(--border-color);
+  color: var(--text-main);
+}
+
+.btn-approve.btn-xs {
+  background-color: #16a34a;
+  color: #fff;
+  border: none;
+}
+
+.btn-approve.btn-xs:hover {
+  background-color: #15803d;
+}
+
+.btn-reject.btn-xs {
+  background-color: #dc2626;
+  color: #fff;
+  border: none;
+}
+
+.btn-reject.btn-xs:hover {
+  background-color: #b91c1c;
+}
+
+/* CARTE : Mon Profil Personnel (Conducteur) dans les paramètres */
+.room-my-profile-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.room-my-profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.room-my-profile-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.room-my-profile-avatar {
+  font-size: 1.2rem;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.room-my-profile-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.room-my-profile-subtitle {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.room-my-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.room-my-profile-chip {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.room-my-profile-chip .chip-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.room-my-profile-chip .chip-val {
+  font-size: 0.86rem;
+  color: var(--text-main);
+  word-break: break-word;
+}
+
+/* LISTE : Membres du partage dans les paramètres */
+.room-members-container {
+  margin-top: 16px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 14px;
+}
+
+.room-members-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.room-members-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.room-members-hint {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.room-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.room-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-input);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  gap: 12px;
+  transition: var(--transition);
+}
+
+.room-member-row:hover {
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+.room-member-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.room-member-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.room-member-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text-main);
+}
+
+.room-member-badge {
+  font-size: 0.72rem;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  font-weight: 600;
+}
+
+.badge-owner {
+  background: rgba(217, 119, 6, 0.15);
+  color: #b45309;
+}
+
+.badge-pending {
+  background: rgba(239, 68, 68, 0.15);
+  color: #b91c1c;
+}
+
+.badge-user {
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--primary);
+}
+
+.room-member-you {
+  font-size: 0.72rem;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.room-member-contact-row {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.contact-val {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.room-member-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .room-member-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .room-member-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 /* Modale en attente d'approbation */

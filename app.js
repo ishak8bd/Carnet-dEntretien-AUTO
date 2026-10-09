@@ -51,6 +51,46 @@ if (typeof window !== 'undefined') {
   });
 }
 
+/**
+ * Garantit qu'un véhicule possède toujours les 13 éléments d'entretien par défaut.
+ * Complète les éléments manquants sans modifier ni écraser les entretiens déjà enregistrés.
+ */
+function ensureVehicleMaintenanceDefaults(vehicle) {
+  if (!vehicle) return;
+  if (!Array.isArray(vehicle.maintenanceItems)) {
+    vehicle.maintenanceItems = [];
+  }
+
+  DEFAULT_MAINTENANCE_TYPES.forEach(def => {
+    const defNameLower = def.name.trim().toLowerCase();
+    const exists = vehicle.maintenanceItems.some(it => {
+      if (!it) return false;
+      if (it.id === def.id || it.id === `${def.id}_${vehicle.id}`) return true;
+      const itNameLower = (it.name || '').trim().toLowerCase();
+      if (itNameLower === defNameLower) return true;
+      if (def.id === 'vidange' && itNameLower.includes('vidange')) return true;
+      if (def.id === 'filtre_huile' && (itNameLower.includes('filtre') && itNameLower.includes('huile'))) return true;
+      return false;
+    });
+
+    if (!exists) {
+      vehicle.maintenanceItems.push({
+        id: `${def.id}_${vehicle.id || 'veh'}`,
+        name: def.name,
+        intervalKm: def.intervalKm,
+        intervalMonths: def.intervalMonths,
+        lastDate: null,
+        lastKm: null
+      });
+    }
+  });
+}
+
+if (typeof window !== 'undefined') {
+  window.ensureVehicleMaintenanceDefaults = ensureVehicleMaintenanceDefaults;
+  window.DEFAULT_MAINTENANCE_TYPES = DEFAULT_MAINTENANCE_TYPES;
+}
+
 // ============================================================================
 // 2. UTILITAIRES (FORMATAGE DATES, DISTANCES & MONNAIE)
 // ============================================================================
@@ -216,6 +256,11 @@ function loadState() {
 
     // S'assurer que le drapeau isDemo reflète l'état des véhicules
     parsed.isDemo = Boolean(parsed.vehicles && parsed.vehicles.some(v => v.isDemo));
+
+    // S'assurer que chaque véhicule dispose des 13 éléments d'entretien par défaut
+    if (Array.isArray(parsed.vehicles)) {
+      parsed.vehicles.forEach(v => ensureVehicleMaintenanceDefaults(v));
+    }
 
     appState = parsed;
     return true;
@@ -1714,6 +1759,10 @@ function renderMaintenanceList(vehicle, engine) {
   updateViewToggleButtons('maintViewToggle', prefs.maintViewMode);
 
   container.innerHTML = '';
+
+  if (vehicle) {
+    ensureVehicleMaintenanceDefaults(vehicle);
+  }
 
   if (!vehicle.maintenanceItems || vehicle.maintenanceItems.length === 0) {
     if (badgeEl) badgeEl.textContent = '0 élément';
