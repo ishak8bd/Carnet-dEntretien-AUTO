@@ -228,6 +228,8 @@ function applyAppLogo(theme, notify = false) {
   } else if (theme === 'steel') {
     chosen = 'steel';
   } else if (theme === 'bubble') {
+      chosen = 'bubble';
+    } else if (theme === 'liquid') {
     chosen = 'bubble';
   }
 
@@ -244,18 +246,20 @@ function applyAppLogo(theme, notify = false) {
   // 0. Basculer les classes de thèmes globaux (Acier Mécanique / Cyber Glassmorphism / Prestige Bleu / Noir Carbone)
   if (typeof document !== 'undefined') {
     if (document.body) {
-      document.body.classList.remove('theme-glass', 'theme-blue', 'theme-steel', 'theme-bubble');
+      document.body.classList.remove('theme-glass', 'theme-blue', 'theme-steel', 'theme-bubble', 'theme-liquid');
       if (chosen === 'steel') document.body.classList.add('theme-steel');
       else if (chosen === 'glass') document.body.classList.add('theme-glass');
       else if (chosen === 'blue') document.body.classList.add('theme-blue');
       else if (chosen === 'bubble') document.body.classList.add('theme-bubble');
+      else if (chosen === 'liquid') document.body.classList.add('theme-liquid');
     }
     if (document.documentElement) {
-      document.documentElement.classList.remove('theme-glass', 'theme-blue', 'theme-steel', 'theme-bubble');
+      document.documentElement.classList.remove('theme-glass', 'theme-blue', 'theme-steel', 'theme-bubble', 'theme-liquid');
       if (chosen === 'steel') document.documentElement.classList.add('theme-steel');
       else if (chosen === 'glass') document.documentElement.classList.add('theme-glass');
       else if (chosen === 'blue') document.documentElement.classList.add('theme-blue');
       else if (chosen === 'bubble') document.documentElement.classList.add('theme-bubble');
+      else if (chosen === 'liquid') document.documentElement.classList.add('theme-liquid');
     }
   }
 
@@ -416,7 +420,7 @@ function applyAppLogo(theme, notify = false) {
  */
 function cycleAppTheme() {
   const current = (appState.settings && appState.settings.appLogo) || localStorage.getItem('carnet_app_theme') || localStorage.getItem('carnet_app_logo') || 'dark';
-  const themes = ['dark', 'blue', 'glass', 'steel', 'bubble'];
+  const themes = ['dark', 'blue', 'glass', 'steel', 'bubble', 'liquid'];
   const currentIndex = themes.indexOf(current);
   const next = themes[(currentIndex + 1) % themes.length];
   applyAppLogo(next, true);
@@ -5560,6 +5564,7 @@ function attachEventListeners() {
   document.getElementById('logoOptionGlass')?.addEventListener('click', () => applyAppLogo('glass', true));
   document.getElementById('logoOptionSteel')?.addEventListener('click', () => applyAppLogo('steel', true));
   document.getElementById('logoOptionBubble')?.addEventListener('click', () => applyAppLogo('bubble', true));
+    document.getElementById('logoOptionLiquid')?.addEventListener('click', () => applyAppLogo('liquid', true));
   document.getElementById('btnHeaderThemeSwitch')?.addEventListener('click', cycleAppTheme);
   document.getElementById('appBrandIconContainer')?.addEventListener('click', () => {
     switchView('settings');

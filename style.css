@@ -4090,3 +4090,150 @@ body.theme-bubble {
 .theme-bubble .nav-item.active .nav-icon {
   filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.5));
 }
+/* ==========================================================================
+   Apple iOS 26 "Liquid Glass" Design System (.theme-liquid)
+   ========================================================================== */
+
+/* The liquid-glass base applies only under theme-liquid */
+body.theme-liquid .liquid-glass,
+body.theme-liquid .app-header.liquid-glass,
+body.theme-liquid .bottom-nav.liquid-glass,
+body.theme-liquid .modal-content.liquid-glass,
+body.theme-liquid .btn-primary.liquid-glass {
+  --glass-bg-light: rgba(255, 255, 255, 0.65);
+  --glass-bg-dark: rgba(20, 20, 20, 0.65);
+  --glass-border-light: rgba(255, 255, 255, 0.4);
+  --glass-border-dark: rgba(255, 255, 255, 0.15);
+  --glass-highlight-light: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --glass-highlight-dark: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  
+  background: var(--glass-bg-light) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid var(--glass-border-light) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), var(--glass-highlight-light) !important;
+  border-radius: 24px !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  body.theme-liquid .liquid-glass,
+  body.theme-liquid .app-header.liquid-glass,
+  body.theme-liquid .bottom-nav.liquid-glass,
+  body.theme-liquid .modal-content.liquid-glass,
+  body.theme-liquid .btn-primary.liquid-glass {
+    background: var(--glass-bg-dark) !important;
+    border-color: var(--glass-border-dark) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), var(--glass-highlight-dark) !important;
+  }
+}
+
+/* Fallback for no-backdrop-filter or prefers-reduced-transparency */
+@media (prefers-reduced-transparency: reduce) {
+  body.theme-liquid .liquid-glass {
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  @media (prefers-color-scheme: dark) {
+    body.theme-liquid .liquid-glass {
+      background: #1c1c1e !important;
+    }
+  }
+}
+
+/* High Contrast mode */
+@media (prefers-contrast: more) {
+  body.theme-liquid .liquid-glass {
+    border: 2px solid #000 !important;
+  }
+  @media (prefers-color-scheme: dark) {
+    body.theme-liquid .liquid-glass {
+      border: 2px solid #fff !important;
+    }
+  }
+}
+
+/* Specific elements adjustments */
+/* Bottom Nav Floating Pill Tab Bar */
+body.theme-liquid .bottom-nav.liquid-glass {
+  position: fixed !important;
+  bottom: calc(env(safe-area-inset-bottom, 16px) + 16px) !important;
+  left: 16px !important;
+  right: 16px !important;
+  width: auto !important;
+  border-radius: 32px !important;
+  padding: 8px 16px !important;
+  display: flex !important;
+  justify-content: space-around !important;
+  z-index: 100 !important;
+  height: auto !important;
+  min-height: 64px !important;
+  border-bottom: 1px solid var(--glass-border-light) !important;
+}
+@media (prefers-color-scheme: dark) {
+  body.theme-liquid .bottom-nav.liquid-glass {
+    border-bottom: 1px solid var(--glass-border-dark) !important;
+  }
+}
+
+/* Header Adjustments */
+body.theme-liquid .app-header.liquid-glass {
+  margin: env(safe-area-inset-top, 16px) 16px 16px 16px !important;
+  border-radius: 24px !important;
+  padding: 12px 16px !important;
+}
+
+/* Modals / Sheets adjustments */
+body.theme-liquid .modal-content.liquid-glass {
+  border-radius: 32px 32px 0 0 !important;
+  margin-top: auto !important; /* Push to bottom for Vaul-like sheet */
+  margin-bottom: 0 !important;
+  padding-bottom: env(safe-area-inset-bottom, 32px) !important;
+}
+
+/* Active tab sliding droplet indicator */
+body.theme-liquid .nav-tab {
+  position: relative !important;
+  overflow: visible !important;
+}
+body.theme-liquid .nav-tab.active::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 4px;
+  background: var(--primary);
+  border-radius: 4px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+body.theme-liquid .nav-tab.active {
+  color: var(--primary) !important;
+}
+
+/* Springy Press Feedback */
+body.theme-liquid button.liquid-glass, 
+body.theme-liquid .liquid-glass button,
+body.theme-liquid .nav-tab,
+body.theme-liquid .btn-primary.liquid-glass {
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease !important;
+  min-height: 44px !important; /* Minimum tap target */
+  min-width: 44px !important;
+}
+
+body.theme-liquid button.liquid-glass:active, 
+body.theme-liquid .liquid-glass button:active,
+body.theme-liquid .nav-tab:active,
+body.theme-liquid .btn-primary.liquid-glass:active {
+  transform: scale(0.96) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.theme-liquid button.liquid-glass:active, 
+  body.theme-liquid .liquid-glass button:active,
+  body.theme-liquid .nav-tab:active,
+  body.theme-liquid .btn-primary.liquid-glass:active {
+    transform: none !important;
+  }
+}
