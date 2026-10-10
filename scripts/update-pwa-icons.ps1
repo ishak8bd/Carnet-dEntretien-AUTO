@@ -2,6 +2,7 @@ Add-Type -AssemblyName System.Drawing
 
 $darkSource = "C:\Users\pc\.gemini\antigravity\brain\3f7564d1-125e-4e6e-8c2b-b323c6dc6ccd\.user_uploaded\media_1791593757355_558fad61.jpg"
 $blueSource = "C:\Users\pc\.gemini\antigravity\brain\3f7564d1-125e-4e6e-8c2b-b323c6dc6ccd\.user_uploaded\media_1791593757460_3390361f.jpg"
+$glassSource = "C:\Users\pc\.gemini\antigravity\brain\3f7564d1-125e-4e6e-8c2b-b323c6dc6ccd\.user_uploaded\media_1791599082209_9c0ad3a4.jpg"
 
 function Resize-And-Save($srcPath, $dstPath, $width, $height) {
     $srcImg = [System.Drawing.Image]::FromFile($srcPath)
@@ -53,6 +54,10 @@ Resize-And-Save $blueSource "icons\logo-blue.png" 512 512
 Resize-And-Save $blueSource "icons\icon-blue-192.png" 192 192
 Resize-And-Save $blueSource "icons\icon-blue-512.png" 512 512
 
+Resize-And-Save $glassSource "icons\logo-glass.png" 512 512
+Resize-And-Save $glassSource "icons\icon-glass-192.png" 192 192
+Resize-And-Save $glassSource "icons\icon-glass-512.png" 512 512
+
 # 2. Maskable Icons
 Create-Maskable-Icon $darkSource "icons\icon-maskable.png" "#0b0f19"
 
@@ -67,4 +72,4 @@ $svgContent = @"
 "@
 [System.IO.File]::WriteAllText("icons\icon.svg", $svgContent, [System.Text.Encoding]::UTF8)
 
-Write-Host "All icons including icon.svg updated successfully!"
+Write-Host "All icons including glass theme icons updated successfully!"

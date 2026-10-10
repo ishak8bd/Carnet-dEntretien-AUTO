@@ -17,13 +17,17 @@
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
   <script>
-    // Pré-application immédiate du logo personnalisé pour éviter le flash
+    // Pré-application immédiate du logo et thème personnalisé pour éviter le flash
     (function() {
       try {
         var savedLogo = localStorage.getItem('carnet_app_logo') || 'dark';
-        if (savedLogo === 'blue') {
-          var fav = document.getElementById('dynamicFavicon');
-          var apple = document.getElementById('dynamicAppleIcon');
+        var fav = document.getElementById('dynamicFavicon');
+        var apple = document.getElementById('dynamicAppleIcon');
+        if (savedLogo === 'glass') {
+          if (fav) fav.href = 'icons/icon-glass-192.png';
+          if (apple) apple.href = 'icons/icon-glass-192.png';
+          document.documentElement.classList.add('theme-glass');
+        } else if (savedLogo === 'blue') {
           if (fav) fav.href = 'icons/icon-blue-192.png';
           if (apple) apple.href = 'icons/icon-blue-192.png';
         }
@@ -497,6 +501,21 @@
               <div class="logo-picker-desc">Teinte bleu royal profond ornée de finitions dorées éclatantes.</div>
             </div>
             <div class="logo-picker-check" id="logoCheckBlue" style="display: none;" aria-hidden="true">✓</div>
+          </div>
+
+          <!-- Option 3 : Cyber Glassmorphism -->
+          <div class="logo-picker-card" id="logoOptionGlass" data-logo="glass" role="button" tabindex="0" aria-label="Choisir le thème Cyber Glassmorphism">
+            <div class="logo-picker-preview logo-picker-preview-glass">
+              <img src="icons/logo-glass.png" alt="Aperçu Thème Cyber Glassmorphism">
+            </div>
+            <div class="logo-picker-info">
+              <div class="logo-picker-title">
+                <span>Cyber Glassmorphism</span>
+                <span class="status-badge status-badge-glass" style="font-size: 0.68rem; padding: 2px 6px;">Nébuleuse</span>
+              </div>
+              <div class="logo-picker-desc">Design futuriste en verre fumé dépoli, halo néon cyan et reflets translucides.</div>
+            </div>
+            <div class="logo-picker-check" id="logoCheckGlass" style="display: none;" aria-hidden="true">✓</div>
           </div>
         </div>
       </section>

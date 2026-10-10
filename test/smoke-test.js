@@ -648,12 +648,13 @@ try {
   window.renderExternalContactsList();
   assert.strictEqual(contactsList.querySelectorAll('.contact-card-row').length, 3, '3 cartes de destinataires rendues dans le DOM');
 
-  console.log('23. Vérification du logo de l\'application (sombre par défaut, bascule vers le bleu et persistance)');
+  console.log('23. Vérification du logo et des thèmes (Noir & Carbone, Bleu & Or, Cyber Glassmorphism et persistance)');
   const appLogoImg = document.getElementById('appLogoImg');
   const favIcon = document.getElementById('dynamicFavicon');
   const appleIcon = document.getElementById('dynamicAppleIcon');
   const optDark = document.getElementById('logoOptionDark');
   const optBlue = document.getElementById('logoOptionBlue');
+  const optGlass = document.getElementById('logoOptionGlass');
   const activeBadge = document.getElementById('activeLogoBadge');
 
   assert(appLogoImg, 'Image de logo appLogoImg présente dans l\'en-tête');
@@ -661,11 +662,14 @@ try {
   assert(appleIcon, 'Apple-touch-icon dynamique présent');
   assert(optDark, 'Option logo Noir & Carbone présente dans les paramètres');
   assert(optBlue, 'Option logo Bleu & Or présente dans les paramètres');
+  assert(optGlass, 'Option thème Cyber Glassmorphism présente dans les paramètres');
 
   // Par défaut, le logo doit être sombre (dark)
   assert(appLogoImg.src.includes('logo-dark.png'), 'Le logo par défaut doit être sombre (logo-dark.png)');
   assert(optDark.classList.contains('active'), 'L\'option Noir & Carbone doit être active par défaut');
   assert(!optBlue.classList.contains('active'), 'L\'option Bleu & Or ne doit pas être active au départ');
+  assert(!optGlass.classList.contains('active'), 'L\'option Glassmorphism ne doit pas être active au départ');
+  assert(!document.body.classList.contains('theme-glass'), 'La classe theme-glass ne doit pas être présente par défaut');
 
   // Basculer vers le logo Bleu & Or
   optBlue.click();
@@ -673,10 +677,26 @@ try {
   assert(favIcon.href.includes('icon-blue-192.png'), 'Le favicon doit pointer sur icon-blue-192.png');
   assert(optBlue.classList.contains('active'), 'L\'option Bleu & Or doit être marquée active');
   assert(!optDark.classList.contains('active'), 'L\'option Noir & Carbone ne doit plus être active');
+  assert(!optGlass.classList.contains('active'), 'L\'option Glass ne doit pas être active');
   assert.strictEqual(window.localStorage.getItem('carnet_app_logo'), 'blue', 'Le choix "blue" doit être persisté dans localStorage');
   assert.strictEqual(window.appState.settings.appLogo, 'blue', 'appState.settings.appLogo doit valoir "blue"');
   if (activeBadge) {
     assert.strictEqual(activeBadge.textContent.trim(), 'Bleu & Or', 'Le badge indique Bleu & Or');
+  }
+
+  // Basculer vers le thème Cyber Glassmorphism
+  optGlass.click();
+  assert(appLogoImg.src.includes('logo-glass.png'), 'Le logo dans l\'en-tête doit maintenant pointer sur logo-glass.png');
+  assert(favIcon.href.includes('icon-glass-192.png'), 'Le favicon doit pointer sur icon-glass-192.png');
+  assert(optGlass.classList.contains('active'), 'L\'option Cyber Glassmorphism doit être marquée active');
+  assert(!optDark.classList.contains('active'), 'L\'option Noir & Carbone ne doit plus être active');
+  assert(!optBlue.classList.contains('active'), 'L\'option Bleu & Or ne doit plus être active');
+  assert(document.body.classList.contains('theme-glass'), 'La classe theme-glass doit être ajoutée au body');
+  assert.strictEqual(window.localStorage.getItem('carnet_app_logo'), 'glass', 'Le choix "glass" doit être persisté dans localStorage carnet_app_logo');
+  assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'glass', 'Le choix "glass" doit être persisté dans localStorage carnet_app_theme');
+  assert.strictEqual(window.appState.settings.appLogo, 'glass', 'appState.settings.appLogo doit valoir "glass"');
+  if (activeBadge) {
+    assert.strictEqual(activeBadge.textContent.trim(), 'Cyber Glassmorphism', 'Le badge indique Cyber Glassmorphism');
   }
 
   // Basculer de nouveau vers le logo Noir & Carbone
@@ -684,6 +704,8 @@ try {
   assert(appLogoImg.src.includes('logo-dark.png'), 'Le logo dans l\'en-tête doit revenir à logo-dark.png');
   assert(optDark.classList.contains('active'), 'L\'option Noir & Carbone doit redevenir active');
   assert(!optBlue.classList.contains('active'), 'L\'option Bleu & Or ne doit plus être active');
+  assert(!optGlass.classList.contains('active'), 'L\'option Cyber Glassmorphism ne doit plus être active');
+  assert(!document.body.classList.contains('theme-glass'), 'La classe theme-glass doit être retirée du body');
   assert.strictEqual(window.localStorage.getItem('carnet_app_logo'), 'dark', 'Le choix "dark" doit être persisté dans localStorage');
   assert.strictEqual(window.appState.settings.appLogo, 'dark', 'appState.settings.appLogo doit valoir "dark"');
   if (activeBadge) {

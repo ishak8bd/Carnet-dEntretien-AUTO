@@ -220,7 +220,12 @@ function updateViewToggleButtons(toggleId, activeMode) {
  * @param {boolean} notify - Afficher un message de confirmation si true
  */
 function applyAppLogo(theme, notify = false) {
-  const chosen = (theme === 'blue') ? 'blue' : 'dark';
+  let chosen = 'dark';
+  if (theme === 'blue') {
+    chosen = 'blue';
+  } else if (theme === 'glass') {
+    chosen = 'glass';
+  }
 
   if (!appState.settings) {
     appState.settings = { contacts: [] };
@@ -229,54 +234,90 @@ function applyAppLogo(theme, notify = false) {
 
   try {
     localStorage.setItem('carnet_app_logo', chosen);
+    localStorage.setItem('carnet_app_theme', chosen);
   } catch (e) {}
+
+  // 0. Basculer la classe de thème global (Glassmorphism Cyber-Mécanique)
+  if (typeof document !== 'undefined') {
+    if (document.body) {
+      document.body.classList.toggle('theme-glass', chosen === 'glass');
+    }
+    if (document.documentElement) {
+      document.documentElement.classList.toggle('theme-glass', chosen === 'glass');
+    }
+  }
 
   // 1. Mettre à jour l'image de l'en-tête
   const logoImg = document.getElementById('appLogoImg');
   if (logoImg) {
-    logoImg.src = chosen === 'blue' ? 'icons/logo-blue.png' : 'icons/logo-dark.png';
-    logoImg.alt = chosen === 'blue' ? "Logo Carnet d'Entretien Bleu & Or" : "Logo Carnet d'Entretien Noir & Carbone";
+    if (chosen === 'glass') {
+      logoImg.src = 'icons/logo-glass.png';
+      logoImg.alt = "Logo Carnet d'Entretien Cyber Glassmorphism";
+    } else if (chosen === 'blue') {
+      logoImg.src = 'icons/logo-blue.png';
+      logoImg.alt = "Logo Carnet d'Entretien Bleu & Or";
+    } else {
+      logoImg.src = 'icons/logo-dark.png';
+      logoImg.alt = "Logo Carnet d'Entretien Noir & Carbone";
+    }
   }
 
   // 2. Mettre à jour les favicons dynamiques
   const fav = document.getElementById('dynamicFavicon');
   if (fav) {
-    fav.href = chosen === 'blue' ? 'icons/icon-blue-192.png' : 'icons/icon-192.png';
+    if (chosen === 'glass') {
+      fav.href = 'icons/icon-glass-192.png';
+    } else if (chosen === 'blue') {
+      fav.href = 'icons/icon-blue-192.png';
+    } else {
+      fav.href = 'icons/icon-192.png';
+    }
   }
   const apple = document.getElementById('dynamicAppleIcon');
   if (apple) {
-    apple.href = chosen === 'blue' ? 'icons/icon-blue-192.png' : 'icons/icon-192.png';
+    if (chosen === 'glass') {
+      apple.href = 'icons/icon-glass-192.png';
+    } else if (chosen === 'blue') {
+      apple.href = 'icons/icon-blue-192.png';
+    } else {
+      apple.href = 'icons/icon-192.png';
+    }
   }
 
   // 3. Mettre à jour les cartes du sélecteur dans les paramètres
   const darkCard = document.getElementById('logoOptionDark');
   const blueCard = document.getElementById('logoOptionBlue');
+  const glassCard = document.getElementById('logoOptionGlass');
   const darkCheck = document.getElementById('logoCheckDark');
   const blueCheck = document.getElementById('logoCheckBlue');
+  const glassCheck = document.getElementById('logoCheckGlass');
   const activeBadge = document.getElementById('activeLogoBadge');
 
   if (darkCard) {
-    if (chosen === 'dark') {
-      darkCard.classList.add('active');
-    } else {
-      darkCard.classList.remove('active');
-    }
+    darkCard.classList.toggle('active', chosen === 'dark');
   }
   if (blueCard) {
-    if (chosen === 'blue') {
-      blueCard.classList.add('active');
-    } else {
-      blueCard.classList.remove('active');
-    }
+    blueCard.classList.toggle('active', chosen === 'blue');
   }
+  if (glassCard) {
+    glassCard.classList.toggle('active', chosen === 'glass');
+  }
+
   if (darkCheck) {
     darkCheck.style.display = chosen === 'dark' ? 'inline-flex' : 'none';
   }
   if (blueCheck) {
     blueCheck.style.display = chosen === 'blue' ? 'inline-flex' : 'none';
   }
+  if (glassCheck) {
+    glassCheck.style.display = chosen === 'glass' ? 'inline-flex' : 'none';
+  }
+
   if (activeBadge) {
-    if (chosen === 'blue') {
+    if (chosen === 'glass') {
+      activeBadge.textContent = 'Cyber Glassmorphism';
+      activeBadge.className = 'status-badge status-badge-glass';
+    } else if (chosen === 'blue') {
       activeBadge.textContent = 'Bleu & Or';
       activeBadge.className = 'status-badge status-badge-blue';
     } else {
@@ -286,7 +327,13 @@ function applyAppLogo(theme, notify = false) {
   }
 
   if (notify && typeof showToast === 'function') {
-    showToast(chosen === 'blue' ? '✨ Logo Prestige Bleu & Or activé !' : '✨ Logo Noir & Carbone activé !', 'success');
+    let msg = '✨ Logo Noir & Carbone activé !';
+    if (chosen === 'glass') {
+      msg = '✨ Thème Cyber Glassmorphism activé !';
+    } else if (chosen === 'blue') {
+      msg = '✨ Logo Prestige Bleu & Or activé !';
+    }
+    showToast(msg, 'success');
   }
 }
 
@@ -5421,9 +5468,10 @@ function attachEventListeners() {
   document.getElementById('btnCancelContactModal')?.addEventListener('click', closeAddContactModal);
   document.getElementById('formAddContact')?.addEventListener('submit', handleContactFormSubmit);
 
-  // Sélecteur d'Apparence & Logo de l'application (Noir & Carbone vs Bleu & Or)
+  // Sélecteur d'Apparence & Logo de l'application (Noir & Carbone vs Bleu & Or vs Cyber Glassmorphism)
   document.getElementById('logoOptionDark')?.addEventListener('click', () => applyAppLogo('dark', true));
   document.getElementById('logoOptionBlue')?.addEventListener('click', () => applyAppLogo('blue', true));
+  document.getElementById('logoOptionGlass')?.addEventListener('click', () => applyAppLogo('glass', true));
   document.getElementById('appBrandIconContainer')?.addEventListener('click', () => {
     switchView('settings');
     const logoCard = document.getElementById('settingsAppLogoCard');
