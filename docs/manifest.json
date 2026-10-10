@@ -1,12 +1,12 @@
 {
-  "name": "Suivi Entretien Véhicule",
-  "short_name": "Entretien",
+  "name": "Carnet d'Entretien Auto",
+  "short_name": "Carnet Auto",
   "description": "Suivi et prédiction intelligente de l'entretien automobile",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#0b0f19",
+  "theme_color": "#0b0f19",
   "lang": "fr-DZ",
   "icons": [
     {
@@ -29,8 +29,9 @@
     },
     {
       "src": "icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }
