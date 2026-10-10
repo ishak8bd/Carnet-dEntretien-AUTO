@@ -501,6 +501,45 @@
         </div>
       </section>
 
+      <!-- CARTE : Notifications directes sur l'appareil (Web Push & Alertes PWA) -->
+      <section class="card settings-card" id="settingsNotificationsCard">
+        <div class="card-header">
+          <div class="card-title">
+            <span>🔔 Notifications sur cet appareil</span>
+          </div>
+          <span id="notifStatusBadge" class="status-badge status-badge-info">Vérification...</span>
+        </div>
+        <p class="card-subtitle">
+          Recevez des alertes pop-up directement sur votre téléphone (ou ordinateur) lorsque des entretiens deviennent urgents ou qu'un relevé kilométrique est recommandé.
+        </p>
+
+        <div id="notifStatusInfo" style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+          <!-- Rempli dynamiquement en JS selon le statut -->
+        </div>
+
+        <div class="settings-actions" style="display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
+          <button type="button" id="btnToggleNotifications" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+            <span>🔔</span>
+            <span id="btnToggleNotifText">Activer les notifications</span>
+          </button>
+          <button type="button" id="btnTestNotification" class="btn-secondary" style="display: none; align-items: center; gap: 6px;">
+            <span>🧪</span>
+            <span>Tester la notification</span>
+          </button>
+        </div>
+
+        <div id="notifPreferencesBox" style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; flex-direction: column; gap: 10px;">
+          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-main); cursor: pointer;">
+            <input type="checkbox" id="chkNotifUrgentMaint" checked style="accent-color: var(--primary); width: 18px; height: 18px;">
+            <span>Alerter pour les entretiens urgents &amp; en retard (J-7 et dépassés)</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-main); cursor: pointer;">
+            <input type="checkbox" id="chkNotifStaleKm" checked style="accent-color: var(--primary); width: 18px; height: 18px;">
+            <span>Rappeler le relevé kilométrique tous les 15 jours</span>
+          </label>
+        </div>
+      </section>
+
       <!-- CARTE : Destinataires supplémentaires des alertes (Sans adhésion) -->
       <section class="card settings-card" id="settingsContactsCard">
         <div class="card-header">

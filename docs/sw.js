@@ -1,5 +1,5 @@
 // Service Worker - Suivi Entretien Véhicule PWA (100% Hors-Ligne & Support Firebase)
-const CACHE_NAME = 'entretien-v16';
+const CACHE_NAME = 'entretien-v17';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -82,5 +82,66 @@ self.addEventListener('fetch', (event) => {
         // Retourner une réponse d'erreur valide au lieu de null pour éviter une TypeError dans respondWith
         return Response.error();
       })
+  );
+});
+
+// ============================================================================
+// GESTION DES NOTIFICATIONS PUSH & LOCALES DU TÉLÉPHONE
+// ============================================================================
+
+// Événement Push (Web Push distant en arrière-plan)
+self.addEventListener('push', (event) => {
+  let data = {
+    title: "Carnet d'Entretien",
+    body: "Vous avez une alerte d'entretien à vérifier !",
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    tag: 'carnet-auto-alert',
+    url: './index.html'
+  };
+
+  try {
+    if (event.data) {
+      const payload = event.data.json();
+      data = Object.assign(data, payload);
+    }
+  } catch (err) {
+    if (event.data) {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon || './icons/icon-192.png',
+    badge: data.badge || './icons/icon-192.png',
+    tag: data.tag || 'carnet-auto-alert',
+    vibrate: [200, 100, 200],
+    data: { url: data.url || './index.html' },
+    requireInteraction: false
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// Clic sur une notification du téléphone : ouvrir ou focaliser l'application
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const targetUrl = (event.notification.data && event.notification.data.url) || './index.html';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.includes('index.html') || client.url.endsWith('/')) {
+          if ('focus' in client) return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
   );
 });

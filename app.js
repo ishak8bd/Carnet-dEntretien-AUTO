@@ -40,7 +40,10 @@ let appState = {
     defaultIntervals: JSON.parse(JSON.stringify(DEFAULT_MAINTENANCE_TYPES)),
     lastBackupDate: null,
     contacts: [],
-    appLogo: 'dark'
+    appLogo: 'dark',
+    notificationsEnabled: false,
+    notifUrgentMaint: true,
+    notifStaleKm: true
   },
   isDemo: false
 };
@@ -291,6 +294,297 @@ if (typeof window !== 'undefined') {
 }
 
 // ============================================================================
+// 2b. NOTIFICATIONS DIRECTES SUR L'APPAREIL (PWA & WEB NOTIFICATIONS API)
+// ============================================================================
+
+/**
+ * Vérifie si les notifications sont prises en charge par le navigateur / système
+ */
+function isNotificationSupported() {
+  return typeof window !== 'undefined' && 'Notification' in window;
+}
+
+/**
+ * Obtient le statut d'autorisation actuel ('granted', 'denied', 'default', ou 'unsupported')
+ */
+function getNotificationPermission() {
+  if (!isNotificationSupported()) return 'unsupported';
+  return Notification.permission;
+}
+
+/**
+ * Met à jour l'interface des paramètres de notifications
+ */
+function updateNotificationSettingsUI() {
+  const badge = document.getElementById('notifStatusBadge');
+  const infoEl = document.getElementById('notifStatusInfo');
+  const toggleBtn = document.getElementById('btnToggleNotifications');
+  const toggleBtnText = document.getElementById('btnToggleNotifText');
+  const testBtn = document.getElementById('btnTestNotification');
+  const chkUrgent = document.getElementById('chkNotifUrgentMaint');
+  const chkStale = document.getElementById('chkNotifStaleKm');
+
+  if (chkUrgent && appState.settings) {
+    chkUrgent.checked = appState.settings.notifUrgentMaint !== false;
+  }
+  if (chkStale && appState.settings) {
+    chkStale.checked = appState.settings.notifStaleKm !== false;
+  }
+
+  const permission = getNotificationPermission();
+  const isEnabled = Boolean(appState.settings && appState.settings.notificationsEnabled && permission === 'granted');
+
+  if (permission === 'unsupported') {
+    if (badge) {
+      badge.textContent = "Non supporté";
+      badge.className = "status-badge";
+    }
+    if (infoEl) {
+      infoEl.innerHTML = "⚠️ Ce navigateur ou cet appareil ne prend pas en charge l'API Web Notifications.";
+    }
+    if (toggleBtn) toggleBtn.disabled = true;
+    if (testBtn) testBtn.style.display = 'none';
+    return;
+  }
+
+  if (permission === 'denied') {
+    if (badge) {
+      badge.textContent = "Bloquées ⛔";
+      badge.className = "status-badge status-badge-red";
+    }
+    if (infoEl) {
+      infoEl.innerHTML = "🔒 <strong>Les notifications sont bloquées</strong> dans les paramètres de votre navigateur.<br>Pour les autoriser : appuyez sur l'icône de cadenas ou les réglages du site dans Chrome, puis activez les <em>Notifications</em>.";
+    }
+    if (toggleBtn) {
+      toggleBtn.disabled = true;
+      if (toggleBtnText) toggleBtnText.textContent = "Bloqué par le navigateur";
+    }
+    if (testBtn) testBtn.style.display = 'none';
+    return;
+  }
+
+  if (isEnabled) {
+    if (badge) {
+      badge.textContent = "Activées ✅";
+      badge.className = "status-badge status-badge-green";
+    }
+    if (infoEl) {
+      infoEl.innerHTML = "✅ <strong>Les notifications sont actives sur cet appareil.</strong> Vous recevrez des alertes directes pour les entretiens urgents et les relevés de compteur.";
+    }
+    if (toggleBtn) {
+      toggleBtn.disabled = false;
+      toggleBtn.classList.remove('btn-primary');
+      toggleBtn.classList.add('btn-secondary');
+      if (toggleBtnText) toggleBtnText.textContent = "🔕 Désactiver les alertes";
+    }
+    if (testBtn) testBtn.style.display = 'inline-flex';
+  } else {
+    if (badge) {
+      badge.textContent = "Désactivées 🔕";
+      badge.className = "status-badge status-badge-orange";
+    }
+    if (infoEl) {
+      infoEl.innerHTML = "🔕 <strong>Les notifications sont désactivées sur cet appareil.</strong> Cliquez sur le bouton ci-dessous pour autoriser et recevoir les alertes sur votre téléphone.";
+    }
+    if (toggleBtn) {
+      toggleBtn.disabled = false;
+      toggleBtn.classList.remove('btn-secondary');
+      toggleBtn.classList.add('btn-primary');
+      if (toggleBtnText) toggleBtnText.textContent = "📲 Activer les notifications";
+    }
+    if (testBtn) testBtn.style.display = 'none';
+  }
+}
+
+/**
+ * Déclenche une notification locale sur l'appareil (via ServiceWorker ou Notification API)
+ */
+async function showDeviceNotification(title, options = {}) {
+  if (!isNotificationSupported()) return false;
+  if (Notification.permission !== 'granted') return false;
+
+  const currentLogo = (appState.settings && appState.settings.appLogo === 'blue') ? 'icons/icon-blue-192.png' : 'icons/icon-192.png';
+
+  const defaultOptions = {
+    icon: currentLogo,
+    badge: currentLogo,
+    tag: 'carnet-auto-alert',
+    renotify: true,
+    vibrate: [200, 100, 200],
+    data: { url: './index.html' }
+  };
+
+  const finalOptions = Object.assign(defaultOptions, options);
+
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg && typeof reg.showNotification === 'function') {
+        await reg.showNotification(title, finalOptions);
+        return true;
+      }
+    }
+    new Notification(title, finalOptions);
+    return true;
+  } catch (err) {
+    console.warn("Impossible d'afficher la notification système:", err);
+    return false;
+  }
+}
+
+/**
+ * Demande la permission et active les notifications
+ */
+async function toggleDeviceNotifications() {
+  if (!isNotificationSupported()) {
+    showToast("Les notifications ne sont pas supportées par votre navigateur.", "warning");
+    return;
+  }
+
+  if (Notification.permission === 'denied') {
+    showToast("Notifications bloquées par votre navigateur. Autorisez-les dans les paramètres du site.", "warning");
+    return;
+  }
+
+  const isCurrentlyActive = Boolean(appState.settings && appState.settings.notificationsEnabled && Notification.permission === 'granted');
+
+  if (isCurrentlyActive) {
+    if (!appState.settings) appState.settings = {};
+    appState.settings.notificationsEnabled = false;
+    saveState();
+    updateNotificationSettingsUI();
+    showToast("Notifications locales désactivées sur cet appareil.", "info");
+    return;
+  }
+
+  try {
+    const result = await Notification.requestPermission();
+    if (result === 'granted') {
+      if (!appState.settings) appState.settings = {};
+      appState.settings.notificationsEnabled = true;
+      saveState();
+      updateNotificationSettingsUI();
+      showToast("🔔 Notifications activées avec succès !", "success");
+
+      await showDeviceNotification("🔔 Carnet Auto : Notifications activées !", {
+        body: "Votre téléphone recevra désormais vos rappels d'entretien et de kilométrage.",
+        tag: 'carnet-welcome-notif'
+      });
+    } else {
+      updateNotificationSettingsUI();
+      showToast("Autorisation de notification refusée.", "warning");
+    }
+  } catch (err) {
+    showToast("Erreur lors de l'activation des notifications: " + err.message, "error");
+  }
+}
+
+/**
+ * Envoie une notification de test immédiate pour vérifier l'affichage sur le téléphone
+ */
+async function sendTestNotification() {
+  if (getNotificationPermission() !== 'granted') {
+    showToast("Veuillez d'abord autoriser les notifications.", "warning");
+    return;
+  }
+
+  const vehicle = getActiveVehicle();
+  const vehName = vehicle ? `${vehicle.brand} ${vehicle.model}` : "Votre véhicule";
+
+  const success = await showDeviceNotification(`🚗 Test Carnet Auto (${vehName})`, {
+    body: "Parfait ! Vos notifications fonctionnent parfaitement sur cet appareil. 🎉",
+    tag: 'carnet-test-notif'
+  });
+
+  if (success) {
+    showToast("Notification de test émise ! Regardez le haut de votre écran 📲", "success");
+  } else {
+    showToast("Impossible d'émettre la notification de test.", "error");
+  }
+}
+
+/**
+ * Vérifie les alertes d'entretien et de kilométrage et émet une notification locale si nécessaire
+ */
+async function checkAndSendPendingMaintenanceNotifications() {
+  if (!isNotificationSupported()) return;
+  if (Notification.permission !== 'granted') return;
+  if (!appState.settings || !appState.settings.notificationsEnabled) return;
+
+  const vehicle = getActiveVehicle();
+  if (!vehicle) return;
+
+  // Anti-spam / Cooldown : maximum une alerte automatique toutes les 12 heures
+  const lastNotif = parseInt(localStorage.getItem('carnet_last_auto_notif_time') || '0', 10);
+  const now = Date.now();
+  const twelveHours = 12 * 60 * 60 * 1000;
+  if (now - lastNotif < twelveHours) return;
+
+  const engine = computePredictionEngine(vehicle);
+  const items = Array.isArray(vehicle.maintenanceItems) ? vehicle.maintenanceItems : [];
+
+  // 1. Vérifier les entretiens urgents ou en retard
+  if (appState.settings.notifUrgentMaint !== false) {
+    const overdue = [];
+    const dueSoon = [];
+
+    items.forEach(it => {
+      const pred = engine[it.id];
+      if (!pred) return;
+      if (pred.isOverdue) {
+        overdue.push(it.name);
+      } else if (pred.estimatedDaysRemaining !== null && pred.estimatedDaysRemaining <= 7) {
+        dueSoon.push({ name: it.name, days: pred.estimatedDaysRemaining });
+      }
+    });
+
+    if (overdue.length > 0) {
+      localStorage.setItem('carnet_last_auto_notif_time', String(now));
+      await showDeviceNotification(`⚠️ Entretien en retard : ${vehicle.brand} ${vehicle.model}`, {
+        body: `${overdue.length} opération(s) à faire d'urgence : ${overdue.slice(0, 2).join(', ')}${overdue.length > 2 ? '...' : ''}.`,
+        tag: 'carnet-maint-overdue'
+      });
+      return;
+    }
+
+    if (dueSoon.length > 0) {
+      localStorage.setItem('carnet_last_auto_notif_time', String(now));
+      const first = dueSoon[0];
+      await showDeviceNotification(`⏳ Échéance proche : ${vehicle.brand} ${vehicle.model}`, {
+        body: `${first.name} arrive à échéance dans ${first.days === 0 ? "aujourd'hui" : first.days + " jour(s)"}.`,
+        tag: 'carnet-maint-due-soon'
+      });
+      return;
+    }
+  }
+
+  // 2. Vérifier si le relevé kilométrique est ancien (> 15 jours)
+  if (appState.settings.notifStaleKm !== false) {
+    const lastUpdateDate = vehicle.updatedAt || (vehicle.kmLog && vehicle.kmLog.length > 0 ? vehicle.kmLog[vehicle.kmLog.length - 1].date : null);
+    if (lastUpdateDate) {
+      const daysElapsed = getDaysElapsed(lastUpdateDate);
+      if (daysElapsed >= 15) {
+        localStorage.setItem('carnet_last_auto_notif_time', String(now));
+        await showDeviceNotification(`⏱️ Relevé compteur : ${vehicle.brand} ${vehicle.model}`, {
+          body: `Dernier relevé il y a ${daysElapsed} jours (${formatKm(vehicle.currentKm)} km). Mettez-le à jour pour affiner les prédictions !`,
+          tag: 'carnet-km-stale'
+        });
+      }
+    }
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.isNotificationSupported = isNotificationSupported;
+  window.getNotificationPermission = getNotificationPermission;
+  window.updateNotificationSettingsUI = updateNotificationSettingsUI;
+  window.showDeviceNotification = showDeviceNotification;
+  window.toggleDeviceNotifications = toggleDeviceNotifications;
+  window.sendTestNotification = sendTestNotification;
+  window.checkAndSendPendingMaintenanceNotifications = checkAndSendPendingMaintenanceNotifications;
+}
+
+// ============================================================================
 // 3. GESTION DU STOCKAGE & MIGRATIONS LOCALSTORAGE
 // ============================================================================
 
@@ -323,7 +617,10 @@ function loadState() {
         defaultIntervals: JSON.parse(JSON.stringify(DEFAULT_MAINTENANCE_TYPES)),
         lastBackupDate: null,
         contacts: [],
-        appLogo: 'dark'
+        appLogo: 'dark',
+        notificationsEnabled: false,
+        notifUrgentMaint: true,
+        notifStaleKm: true
       };
     } else {
       if (!parsed.settings.defaultIntervals) {
@@ -338,6 +635,15 @@ function loadState() {
         } catch (e) {
           parsed.settings.appLogo = 'dark';
         }
+      }
+      if (parsed.settings.notificationsEnabled === undefined) {
+        parsed.settings.notificationsEnabled = false;
+      }
+      if (parsed.settings.notifUrgentMaint === undefined) {
+        parsed.settings.notifUrgentMaint = true;
+      }
+      if (parsed.settings.notifStaleKm === undefined) {
+        parsed.settings.notifStaleKm = true;
       }
     }
 
@@ -4104,7 +4410,10 @@ function renderSettingsScreen() {
   const currentLogo = (appState.settings && appState.settings.appLogo) || 'dark';
   applyAppLogo(currentLogo, false);
 
-  // 5. Destinataires supplémentaires d'alertes (sans adhésion)
+  // 5. État et réglages des notifications de l'appareil
+  updateNotificationSettingsUI();
+
+  // 6. Destinataires supplémentaires d'alertes (sans adhésion)
   renderExternalContactsList();
 }
 
@@ -5044,6 +5353,20 @@ function attachEventListeners() {
     }
   });
 
+  // Gestion des notifications de l'appareil
+  document.getElementById('btnToggleNotifications')?.addEventListener('click', toggleDeviceNotifications);
+  document.getElementById('btnTestNotification')?.addEventListener('click', sendTestNotification);
+  document.getElementById('chkNotifUrgentMaint')?.addEventListener('change', (e) => {
+    if (!appState.settings) appState.settings = {};
+    appState.settings.notifUrgentMaint = e.target.checked;
+    saveState();
+  });
+  document.getElementById('chkNotifStaleKm')?.addEventListener('change', (e) => {
+    if (!appState.settings) appState.settings = {};
+    appState.settings.notifStaleKm = e.target.checked;
+    saveState();
+  });
+
 }
 
 // ============================================================================
@@ -5062,6 +5385,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
   attachEventListeners();
   renderApp();
+
+  // Vérification et émission des notifications d'échéances en arrière-plan
+  checkAndSendPendingMaintenanceNotifications();
 
   // Détection connectivité réseau (En ligne / Hors-ligne)
   window.addEventListener('online', updateNetworkStatus);

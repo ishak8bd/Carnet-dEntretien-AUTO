@@ -56,6 +56,25 @@ if (!window.navigator.clipboard) {
   };
 }
 
+let mockNotificationPermission = 'default';
+const mockSentNotifications = [];
+
+class MockNotification {
+  constructor(title, options = {}) {
+    this.title = title;
+    this.options = options;
+    mockSentNotifications.push({ title, options });
+  }
+  static get permission() {
+    return mockNotificationPermission;
+  }
+  static requestPermission() {
+    mockNotificationPermission = 'granted';
+    return Promise.resolve('granted');
+  }
+}
+window.Notification = MockNotification;
+
 // Intercepter les erreurs non capturées
 window.addEventListener('error', (event) => {
   console.error('[Uncaught Window Error]:', event.error || event.message);
@@ -671,7 +690,37 @@ try {
     assert.strictEqual(activeBadge.textContent.trim(), 'Noir & Carbone', 'Le badge indique Noir & Carbone');
   }
 
-  console.log('✅ TOUS LES TESTS DU SMOKE TEST (23/23) ONT RÉUSSI SANS AUCUNE ERREUR !');
+  console.log('24. Vérification des notifications de l\'appareil (Web Push & Alertes PWA)');
+  const notifCard = document.getElementById('settingsNotificationsCard');
+  const notifBadge = document.getElementById('notifStatusBadge');
+  const btnToggleNotif = document.getElementById('btnToggleNotifications');
+  const btnTestNotif = document.getElementById('btnTestNotification');
+  const chkUrgent = document.getElementById('chkNotifUrgentMaint');
+  const chkStale = document.getElementById('chkNotifStaleKm');
+
+  assert(notifCard, 'Carte des notifications présente dans le DOM');
+  assert(notifBadge, 'Badge de statut de notification présent');
+  assert(btnToggleNotif, 'Bouton d\'activation des notifications présent');
+  assert(btnTestNotif, 'Bouton de test des notifications présent');
+  assert(chkUrgent, 'Case à cocher pour les entretiens urgents présente');
+  assert(chkStale, 'Case à cocher pour le rappel kilométrique présente');
+
+  // Activer les notifications
+  await window.toggleDeviceNotifications();
+  assert.strictEqual(window.appState.settings.notificationsEnabled, true, 'notificationsEnabled doit être à true après activation');
+  assert(notifBadge.textContent.includes('Activées'), 'Le badge doit indiquer Activées');
+  assert.strictEqual(btnTestNotif.style.display, 'inline-flex', 'Le bouton de test doit être visible');
+
+  // Tester l'émission de la notification de test
+  await window.sendTestNotification();
+  assert(mockSentNotifications.length >= 1, 'Au moins une notification système a été émise');
+  const lastMock = mockSentNotifications[mockSentNotifications.length - 1];
+  assert(lastMock.title.includes('Carnet Auto'), 'Le titre de la notification doit mentionner Carnet Auto');
+
+  // Tester la vérification d'échéances sans planter
+  await window.checkAndSendPendingMaintenanceNotifications();
+
+  console.log('✅ TOUS LES TESTS DU SMOKE TEST (24/24) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
 } catch (err) {
   console.error('❌ Échec du smoke test:', err);
