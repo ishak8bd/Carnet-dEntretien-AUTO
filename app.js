@@ -39,7 +39,8 @@ let appState = {
   settings: {
     defaultIntervals: JSON.parse(JSON.stringify(DEFAULT_MAINTENANCE_TYPES)),
     lastBackupDate: null,
-    contacts: []
+    contacts: [],
+    appLogo: 'dark'
   },
   isDemo: false
 };
@@ -208,6 +209,87 @@ function updateViewToggleButtons(toggleId, activeMode) {
   });
 }
 
+/**
+ * Applique l'apparence et le logo de l'application ('dark' ou 'blue').
+ * Met à jour l'en-tête, les favicons dynamiques, les cartes de sélection et persiste le choix.
+ * @param {string} theme - 'dark' (Noir & Carbone) ou 'blue' (Bleu & Or)
+ * @param {boolean} notify - Afficher un message de confirmation si true
+ */
+function applyAppLogo(theme, notify = false) {
+  const chosen = (theme === 'blue') ? 'blue' : 'dark';
+
+  if (!appState.settings) {
+    appState.settings = { contacts: [] };
+  }
+  appState.settings.appLogo = chosen;
+
+  try {
+    localStorage.setItem('carnet_app_logo', chosen);
+  } catch (e) {}
+
+  // 1. Mettre à jour l'image de l'en-tête
+  const logoImg = document.getElementById('appLogoImg');
+  if (logoImg) {
+    logoImg.src = chosen === 'blue' ? 'icons/logo-blue.png' : 'icons/logo-dark.png';
+    logoImg.alt = chosen === 'blue' ? "Logo Carnet d'Entretien Bleu & Or" : "Logo Carnet d'Entretien Noir & Carbone";
+  }
+
+  // 2. Mettre à jour les favicons dynamiques
+  const fav = document.getElementById('dynamicFavicon');
+  if (fav) {
+    fav.href = chosen === 'blue' ? 'icons/icon-blue-192.png' : 'icons/icon-192.png';
+  }
+  const apple = document.getElementById('dynamicAppleIcon');
+  if (apple) {
+    apple.href = chosen === 'blue' ? 'icons/icon-blue-192.png' : 'icons/icon-192.png';
+  }
+
+  // 3. Mettre à jour les cartes du sélecteur dans les paramètres
+  const darkCard = document.getElementById('logoOptionDark');
+  const blueCard = document.getElementById('logoOptionBlue');
+  const darkCheck = document.getElementById('logoCheckDark');
+  const blueCheck = document.getElementById('logoCheckBlue');
+  const activeBadge = document.getElementById('activeLogoBadge');
+
+  if (darkCard) {
+    if (chosen === 'dark') {
+      darkCard.classList.add('active');
+    } else {
+      darkCard.classList.remove('active');
+    }
+  }
+  if (blueCard) {
+    if (chosen === 'blue') {
+      blueCard.classList.add('active');
+    } else {
+      blueCard.classList.remove('active');
+    }
+  }
+  if (darkCheck) {
+    darkCheck.style.display = chosen === 'dark' ? 'inline-flex' : 'none';
+  }
+  if (blueCheck) {
+    blueCheck.style.display = chosen === 'blue' ? 'inline-flex' : 'none';
+  }
+  if (activeBadge) {
+    if (chosen === 'blue') {
+      activeBadge.textContent = 'Bleu & Or';
+      activeBadge.className = 'status-badge status-badge-blue';
+    } else {
+      activeBadge.textContent = 'Noir & Carbone';
+      activeBadge.className = 'status-badge status-badge-info';
+    }
+  }
+
+  if (notify && typeof showToast === 'function') {
+    showToast(chosen === 'blue' ? '✨ Logo Prestige Bleu & Or activé !' : '✨ Logo Noir & Carbone activé !', 'success');
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.applyAppLogo = applyAppLogo;
+}
+
 // ============================================================================
 // 3. GESTION DU STOCKAGE & MIGRATIONS LOCALSTORAGE
 // ============================================================================
@@ -240,7 +322,8 @@ function loadState() {
       parsed.settings = {
         defaultIntervals: JSON.parse(JSON.stringify(DEFAULT_MAINTENANCE_TYPES)),
         lastBackupDate: null,
-        contacts: []
+        contacts: [],
+        appLogo: 'dark'
       };
     } else {
       if (!parsed.settings.defaultIntervals) {
@@ -248,6 +331,13 @@ function loadState() {
       }
       if (!Array.isArray(parsed.settings.contacts)) {
         parsed.settings.contacts = [];
+      }
+      if (!parsed.settings.appLogo) {
+        try {
+          parsed.settings.appLogo = localStorage.getItem('carnet_app_logo') || 'dark';
+        } catch (e) {
+          parsed.settings.appLogo = 'dark';
+        }
       }
     }
 
@@ -4010,6 +4100,10 @@ function renderSettingsScreen() {
     }
   }
 
+  // 4. Logo & Apparence de l'application
+  const currentLogo = (appState.settings && appState.settings.appLogo) || 'dark';
+  applyAppLogo(currentLogo, false);
+
   // 5. Destinataires supplémentaires d'alertes (sans adhésion)
   renderExternalContactsList();
 }
@@ -4934,6 +5028,22 @@ function attachEventListeners() {
   document.getElementById('btnCancelContactModal')?.addEventListener('click', closeAddContactModal);
   document.getElementById('formAddContact')?.addEventListener('submit', handleContactFormSubmit);
 
+  // Sélecteur d'Apparence & Logo de l'application (Noir & Carbone vs Bleu & Or)
+  document.getElementById('logoOptionDark')?.addEventListener('click', () => applyAppLogo('dark', true));
+  document.getElementById('logoOptionBlue')?.addEventListener('click', () => applyAppLogo('blue', true));
+  document.getElementById('appBrandIconContainer')?.addEventListener('click', () => {
+    switchView('settings');
+    const logoCard = document.getElementById('settingsAppLogoCard');
+    if (logoCard) {
+      logoCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      logoCard.style.transition = 'box-shadow 0.3s ease';
+      logoCard.style.boxShadow = '0 0 0 3px var(--primary)';
+      setTimeout(() => {
+        logoCard.style.boxShadow = '';
+      }, 1200);
+    }
+  });
+
 }
 
 // ============================================================================
@@ -4945,6 +5055,10 @@ window.addEventListener('DOMContentLoaded', () => {
   if (!hasData) {
     // Premier lancement : aucun véhicule chargé, ce qui affichera l'onboarding au renderApp()
   }
+
+  // Appliquer le logo sauvegardé ou par défaut (Noir & Carbone)
+  const initialLogo = localStorage.getItem('carnet_app_logo') || (appState.settings && appState.settings.appLogo) || 'dark';
+  applyAppLogo(initialLogo, false);
 
   attachEventListeners();
   renderApp();

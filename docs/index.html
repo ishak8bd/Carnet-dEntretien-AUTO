@@ -12,10 +12,24 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Entretien">
   
-  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link id="dynamicFavicon" rel="icon" type="image/png" href="icons/icon-192.png">
+  <link id="dynamicAppleIcon" rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
+  <script>
+    // Pré-application immédiate du logo personnalisé pour éviter le flash
+    (function() {
+      try {
+        var savedLogo = localStorage.getItem('carnet_app_logo') || 'dark';
+        if (savedLogo === 'blue') {
+          var fav = document.getElementById('dynamicFavicon');
+          var apple = document.getElementById('dynamicAppleIcon');
+          if (fav) fav.href = 'icons/icon-blue-192.png';
+          if (apple) apple.href = 'icons/icon-blue-192.png';
+        }
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
   <div class="app-container">
@@ -23,7 +37,9 @@
     <!-- En-tête de l'application -->
     <header class="app-header">
       <div class="brand">
-        <div class="brand-icon">🚗</div>
+        <div class="brand-icon" id="appBrandIconContainer" title="Logo de l'application - Cliquer pour personnaliser">
+          <img id="appLogoImg" src="icons/logo-dark.png" alt="Logo Carnet d'Entretien" class="brand-logo-img">
+        </div>
         <div class="brand-text">
           <h1>Carnet d'Entretien</h1>
           <span>Suivi intelligent &amp; prédictif</span>
@@ -439,6 +455,51 @@
 
       <!-- SECTION MULTI-UTILISATEURS & SYNCHRONISATION MULTI-APPAREILS -->
       <div id="settingsRoomContainer"></div>
+
+      <!-- CARTE : Apparence & Logo de l'application -->
+      <section class="card settings-card" id="settingsAppLogoCard">
+        <div class="card-header">
+          <div class="card-title">
+            <span>🎨 Apparence &amp; Logo de l'application</span>
+          </div>
+          <span id="activeLogoBadge" class="status-badge status-badge-info">Noir &amp; Carbone</span>
+        </div>
+        <p class="card-subtitle">
+          Choisissez l'identité visuelle de votre carnet d'entretien. Ce logo s'affiche dans l'en-tête, sur l'icône de l'application et sur votre écran d'accueil.
+        </p>
+
+        <div class="logo-picker-grid">
+          <!-- Option 1 : Noir & Carbone (Par défaut) -->
+          <div class="logo-picker-card active" id="logoOptionDark" data-logo="dark" role="button" tabindex="0" aria-label="Choisir le logo Noir et Carbone">
+            <div class="logo-picker-preview">
+              <img src="icons/logo-dark.png" alt="Aperçu Logo Noir et Carbone">
+            </div>
+            <div class="logo-picker-info">
+              <div class="logo-picker-title">
+                <span>Noir &amp; Carbone</span>
+                <span class="status-badge" style="font-size: 0.68rem; padding: 2px 6px;">Par défaut</span>
+              </div>
+              <div class="logo-picker-desc">Design sombre épuré avec silhouette lumineuse et finitions sportives.</div>
+            </div>
+            <div class="logo-picker-check" id="logoCheckDark" aria-hidden="true">✓</div>
+          </div>
+
+          <!-- Option 2 : Bleu & Or -->
+          <div class="logo-picker-card" id="logoOptionBlue" data-logo="blue" role="button" tabindex="0" aria-label="Choisir le logo Bleu et Or">
+            <div class="logo-picker-preview">
+              <img src="icons/logo-blue.png" alt="Aperçu Logo Bleu et Or">
+            </div>
+            <div class="logo-picker-info">
+              <div class="logo-picker-title">
+                <span>Bleu &amp; Or</span>
+                <span class="status-badge status-badge-blue" style="font-size: 0.68rem; padding: 2px 6px;">Prestige</span>
+              </div>
+              <div class="logo-picker-desc">Teinte bleu royal profond ornée de finitions dorées éclatantes.</div>
+            </div>
+            <div class="logo-picker-check" id="logoCheckBlue" style="display: none;" aria-hidden="true">✓</div>
+          </div>
+        </div>
+      </section>
 
       <!-- CARTE : Destinataires supplémentaires des alertes (Sans adhésion) -->
       <section class="card settings-card" id="settingsContactsCard">

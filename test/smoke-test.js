@@ -629,7 +629,49 @@ try {
   window.renderExternalContactsList();
   assert.strictEqual(contactsList.querySelectorAll('.contact-card-row').length, 3, '3 cartes de destinataires rendues dans le DOM');
 
-  console.log('✅ TOUS LES TESTS DU SMOKE TEST (22/22) ONT RÉUSSI SANS AUCUNE ERREUR !');
+  console.log('23. Vérification du logo de l\'application (sombre par défaut, bascule vers le bleu et persistance)');
+  const appLogoImg = document.getElementById('appLogoImg');
+  const favIcon = document.getElementById('dynamicFavicon');
+  const appleIcon = document.getElementById('dynamicAppleIcon');
+  const optDark = document.getElementById('logoOptionDark');
+  const optBlue = document.getElementById('logoOptionBlue');
+  const activeBadge = document.getElementById('activeLogoBadge');
+
+  assert(appLogoImg, 'Image de logo appLogoImg présente dans l\'en-tête');
+  assert(favIcon, 'Favicon dynamique présent');
+  assert(appleIcon, 'Apple-touch-icon dynamique présent');
+  assert(optDark, 'Option logo Noir & Carbone présente dans les paramètres');
+  assert(optBlue, 'Option logo Bleu & Or présente dans les paramètres');
+
+  // Par défaut, le logo doit être sombre (dark)
+  assert(appLogoImg.src.includes('logo-dark.png'), 'Le logo par défaut doit être sombre (logo-dark.png)');
+  assert(optDark.classList.contains('active'), 'L\'option Noir & Carbone doit être active par défaut');
+  assert(!optBlue.classList.contains('active'), 'L\'option Bleu & Or ne doit pas être active au départ');
+
+  // Basculer vers le logo Bleu & Or
+  optBlue.click();
+  assert(appLogoImg.src.includes('logo-blue.png'), 'Le logo dans l\'en-tête doit maintenant pointer sur logo-blue.png');
+  assert(favIcon.href.includes('icon-blue-192.png'), 'Le favicon doit pointer sur icon-blue-192.png');
+  assert(optBlue.classList.contains('active'), 'L\'option Bleu & Or doit être marquée active');
+  assert(!optDark.classList.contains('active'), 'L\'option Noir & Carbone ne doit plus être active');
+  assert.strictEqual(window.localStorage.getItem('carnet_app_logo'), 'blue', 'Le choix "blue" doit être persisté dans localStorage');
+  assert.strictEqual(window.appState.settings.appLogo, 'blue', 'appState.settings.appLogo doit valoir "blue"');
+  if (activeBadge) {
+    assert.strictEqual(activeBadge.textContent.trim(), 'Bleu & Or', 'Le badge indique Bleu & Or');
+  }
+
+  // Basculer de nouveau vers le logo Noir & Carbone
+  optDark.click();
+  assert(appLogoImg.src.includes('logo-dark.png'), 'Le logo dans l\'en-tête doit revenir à logo-dark.png');
+  assert(optDark.classList.contains('active'), 'L\'option Noir & Carbone doit redevenir active');
+  assert(!optBlue.classList.contains('active'), 'L\'option Bleu & Or ne doit plus être active');
+  assert.strictEqual(window.localStorage.getItem('carnet_app_logo'), 'dark', 'Le choix "dark" doit être persisté dans localStorage');
+  assert.strictEqual(window.appState.settings.appLogo, 'dark', 'appState.settings.appLogo doit valoir "dark"');
+  if (activeBadge) {
+    assert.strictEqual(activeBadge.textContent.trim(), 'Noir & Carbone', 'Le badge indique Noir & Carbone');
+  }
+
+  console.log('✅ TOUS LES TESTS DU SMOKE TEST (23/23) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
 } catch (err) {
   console.error('❌ Échec du smoke test:', err);
