@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" opacity="0.45">
+  <defs>
+    <!-- Pattern Grille Hexagonale Mécanique -->
+    <pattern id="hex-grid" width="60" height="104" patternUnits="userSpaceOnUse">
+      <path d="M30 0 L60 17.32 L60 52 L30 69.32 L0 52 L0 17.32 Z" fill="none" stroke="rgba(255, 255, 255, 0.035)" stroke-width="1"/>
+      <path d="M30 52 L60 69.32 L60 104 L30 121.32 L0 104 L0 69.32 Z" fill="none" stroke="rgba(255, 255, 255, 0.035)" stroke-width="1"/>
+      <circle cx="30" cy="17.32" r="1.5" fill="rgba(255, 255, 255, 0.06)"/>
+      <circle cx="0" cy="52" r="1.5" fill="rgba(255, 255, 255, 0.06)"/>
+      <circle cx="60" cy="52" r="1.5" fill="rgba(255, 255, 255, 0.06)"/>
+    </pattern>
+
+    <!-- Gradients circuits digitaux -->
+    <linearGradient id="cyan-trace" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00e5ff" stop-opacity="0"/>
+      <stop offset="40%" stop-color="#00e5ff" stop-opacity="0.35"/>
+      <stop offset="80%" stop-color="#38bdf8" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#00e5ff" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="amber-trace" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff9100" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#ffab40" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#ff6d00" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Rayures acier brossé mécanique -->
+    <linearGradient id="steel-bevel" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.15"/>
+      <stop offset="50%" stop-color="#64748b" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fond texture hex mécanique -->
+  <rect width="100%" height="100%" fill="url(#hex-grid)" />
+
+  <!-- Pistes de circuits imprimés numériques (HUD & Diagnostic) -->
+  <g fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Trace supérieure gauche vers centre -->
+    <path d="M 50 180 L 180 180 L 260 260 L 420 260" stroke="url(#cyan-trace)" />
+    <circle cx="420" cy="260" r="3" fill="#00e5ff" />
+    <path d="M 120 120 L 220 120 L 280 180 L 380 180" stroke="url(#cyan-trace)" stroke-dasharray="4,6" />
+
+    <!-- Trace droite vers centre -->
+    <path d="M 1150 220 L 1020 220 L 940 300 L 780 300" stroke="url(#amber-trace)" />
+    <circle cx="780" cy="300" r="3" fill="#ff9100" />
+    <path d="M 1080 350 L 980 350 L 920 410 L 820 410" stroke="url(#cyan-trace)" />
+
+    <!-- Arcs orbitaux / télémétrie mécanique centrale -->
+    <path d="M 350 450 A 260 260 0 0 1 850 450" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1" stroke-dasharray="12,16" />
+    <path d="M 380 450 A 230 230 0 0 1 820 450" stroke="rgba(0, 229, 255, 0.15)" stroke-width="1.5" stroke-dasharray="6,18" />
+    <path d="M 420 450 A 190 190 0 0 1 780 450" stroke="rgba(255, 145, 0, 0.12)" stroke-width="1" stroke-dasharray="4,12" />
+
+    <!-- Marqueurs de vis mécaniques / rivets d'assemblage -->
+    <g stroke="rgba(255,255,255,0.12)" stroke-width="1" fill="rgba(15,23,42,0.8)">
+      <circle cx="100" cy="80" r="6" />
+      <path d="M97 80 L103 80" />
+      <circle cx="1100" cy="80" r="6" />
+      <path d="M1097 80 L1103 80" />
+      <circle cx="100" cy="820" r="6" />
+      <path d="M97 820 L103 820" />
+      <circle cx="1100" cy="820" r="6" />
+      <path d="M1097 820 L1103 820" />
+    </g>
+
+    <!-- Traces inférieures -->
+    <path d="M 150 720 L 280 720 L 360 640 L 520 640" stroke="url(#cyan-trace)" />
+    <circle cx="520" cy="640" r="3" fill="#00e5ff" />
+    <path d="M 1050 680 L 920 680 L 850 610 L 710 610" stroke="url(#amber-trace)" />
+    <circle cx="710" cy="610" r="3" fill="#ff9100" />
+  </g>
+</svg>

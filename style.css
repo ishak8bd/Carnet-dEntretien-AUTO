@@ -3317,4 +3317,567 @@ body.theme-glass .nav-tab.active .nav-tab-icon {
   box-shadow: 0 0 8px rgba(14, 165, 233, 0.5);
 }
 
+/* ==========================================================================
+   Thème 4 : Acier Mécanique & Digital (Mechanical & Digital Aesthetic)
+   - Texture Métallique : Finition acier brossé mat et argent, chanfreins biseautés acérés
+   - Profondeur Tridimensionnelle : Ombres douces portées vers le bas, reflets vifs
+     spéculaires sur les bords supérieurs créant un relief 3D tangible
+   - Esthétique Mécanique & Digitale : Affichage HUD télémétrie, diodes LED, rivets
+     d'assemblage et circuits numériques cyan / ambre
+   ========================================================================== */
+
+:root.theme-steel,
+html.theme-steel,
+body.theme-steel {
+  --bg-body: #0b0f17;
+  --bg-card: #192231;
+  --bg-card-subtle: #202b3e;
+  --bg-input: #0e141f;
+  --border-color: rgba(148, 163, 184, 0.35);
+  --border-focus: #00e5ff;
+
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-inverted: #0b0f17;
+
+  --primary: #00e5ff;
+  --primary-hover: #38bdf8;
+  --primary-subtle: rgba(0, 229, 255, 0.16);
+
+  --success: #10b981;
+  --success-subtle: rgba(16, 185, 129, 0.2);
+  --success-text: #6ee7b7;
+
+  --warning: #ff9100;
+  --warning-subtle: rgba(255, 145, 0, 0.2);
+  --warning-text: #ffb74d;
+
+  --danger: #ff3d71;
+  --danger-subtle: rgba(255, 61, 113, 0.22);
+  --danger-text: #ff80ab;
+
+  --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.55);
+  --shadow-md: 0 10px 24px -2px rgba(0, 0, 0, 0.75), 0 20px 42px -4px rgba(0, 0, 0, 0.88), inset 0 1.5px 0.5px rgba(255, 255, 255, 0.55);
+  --shadow-lg: 0 18px 40px -2px rgba(0, 0, 0, 0.85), 0 32px 64px -6px rgba(0, 0, 0, 0.95), inset 0 2px 1px rgba(255, 255, 255, 0.65);
+}
+
+/* Toile de fond châssis acier avec grille hexagonale & pistes numériques */
+body.theme-steel {
+  background-color: #0b0f17 !important;
+  background-image: 
+    radial-gradient(circle at 50% 120px, rgba(0, 229, 255, 0.12) 0%, transparent 480px),
+    radial-gradient(circle at 85% 20%, rgba(255, 145, 0, 0.08) 0%, transparent 400px),
+    radial-gradient(circle at 15% 85%, rgba(148, 163, 184, 0.08) 0%, transparent 450px),
+    linear-gradient(180deg, rgba(11, 15, 23, 0.88) 0%, rgba(7, 10, 15, 0.96) 100%),
+    url('icons/bg-mechanical.svg') !important;
+  background-repeat: no-repeat !important;
+  background-position: center top !important;
+  background-size: cover, cover, cover, cover, min(100vw, 1100px) auto !important;
+  background-attachment: fixed !important;
+  color: #f1f5f9 !important;
+}
+
+body.theme-steel .app-container {
+  background: transparent !important;
+}
+
+/* En-tête de l'application en acier brossé avec rivets & biseaux */
+body.theme-steel .app-header {
+  background: linear-gradient(180deg, #222c3d 0%, #171f2c 60%, #121824 100%) !important;
+  border-bottom: 2px solid rgba(148, 163, 184, 0.35) !important;
+  box-shadow: 
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.5),
+    inset 0 -1.5px 1px rgba(0, 0, 0, 0.8),
+    0 10px 28px rgba(0, 0, 0, 0.7) !important;
+  padding: 10px 14px 12px 14px !important;
+  border-radius: 0 0 18px 18px !important;
+  margin-bottom: 14px !important;
+}
+
+body.theme-steel .brand-icon {
+  background: linear-gradient(145deg, #2e3b50 0%, #182130 100%) !important;
+  border: 2px solid rgba(255, 255, 255, 0.45) !important;
+  box-shadow: 
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.6),
+    inset 0 -2px 2px rgba(0, 0, 0, 0.85),
+    0 6px 16px rgba(0, 0, 0, 0.7),
+    0 0 14px rgba(0, 229, 255, 0.3) !important;
+  border-radius: 12px !important;
+}
+
+body.theme-steel .brand-icon:hover {
+  border-color: #00e5ff !important;
+  box-shadow: 
+    inset 0 1.5px 1px #ffffff,
+    inset 0 -2px 2px rgba(0, 0, 0, 0.9),
+    0 8px 22px rgba(0, 0, 0, 0.8),
+    0 0 22px rgba(0, 229, 255, 0.6) !important;
+}
+
+body.theme-steel .brand-text h1 {
+  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 35%, #94a3b8 70%, #cbd5e1 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+  letter-spacing: -0.01em;
+  font-weight: 800;
+}
+
+body.theme-steel .brand-text span {
+  color: #00e5ff !important;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Bouton de bascule rapide de thème en acier biseauté */
+body.theme-steel .theme-quick-switch-btn {
+  background: linear-gradient(180deg, #283448 0%, #192130 100%) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.35) !important;
+  color: #00e5ff !important;
+  box-shadow: 
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.5),
+    inset 0 -1.5px 1px rgba(0, 0, 0, 0.8),
+    0 4px 12px rgba(0, 0, 0, 0.5) !important;
+  font-weight: 700 !important;
+}
+
+body.theme-steel .theme-quick-switch-btn:hover {
+  background: linear-gradient(180deg, #324159 0%, #1f2a3c 100%) !important;
+  border-color: #00e5ff !important;
+  box-shadow: 
+    inset 0 1.5px 0.5px #ffffff,
+    inset 0 -1.5px 1px rgba(0, 0, 0, 0.8),
+    0 6px 18px rgba(0, 0, 0, 0.6),
+    0 0 14px rgba(0, 229, 255, 0.4) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Barre de sélection du véhicule usinée */
+body.theme-steel .vehicle-selector-bar {
+  background: linear-gradient(180deg, #202a3a 0%, #151d28 100%) !important;
+  border: 1.5px solid rgba(148, 163, 184, 0.35) !important;
+  box-shadow: 
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.45),
+    inset 0 -1.5px 1px rgba(0, 0, 0, 0.75),
+    0 8px 22px rgba(0, 0, 0, 0.6) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 8px 10px !important;
+}
+
+/* ==========================================================================
+   CARTES : Finition Acier Brossé & Relief 3D
+   Reflets vifs sur l'arête supérieure (inset highlight) et ombres douces tombant vers le bas
+   ========================================================================== */
+body.theme-steel .card {
+  background: linear-gradient(140deg, #242f42 0%, #1a2231 35%, #222c3e 70%, #161c28 100%) !important;
+  border: 1.5px solid rgba(148, 163, 184, 0.32) !important;
+  box-shadow: 
+    inset 0 2px 1px -0.5px rgba(255, 255, 255, 0.65),
+    inset 1px 0 0.5px rgba(255, 255, 255, 0.25),
+    inset 0 -2px 2px rgba(0, 0, 0, 0.8),
+    0 6px 12px -2px rgba(0, 0, 0, 0.6),
+    0 16px 32px -4px rgba(0, 0, 0, 0.75),
+    0 28px 54px -6px rgba(0, 0, 0, 0.85) !important;
+  border-radius: 18px !important;
+  position: relative !important;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.22s ease !important;
+}
+
+body.theme-steel .card:hover {
+  border-color: rgba(0, 229, 255, 0.45) !important;
+  box-shadow: 
+    inset 0 2px 1px rgba(255, 255, 255, 0.8),
+    inset 0 -2px 2px rgba(0, 0, 0, 0.85),
+    0 10px 20px -2px rgba(0, 0, 0, 0.7),
+    0 24px 44px -4px rgba(0, 0, 0, 0.85),
+    0 36px 64px -6px rgba(0, 0, 0, 0.9),
+    0 0 20px rgba(0, 229, 255, 0.2) !important;
+  transform: translateY(-2px) !important;
+}
+
+body.theme-steel .card-header {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+body.theme-steel .card-title span {
+  color: #f8fafc !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   COMPTEUR KILOMÉTRIQUE : Cockpit Instrumental & Télémétrie HUD
+   Cadran usiné biseauté avec affichage numérique à diode luminescente
+   ========================================================================== */
+body.theme-steel .odometer-card {
+  background: 
+    radial-gradient(circle at 50% 30%, rgba(0, 229, 255, 0.14) 0%, transparent 68%),
+    radial-gradient(circle at 80% 70%, rgba(255, 145, 0, 0.08) 0%, transparent 60%),
+    linear-gradient(150deg, #263346 0%, #17202d 40%, #1f2838 80%, #121822 100%) !important;
+  border: 2px solid rgba(255, 255, 255, 0.38) !important;
+  box-shadow: 
+    inset 0 2.5px 1px rgba(255, 255, 255, 0.75),
+    inset 0 -2.5px 2px rgba(0, 0, 0, 0.9),
+    0 8px 16px -2px rgba(0, 0, 0, 0.7),
+    0 20px 42px -4px rgba(0, 0, 0, 0.85),
+    0 36px 68px -6px rgba(0, 0, 0, 0.95),
+    0 0 22px rgba(0, 229, 255, 0.22) !important;
+  border-radius: 22px !important;
+}
+
+/* Fenêtre d'affichage numérique encastrée dans le cadran (Recessed Digital Well) */
+body.theme-steel .odometer-display-wrapper,
+body.theme-steel .odometer-card .km-display-block {
+  background: #080c14 !important;
+  border: 1.5px solid rgba(71, 85, 105, 0.6) !important;
+  box-shadow: 
+    inset 0 3px 8px rgba(0, 0, 0, 0.95),
+    inset 0 1px 2px rgba(0, 0, 0, 0.9),
+    inset 0 -1.5px 0.5px rgba(255, 255, 255, 0.2),
+    0 2px 4px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 14px !important;
+  padding: 12px 18px !important;
+}
+
+body.theme-steel .odometer-value,
+body.theme-steel .km-display-value,
+body.theme-steel #dashboardCurrentKm {
+  color: #ffffff !important;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace !important;
+  font-variant-numeric: tabular-nums !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.05em !important;
+  text-shadow: 
+    0 0 16px rgba(0, 229, 255, 0.9),
+    0 0 32px rgba(0, 229, 255, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.9) !important;
+}
+
+body.theme-steel .odometer-unit {
+  color: #00e5ff !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.8) !important;
+}
+
+/* ==========================================================================
+   CARTES DE STATISTIQUES : Modules Télémétriques Usinés
+   ========================================================================== */
+body.theme-steel .stat-card {
+  background: linear-gradient(150deg, #253144 0%, #192231 60%, #151b27 100%) !important;
+  border: 1.5px solid rgba(148, 163, 184, 0.35) !important;
+  box-shadow: 
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.55),
+    inset 0 -1.5px 1px rgba(0, 0, 0, 0.8),
+    0 8px 18px -2px rgba(0, 0, 0, 0.65),
+    0 16px 32px -4px rgba(0, 0, 0, 0.75) !important;
+  border-radius: 16px !important;
+  transition: all 0.2s ease !important;
+}
+
+body.theme-steel .stat-card:hover {
+  border-color: rgba(0, 229, 255, 0.5) !important;
+  box-shadow: 
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.7),
+    inset 0 -1.5px 1px rgba(0, 0, 0, 0.85),
+    0 12px 24px -2px rgba(0, 0, 0, 0.75),
+    0 22px 42px -4px rgba(0, 0, 0, 0.85),
+    0 0 16px rgba(0, 229, 255, 0.25) !important;
+  transform: translateY(-2px) !important;
+}
+
+body.theme-steel .stat-icon {
+  background: linear-gradient(145deg, #2f3e55 0%, #182231 100%) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.55),
+    inset 0 -1.5px 1px rgba(0, 0, 0, 0.75),
+    0 4px 10px rgba(0, 0, 0, 0.6) !important;
+  border-radius: var(--radius-sm) !important;
+  color: #00e5ff !important;
+}
+
+body.theme-steel .stat-value {
+  color: #ffffff !important;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace !important;
+  font-variant-numeric: tabular-nums !important;
+  font-weight: 800 !important;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.4), 0 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+/* ==========================================================================
+   BOUTONS : Boutons Poussoirs Métalliques & Relief Physique
+   Finition argent brossé mat / chrome avec chanfrein biseauté et enfoncement physique
+   ========================================================================== */
+body.theme-steel .btn-primary {
+  background: linear-gradient(180deg, #ffffff 0%, #e2e8f0 18%, #cbd5e1 52%, #94a3b8 82%, #cbd5e1 100%) !important;
+  color: #0c121d !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.01em !important;
+  border: 1.5px solid #ffffff !important;
+  box-shadow: 
+    inset 0 1.5px 0 #ffffff,
+    inset 0 -2.5px 0 #475569,
+    0 6px 14px rgba(0, 0, 0, 0.65),
+    0 12px 24px rgba(0, 0, 0, 0.5) !important;
+  border-radius: var(--radius-md) !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+  transition: all 0.15s ease !important;
+}
+
+body.theme-steel .btn-primary:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 22%, #e2e8f0 55%, #a0aec0 85%, #e2e8f0 100%) !important;
+  color: #05080f !important;
+  border-color: #ffffff !important;
+  box-shadow: 
+    inset 0 2px 0 #ffffff,
+    inset 0 -2.5px 0 #334155,
+    0 8px 18px rgba(0, 0, 0, 0.7),
+    0 0 20px rgba(0, 229, 255, 0.4) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Enfoncement physique au clic (tactile push button) */
+body.theme-steel .btn-primary:active {
+  transform: translateY(2px) scale(0.985) !important;
+  box-shadow: 
+    inset 0 3px 6px rgba(0, 0, 0, 0.7),
+    0 2px 5px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Boutons secondaires usinés */
+body.theme-steel .btn-secondary,
+body.theme-steel .btn-icon {
+  background: linear-gradient(180deg, #2a364a 0%, #1b2434 60%, #151d2a 100%) !important;
+  border: 1.5px solid rgba(148, 163, 184, 0.35) !important;
+  color: #f1f5f9 !important;
+  box-shadow: 
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.45),
+    inset 0 -1.5px 1px rgba(0, 0, 0, 0.75),
+    0 4px 10px rgba(0, 0, 0, 0.5) !important;
+  font-weight: 700 !important;
+  transition: all 0.15s ease !important;
+}
+
+body.theme-steel .btn-secondary:hover,
+body.theme-steel .btn-icon:hover {
+  background: linear-gradient(180deg, #35445d 0%, #202b3e 100%) !important;
+  border-color: #00e5ff !important;
+  color: #00e5ff !important;
+  box-shadow: 
+    inset 0 1.5px 0.5px #ffffff,
+    inset 0 -1.5px 1px rgba(0, 0, 0, 0.8),
+    0 6px 14px rgba(0, 0, 0, 0.6),
+    0 0 14px rgba(0, 229, 255, 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+body.theme-steel .btn-secondary:active,
+body.theme-steel .btn-icon:active {
+  transform: translateY(1.5px) !important;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7), 0 2px 4px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ==========================================================================
+   ÉLÉMENTS D'ENTRETIEN, HISTORIQUE ET RANGÉES
+   Plaques d'acier montées avec relief et chanfreins nets
+   ========================================================================== */
+body.theme-steel .maint-item-card,
+body.theme-steel .history-item-card,
+body.theme-steel .km-log-item,
+body.theme-steel .contact-card-row,
+body.theme-steel .activity-feed-item {
+  background: linear-gradient(145deg, #232d3d 0%, #192130 50%, #151b27 100%) !important;
+  border: 1.5px solid rgba(148, 163, 184, 0.32) !important;
+  box-shadow: 
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.45),
+    inset 0 -1.5px 1px rgba(0, 0, 0, 0.75),
+    0 6px 16px -2px rgba(0, 0, 0, 0.6),
+    0 12px 28px -4px rgba(0, 0, 0, 0.75) !important;
+  border-radius: 16px !important;
+  transition: all 0.2s ease !important;
+}
+
+body.theme-steel .maint-item-card:hover,
+body.theme-steel .history-item-card:hover,
+body.theme-steel .km-log-item:hover {
+  border-color: rgba(0, 229, 255, 0.5) !important;
+  box-shadow: 
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.65),
+    inset 0 -1.5px 1px rgba(0, 0, 0, 0.8),
+    0 10px 22px -2px rgba(0, 0, 0, 0.7),
+    0 18px 36px -4px rgba(0, 0, 0, 0.8),
+    0 0 16px rgba(0, 229, 255, 0.2) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* ==========================================================================
+   JAUGES ET BARRES DE PROGRESSION HUD
+   Piste encastrée avec lumière LED de progression
+   ========================================================================== */
+body.theme-steel .progress-bar-track {
+  background: #090d14 !important;
+  border: 1.5px solid rgba(71, 85, 105, 0.55) !important;
+  box-shadow: 
+    inset 0 2.5px 5px rgba(0, 0, 0, 0.85),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.15) !important;
+  border-radius: 9999px !important;
+}
+
+body.theme-steel .progress-bar-fill {
+  background: linear-gradient(90deg, #00b4d8 0%, #00e5ff 60%, #7000ff 100%) !important;
+  box-shadow: 
+    0 0 14px rgba(0, 229, 255, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+  border-radius: 9999px !important;
+}
+
+/* ==========================================================================
+   CHAMPS DE FORMULAIRES : Cavités Métalliques Encastrées (Recessed Wells)
+   ========================================================================== */
+body.theme-steel input[type="text"],
+body.theme-steel input[type="number"],
+body.theme-steel input[type="date"],
+body.theme-steel input[type="email"],
+body.theme-steel input[type="tel"],
+body.theme-steel textarea,
+body.theme-steel select,
+body.theme-steel .form-control {
+  background: #0a0e16 !important;
+  border: 1.5px solid rgba(71, 85, 105, 0.65) !important;
+  color: #f8fafc !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: 
+    inset 0 2.5px 6px rgba(0, 0, 0, 0.9),
+    inset 0 1px 2px rgba(0, 0, 0, 0.85),
+    inset 0 -1px 0.5px rgba(255, 255, 255, 0.12) !important;
+}
+
+body.theme-steel input:focus,
+body.theme-steel textarea:focus,
+body.theme-steel select:focus,
+body.theme-steel .form-control:focus {
+  border-color: #00e5ff !important;
+  background: #0d131f !important;
+  box-shadow: 
+    0 0 0 2px rgba(0, 229, 255, 0.35),
+    inset 0 2px 4px rgba(0, 0, 0, 0.9) !important;
+}
+
+/* ==========================================================================
+   BADGES DE STATUT & VOYANTS TÉMOINS LED
+   ========================================================================== */
+.status-badge-steel {
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
+  color: #00e5ff !important;
+  border: 1px solid rgba(0, 229, 255, 0.45) !important;
+  box-shadow: 
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.3),
+    0 0 10px rgba(0, 229, 255, 0.3) !important;
+  font-weight: 700 !important;
+}
+
+body.theme-steel .status-badge-success {
+  background: rgba(16, 185, 129, 0.18) !important;
+  color: #6ee7b7 !important;
+  border: 1px solid rgba(16, 185, 129, 0.5) !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3) !important;
+}
+
+body.theme-steel .status-badge-warning {
+  background: rgba(255, 145, 0, 0.18) !important;
+  color: #ffb74d !important;
+  border: 1px solid rgba(255, 145, 0, 0.5) !important;
+  box-shadow: 0 0 10px rgba(255, 145, 0, 0.3) !important;
+}
+
+body.theme-steel .status-badge-danger {
+  background: rgba(255, 61, 113, 0.2) !important;
+  color: #ff80ab !important;
+  border: 1px solid rgba(255, 61, 113, 0.5) !important;
+  box-shadow: 0 0 10px rgba(255, 61, 113, 0.35) !important;
+}
+
+/* ==========================================================================
+   MODALES : Console d'Administration Usinée
+   ========================================================================== */
+body.theme-steel .modal {
+  background-color: rgba(3, 5, 8, 0.82) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+body.theme-steel .modal-content {
+  background: linear-gradient(150deg, #243042 0%, #182231 45%, #131a26 100%) !important;
+  border: 2px solid rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 
+    inset 0 2.5px 1px rgba(255, 255, 255, 0.65),
+    inset 0 -2.5px 2px rgba(0, 0, 0, 0.9),
+    0 24px 56px rgba(0, 0, 0, 0.9),
+    0 40px 90px rgba(0, 0, 0, 0.95),
+    0 0 35px rgba(0, 229, 255, 0.25) !important;
+  border-radius: 22px !important;
+}
+
+body.theme-steel .modal-header {
+  border-bottom: 1.5px solid rgba(148, 163, 184, 0.25) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+body.theme-steel .modal-footer {
+  border-top: 1.5px solid rgba(148, 163, 184, 0.25) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ==========================================================================
+   BARRE DE NAVIGATION BASSE : Dock de Commande Mécanique
+   ========================================================================== */
+body.theme-steel .bottom-nav {
+  background: linear-gradient(180deg, #212b3c 0%, #151c27 70%, #0e131b 100%) !important;
+  border-top: 2px solid rgba(148, 163, 184, 0.35) !important;
+  box-shadow: 
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.45),
+    0 -10px 30px rgba(0, 0, 0, 0.75) !important;
+  border-radius: 20px 20px 0 0 !important;
+}
+
+body.theme-steel .nav-tab {
+  color: #94a3b8 !important;
+  transition: all 0.2s ease !important;
+}
+
+body.theme-steel .nav-tab.active {
+  color: #00e5ff !important;
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.8) !important;
+}
+
+body.theme-steel .nav-tab.active .nav-tab-icon {
+  transform: translateY(-3px) scale(1.1) !important;
+  filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.8)) !important;
+}
+
+/* ==========================================================================
+   APERÇU & CARTE DU SÉLECTEUR DE THÈME DANS LES PARAMÈTRES
+   ========================================================================== */
+.logo-picker-preview-steel {
+  border: 1.5px solid rgba(0, 229, 255, 0.5) !important;
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.35) !important;
+}
+
+.logo-picker-card[data-logo="steel"].active {
+  border-color: #00e5ff !important;
+  background: rgba(0, 229, 255, 0.12) !important;
+  box-shadow: 0 0 0 1px #00e5ff, 0 8px 24px rgba(0, 229, 255, 0.3) !important;
+}
+
+.logo-picker-card[data-logo="steel"] .logo-picker-check {
+  background: #00e5ff !important;
+  color: #0b111a !important;
+  font-weight: 900 !important;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.7);
+}
+
+
 

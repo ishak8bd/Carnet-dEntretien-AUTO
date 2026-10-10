@@ -23,7 +23,11 @@
         var savedTheme = localStorage.getItem('carnet_app_theme') || localStorage.getItem('carnet_app_logo') || 'dark';
         var fav = document.getElementById('dynamicFavicon');
         var apple = document.getElementById('dynamicAppleIcon');
-        if (savedTheme === 'glass') {
+        if (savedTheme === 'steel') {
+          if (fav) fav.href = 'icons/icon-steel-192.png';
+          if (apple) apple.href = 'icons/icon-steel-192.png';
+          document.documentElement.classList.add('theme-steel');
+        } else if (savedTheme === 'glass') {
           if (fav) fav.href = 'icons/icon-glass-192.png';
           if (apple) apple.href = 'icons/icon-glass-192.png';
           document.documentElement.classList.add('theme-glass');
@@ -523,6 +527,21 @@
               <div class="logo-picker-desc">Thème complet inspiré du visuel cyber-mécanique : verre dépoli, circuits orbitaux, titane brossé et silhouette néon blanche.</div>
             </div>
             <div class="logo-picker-check" id="logoCheckGlass" style="display: none;" aria-hidden="true">✓</div>
+          </div>
+
+          <!-- Option 4 : Acier Mécanique & Digital -->
+          <div class="logo-picker-card" id="logoOptionSteel" data-logo="steel" role="button" tabindex="0" aria-label="Choisir le thème Acier Mécanique et Digital">
+            <div class="logo-picker-preview logo-picker-preview-steel">
+              <img src="icons/logo-steel.png" alt="Aperçu Thème Acier Mécanique & Digital">
+            </div>
+            <div class="logo-picker-info">
+              <div class="logo-picker-title">
+                <span>Acier Mécanique &amp; Digital</span>
+                <span class="status-badge status-badge-steel" style="font-size: 0.68rem; padding: 2px 6px;">Métal &amp; 3D</span>
+              </div>
+              <div class="logo-picker-desc">Finition acier brossé mat, chanfreins biseautés acérés, relief 3D tangible et télémétrie numérique HUD.</div>
+            </div>
+            <div class="logo-picker-check" id="logoCheckSteel" style="display: none;" aria-hidden="true">✓</div>
           </div>
         </div>
       </section>

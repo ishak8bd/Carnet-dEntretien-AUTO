@@ -648,13 +648,14 @@ try {
   window.renderExternalContactsList();
   assert.strictEqual(contactsList.querySelectorAll('.contact-card-row').length, 3, '3 cartes de destinataires rendues dans le DOM');
 
-  console.log('23. Vérification du logo et des thèmes (Noir & Carbone, Bleu & Or, Cyber Glassmorphism et persistance)');
+  console.log('23. Vérification du logo et des thèmes (Noir & Carbone, Bleu & Or, Cyber Glassmorphism, Acier Mécanique et persistance)');
   const appLogoImg = document.getElementById('appLogoImg');
   const favIcon = document.getElementById('dynamicFavicon');
   const appleIcon = document.getElementById('dynamicAppleIcon');
   const optDark = document.getElementById('logoOptionDark');
   const optBlue = document.getElementById('logoOptionBlue');
   const optGlass = document.getElementById('logoOptionGlass');
+  const optSteel = document.getElementById('logoOptionSteel');
   const activeBadge = document.getElementById('activeLogoBadge');
 
   assert(appLogoImg, 'Image de logo appLogoImg présente dans l\'en-tête');
@@ -663,13 +664,16 @@ try {
   assert(optDark, 'Option logo Noir & Carbone présente dans les paramètres');
   assert(optBlue, 'Option logo Bleu & Or présente dans les paramètres');
   assert(optGlass, 'Option thème Cyber Glassmorphism présente dans les paramètres');
+  assert(optSteel, 'Option thème Acier Mécanique & Digital présente dans les paramètres');
 
   // Par défaut, le logo doit être sombre (dark)
   assert(appLogoImg.src.includes('logo-dark.png'), 'Le logo par défaut doit être sombre (logo-dark.png)');
   assert(optDark.classList.contains('active'), 'L\'option Noir & Carbone doit être active par défaut');
   assert(!optBlue.classList.contains('active'), 'L\'option Bleu & Or ne doit pas être active au départ');
   assert(!optGlass.classList.contains('active'), 'L\'option Glassmorphism ne doit pas être active au départ');
+  assert(!optSteel.classList.contains('active'), 'L\'option Acier ne doit pas être active au départ');
   assert(!document.body.classList.contains('theme-glass'), 'La classe theme-glass ne doit pas être présente par défaut');
+  assert(!document.body.classList.contains('theme-steel'), 'La classe theme-steel ne doit pas être présente par défaut');
 
   // Basculer vers le logo Bleu & Or
   optBlue.click();
@@ -678,6 +682,7 @@ try {
   assert(optBlue.classList.contains('active'), 'L\'option Bleu & Or doit être marquée active');
   assert(!optDark.classList.contains('active'), 'L\'option Noir & Carbone ne doit plus être active');
   assert(!optGlass.classList.contains('active'), 'L\'option Glass ne doit pas être active');
+  assert(!optSteel.classList.contains('active'), 'L\'option Acier ne doit pas être active');
   assert.strictEqual(window.localStorage.getItem('carnet_app_logo'), 'blue', 'Le choix "blue" doit être persisté dans localStorage');
   assert.strictEqual(window.appState.settings.appLogo, 'blue', 'appState.settings.appLogo doit valoir "blue"');
   if (activeBadge) {
@@ -691,6 +696,7 @@ try {
   assert(optGlass.classList.contains('active'), 'L\'option Cyber Glassmorphism doit être marquée active');
   assert(!optDark.classList.contains('active'), 'L\'option Noir & Carbone ne doit plus être active');
   assert(!optBlue.classList.contains('active'), 'L\'option Bleu & Or ne doit plus être active');
+  assert(!optSteel.classList.contains('active'), 'L\'option Acier ne doit plus être active');
   assert(document.body.classList.contains('theme-glass'), 'La classe theme-glass doit être ajoutée au body');
   assert.strictEqual(window.localStorage.getItem('carnet_app_logo'), 'glass', 'Le choix "glass" doit être persisté dans localStorage carnet_app_logo');
   assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'glass', 'Le choix "glass" doit être persisté dans localStorage carnet_app_theme');
@@ -699,20 +705,38 @@ try {
     assert.strictEqual(activeBadge.textContent.trim(), 'Cyber Glassmorphism', 'Le badge indique Cyber Glassmorphism');
   }
 
+  // Basculer vers le thème Acier Mécanique & Digital
+  optSteel.click();
+  assert(appLogoImg.src.includes('logo-steel.png'), 'Le logo dans l\'en-tête doit maintenant pointer sur logo-steel.png');
+  assert(favIcon.href.includes('icon-steel-192.png'), 'Le favicon doit pointer sur icon-steel-192.png');
+  assert(optSteel.classList.contains('active'), 'L\'option Acier Mécanique & Digital doit être marquée active');
+  assert(!optDark.classList.contains('active'), 'L\'option Noir & Carbone ne doit plus être active');
+  assert(!optBlue.classList.contains('active'), 'L\'option Bleu & Or ne doit plus être active');
+  assert(!optGlass.classList.contains('active'), 'L\'option Cyber Glassmorphism ne doit plus être active');
+  assert(document.body.classList.contains('theme-steel'), 'La classe theme-steel doit être ajoutée au body');
+  assert.strictEqual(window.localStorage.getItem('carnet_app_logo'), 'steel', 'Le choix "steel" doit être persisté dans localStorage carnet_app_logo');
+  assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'steel', 'Le choix "steel" doit être persisté dans localStorage carnet_app_theme');
+  assert.strictEqual(window.appState.settings.appLogo, 'steel', 'appState.settings.appLogo doit valoir "steel"');
+  if (activeBadge) {
+    assert.strictEqual(activeBadge.textContent.trim(), 'Acier Mécanique & Digital', 'Le badge indique Acier Mécanique & Digital');
+  }
+
   // Basculer de nouveau vers le logo Noir & Carbone
   optDark.click();
   assert(appLogoImg.src.includes('logo-dark.png'), 'Le logo dans l\'en-tête doit revenir à logo-dark.png');
   assert(optDark.classList.contains('active'), 'L\'option Noir & Carbone doit redevenir active');
   assert(!optBlue.classList.contains('active'), 'L\'option Bleu & Or ne doit plus être active');
   assert(!optGlass.classList.contains('active'), 'L\'option Cyber Glassmorphism ne doit plus être active');
+  assert(!optSteel.classList.contains('active'), 'L\'option Acier ne doit plus être active');
   assert(!document.body.classList.contains('theme-glass'), 'La classe theme-glass doit être retirée du body');
+  assert(!document.body.classList.contains('theme-steel'), 'La classe theme-steel doit être retirée du body');
   assert.strictEqual(window.localStorage.getItem('carnet_app_logo'), 'dark', 'Le choix "dark" doit être persisté dans localStorage');
   assert.strictEqual(window.appState.settings.appLogo, 'dark', 'appState.settings.appLogo doit valoir "dark"');
   if (activeBadge) {
     assert.strictEqual(activeBadge.textContent.trim(), 'Noir & Carbone', 'Le badge indique Noir & Carbone');
   }
 
-  // Test du bouton de bascule rapide de thème dans l'en-tête (btnHeaderThemeSwitch)
+  // Test du bouton de bascule rapide de thème dans l'en-tête (btnHeaderThemeSwitch) : dark -> blue -> glass -> steel -> dark
   const btnHeaderTheme = document.getElementById('btnHeaderThemeSwitch');
   assert(btnHeaderTheme, 'Bouton de bascule rapide de thème présent dans l\'en-tête');
   
@@ -726,11 +750,17 @@ try {
   assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'glass', 'Bascule rapide vers glass');
   assert(document.body.classList.contains('theme-glass'), 'Body a la classe theme-glass');
 
-  // Troisième clic -> retour vers 'dark'
+  // Troisième clic -> bascule vers 'steel'
+  btnHeaderTheme.click();
+  assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'steel', 'Bascule rapide vers steel');
+  assert(document.body.classList.contains('theme-steel'), 'Body a la classe theme-steel');
+
+  // Quatrième clic -> retour vers 'dark'
   btnHeaderTheme.click();
   assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'dark', 'Bascule rapide retour vers dark');
   assert(!document.body.classList.contains('theme-glass'), 'Body n\'a plus theme-glass');
   assert(!document.body.classList.contains('theme-blue'), 'Body n\'a plus theme-blue');
+  assert(!document.body.classList.contains('theme-steel'), 'Body n\'a plus theme-steel');
 
   console.log('24. Vérification des notifications de l\'appareil (Web Push & Alertes PWA)');
   const notifCard = document.getElementById('settingsNotificationsCard');
