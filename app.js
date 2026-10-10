@@ -229,8 +229,7 @@ function applyAppLogo(theme, notify = false) {
     chosen = 'steel';
   } else if (theme === 'bubble') {
       chosen = 'bubble';
-    } else if (theme === 'liquid') {
-    chosen = 'bubble';
+    } else if (theme === 'liquid') { chosen = 'liquid';
   }
 
   if (!appState.settings) {
