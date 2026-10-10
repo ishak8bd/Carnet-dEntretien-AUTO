@@ -227,6 +227,8 @@ function applyAppLogo(theme, notify = false) {
     chosen = 'glass';
   } else if (theme === 'steel') {
     chosen = 'steel';
+  } else if (theme === 'bubble') {
+    chosen = 'bubble';
   }
 
   if (!appState.settings) {
@@ -242,16 +244,18 @@ function applyAppLogo(theme, notify = false) {
   // 0. Basculer les classes de thèmes globaux (Acier Mécanique / Cyber Glassmorphism / Prestige Bleu / Noir Carbone)
   if (typeof document !== 'undefined') {
     if (document.body) {
-      document.body.classList.remove('theme-glass', 'theme-blue', 'theme-steel');
+      document.body.classList.remove('theme-glass', 'theme-blue', 'theme-steel', 'theme-bubble');
       if (chosen === 'steel') document.body.classList.add('theme-steel');
       else if (chosen === 'glass') document.body.classList.add('theme-glass');
       else if (chosen === 'blue') document.body.classList.add('theme-blue');
+      else if (chosen === 'bubble') document.body.classList.add('theme-bubble');
     }
     if (document.documentElement) {
-      document.documentElement.classList.remove('theme-glass', 'theme-blue', 'theme-steel');
+      document.documentElement.classList.remove('theme-glass', 'theme-blue', 'theme-steel', 'theme-bubble');
       if (chosen === 'steel') document.documentElement.classList.add('theme-steel');
       else if (chosen === 'glass') document.documentElement.classList.add('theme-glass');
       else if (chosen === 'blue') document.documentElement.classList.add('theme-blue');
+      else if (chosen === 'bubble') document.documentElement.classList.add('theme-bubble');
     }
   }
 
@@ -267,6 +271,9 @@ function applyAppLogo(theme, notify = false) {
     } else if (chosen === 'blue') {
       logoImg.src = 'icons/logo-blue.png';
       logoImg.alt = "Logo Carnet d'Entretien Bleu & Or";
+    } else if (chosen === 'bubble') {
+      logoImg.src = 'icons/logo-bubble.png';
+      logoImg.alt = "Logo Carnet d'Entretien Carbone & Bulle";
     } else {
       logoImg.src = 'icons/logo-dark.png';
       logoImg.alt = "Logo Carnet d'Entretien Noir & Carbone";
@@ -286,6 +293,9 @@ function applyAppLogo(theme, notify = false) {
     } else if (chosen === 'blue') {
       headerIcon.textContent = '👑';
       headerText.textContent = 'Bleu & Or';
+    } else if (chosen === 'bubble') {
+      headerIcon.textContent = '🫧';
+      headerText.textContent = 'Bulle & Verre';
     } else {
       headerIcon.textContent = '🌑';
       headerText.textContent = 'Carbone';
@@ -301,6 +311,8 @@ function applyAppLogo(theme, notify = false) {
       fav.href = 'icons/icon-glass-192.png';
     } else if (chosen === 'blue') {
       fav.href = 'icons/icon-blue-192.png';
+    } else if (chosen === 'bubble') {
+      fav.href = 'icons/icon-bubble-192.png';
     } else {
       fav.href = 'icons/icon-192.png';
     }
@@ -313,6 +325,8 @@ function applyAppLogo(theme, notify = false) {
       apple.href = 'icons/icon-glass-192.png';
     } else if (chosen === 'blue') {
       apple.href = 'icons/icon-blue-192.png';
+    } else if (chosen === 'bubble') {
+      apple.href = 'icons/icon-bubble-192.png';
     } else {
       apple.href = 'icons/icon-192.png';
     }
@@ -323,10 +337,12 @@ function applyAppLogo(theme, notify = false) {
   const blueCard = document.getElementById('logoOptionBlue');
   const glassCard = document.getElementById('logoOptionGlass');
   const steelCard = document.getElementById('logoOptionSteel');
+  const bubbleCard = document.getElementById('logoOptionBubble');
   const darkCheck = document.getElementById('logoCheckDark');
   const blueCheck = document.getElementById('logoCheckBlue');
   const glassCheck = document.getElementById('logoCheckGlass');
   const steelCheck = document.getElementById('logoCheckSteel');
+  const bubbleCheck = document.getElementById('logoCheckBubble');
   const activeBadge = document.getElementById('activeLogoBadge');
 
   if (darkCard) {
@@ -341,6 +357,9 @@ function applyAppLogo(theme, notify = false) {
   if (steelCard) {
     steelCard.classList.toggle('active', chosen === 'steel');
   }
+  if (bubbleCard) {
+    bubbleCard.classList.toggle('active', chosen === 'bubble');
+  }
 
   if (darkCheck) {
     darkCheck.style.display = chosen === 'dark' ? 'inline-flex' : 'none';
@@ -354,6 +373,9 @@ function applyAppLogo(theme, notify = false) {
   if (steelCheck) {
     steelCheck.style.display = chosen === 'steel' ? 'inline-flex' : 'none';
   }
+  if (bubbleCheck) {
+    bubbleCheck.style.display = chosen === 'bubble' ? 'inline-flex' : 'none';
+  }
 
   if (activeBadge) {
     if (chosen === 'steel') {
@@ -365,6 +387,9 @@ function applyAppLogo(theme, notify = false) {
     } else if (chosen === 'blue') {
       activeBadge.textContent = 'Bleu & Or';
       activeBadge.className = 'status-badge status-badge-blue';
+    } else if (chosen === 'bubble') {
+      activeBadge.textContent = 'Carbone & Bulle';
+      activeBadge.className = 'status-badge status-badge-bubble';
     } else {
       activeBadge.textContent = 'Noir & Carbone';
       activeBadge.className = 'status-badge status-badge-info';
@@ -379,26 +404,21 @@ function applyAppLogo(theme, notify = false) {
       msg = '✨ Thème Cyber Glassmorphism activé pour toute l\'application !';
     } else if (chosen === 'blue') {
       msg = '👑 Thème Prestige Bleu & Or activé pour toute l\'application !';
+    } else if (chosen === 'bubble') {
+      msg = '🫧 Thème Carbone & Bulle activé pour toute l\'application !';
     }
     showToast(msg, 'success');
   }
 }
 
 /**
- * Fait défiler le thème de l'application en boucle (Carbone -> Bleu & Or -> Cyber Glass -> Acier & Digital)
+ * Fait défiler le thème de l'application en boucle
  */
 function cycleAppTheme() {
   const current = (appState.settings && appState.settings.appLogo) || localStorage.getItem('carnet_app_theme') || localStorage.getItem('carnet_app_logo') || 'dark';
-  let next = 'blue';
-  if (current === 'dark') {
-    next = 'blue';
-  } else if (current === 'blue') {
-    next = 'glass';
-  } else if (current === 'glass') {
-    next = 'steel';
-  } else if (current === 'steel') {
-    next = 'dark';
-  }
+  const themes = ['dark', 'blue', 'glass', 'steel', 'bubble'];
+  const currentIndex = themes.indexOf(current);
+  const next = themes[(currentIndex + 1) % themes.length];
   applyAppLogo(next, true);
 }
 
@@ -5539,6 +5559,7 @@ function attachEventListeners() {
   document.getElementById('logoOptionBlue')?.addEventListener('click', () => applyAppLogo('blue', true));
   document.getElementById('logoOptionGlass')?.addEventListener('click', () => applyAppLogo('glass', true));
   document.getElementById('logoOptionSteel')?.addEventListener('click', () => applyAppLogo('steel', true));
+  document.getElementById('logoOptionBubble')?.addEventListener('click', () => applyAppLogo('bubble', true));
   document.getElementById('btnHeaderThemeSwitch')?.addEventListener('click', cycleAppTheme);
   document.getElementById('appBrandIconContainer')?.addEventListener('click', () => {
     switchView('settings');

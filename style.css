@@ -3881,3 +3881,212 @@ body.theme-steel .nav-tab.active .nav-tab-icon {
 
 
 
+
+/* ==========================================================================
+   THÈME CARBONE & BULLE DE VERRE (BUBBLE)
+   ========================================================================== */
+.theme-bubble {
+  --bg-body: #0f172a;
+  --bg-card: rgba(30, 41, 59, 0.7);
+  --bg-card-subtle: rgba(15, 23, 42, 0.6);
+  --bg-input: rgba(15, 23, 42, 0.8);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --border-focus: #38bdf8;
+  
+  --text-main: #f8fafc;
+  --text-muted: #cbd5e1;
+  --text-inverted: #0f172a;
+
+  --primary: #38bdf8;
+  --primary-hover: #0ea5e9;
+  --primary-subtle: rgba(56, 189, 248, 0.15);
+
+  --success: #34d399;
+  --success-subtle: rgba(52, 211, 153, 0.15);
+  --success-text: #6ee7b7;
+
+  --warning: #fbbf24;
+  --warning-subtle: rgba(251, 191, 36, 0.15);
+  --warning-text: #fcd34d;
+
+  --danger: #f87171;
+  --danger-subtle: rgba(248, 113, 113, 0.15);
+  --danger-text: #fca5a5;
+
+  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  
+  --glass-blur: blur(16px);
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+}
+
+body.theme-bubble {
+  background: radial-gradient(circle at top left, #1e293b, #0f172a), url('icons/bg-bubbles.svg');
+  background-size: cover, cover;
+  background-attachment: fixed;
+  background-position: center;
+  color: var(--text-main);
+}
+
+/* Glassmorphism Components */
+.theme-bubble .card,
+.theme-bubble .settings-card,
+.theme-bubble .banner,
+.theme-bubble .modal-content,
+.theme-bubble .bottom-nav,
+.theme-bubble .app-header {
+  background: var(--bg-card);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-lg);
+}
+
+.theme-bubble .app-header {
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  padding-bottom: 12px;
+}
+
+.theme-bubble .bottom-nav {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-bottom: none;
+}
+
+/* Buttons */
+.theme-bubble .btn-primary,
+.theme-bubble .btn-secondary,
+.theme-bubble .btn-icon,
+.theme-bubble .theme-quick-switch-btn,
+.theme-bubble .form-input,
+.theme-bubble .form-select,
+.theme-bubble .input-km {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-main);
+  border-radius: 9999px; /* Pill shape for liquid bubble feel */
+  transition: all 0.3s ease;
+}
+
+.theme-bubble .btn-primary {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.4), rgba(14, 165, 233, 0.4));
+  border-color: rgba(56, 189, 248, 0.3);
+  box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.theme-bubble .btn-primary:hover,
+.theme-bubble .btn-primary:active {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.6), rgba(14, 165, 233, 0.6));
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.theme-bubble .btn-secondary:hover,
+.theme-bubble .btn-icon:hover {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Forms */
+.theme-bubble .form-input:focus,
+.theme-bubble .form-select:focus,
+.theme-bubble .input-km:focus {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+}
+
+/* Status Badges */
+.theme-bubble .status-badge {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-color);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-sm);
+}
+
+.status-badge-bubble {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(14, 165, 233, 0.2));
+  color: #bae6fd;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+/* Logo Picker */
+.logo-picker-preview-bubble {
+  background: radial-gradient(circle at center, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-picker-preview-bubble img {
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+}
+
+.theme-bubble .logo-picker-card {
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: all 0.3s ease;
+}
+
+.theme-bubble .logo-picker-card.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), inset 0 0 15px rgba(56, 189, 248, 0.1);
+  background: rgba(56, 189, 248, 0.05);
+  transform: translateY(-4px);
+}
+
+/* Progress bars */
+.theme-bubble .progress-bar-bg {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.theme-bubble .progress-bar-fill {
+  background: linear-gradient(90deg, #38bdf8, #0ea5e9);
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
+  border-radius: 9999px;
+}
+
+/* Specific elements adjustments */
+.theme-bubble .maintenance-item {
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.theme-bubble .history-timeline-dot {
+  background: var(--primary);
+  box-shadow: 0 0 10px var(--primary);
+  border: 2px solid #0f172a;
+}
+
+.theme-bubble .nav-item {
+  border-radius: 9999px;
+}
+
+.theme-bubble .nav-item.active {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--primary);
+  box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.1);
+}
+
+.theme-bubble .nav-item.active .nav-icon {
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.5));
+}

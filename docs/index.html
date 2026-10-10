@@ -35,6 +35,10 @@
           if (fav) fav.href = 'icons/icon-blue-192.png';
           if (apple) apple.href = 'icons/icon-blue-192.png';
           document.documentElement.classList.add('theme-blue');
+        } else if (savedTheme === 'bubble') {
+          if (fav) fav.href = 'icons/icon-bubble-192.png';
+          if (apple) apple.href = 'icons/icon-bubble-192.png';
+          document.documentElement.classList.add('theme-bubble');
         }
       } catch (e) {}
     })();
@@ -542,6 +546,21 @@
               <div class="logo-picker-desc">Finition acier brossé mat, chanfreins biseautés acérés, relief 3D tangible et télémétrie numérique HUD.</div>
             </div>
             <div class="logo-picker-check" id="logoCheckSteel" style="display: none;" aria-hidden="true">✓</div>
+          </div>
+
+          <!-- Option 5 : Carbone & Bulle de Verre -->
+          <div class="logo-picker-card" id="logoOptionBubble" data-logo="bubble" role="button" tabindex="0" aria-label="Choisir le thème Carbone & Bulle">
+            <div class="logo-picker-preview logo-picker-preview-bubble">
+              <img src="icons/logo-bubble.png" alt="Aperçu Thème Carbone & Bulle">
+            </div>
+            <div class="logo-picker-info">
+              <div class="logo-picker-title">
+                <span>Carbone &amp; Bulle</span>
+                <span class="status-badge status-badge-bubble" style="font-size: 0.68rem; padding: 2px 6px;">Nouveau</span>
+              </div>
+              <div class="logo-picker-desc">Sombre, bulles de verre et reflets liquides</div>
+            </div>
+            <div class="logo-picker-check" id="logoCheckBubble" style="display: none;" aria-hidden="true">✓</div>
           </div>
         </div>
       </section>

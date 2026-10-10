@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" opacity="0.35">
+  <defs>
+    <!-- Bulles de verre translucides flottantes -->
+    <radialGradient id="bubble1" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.12"/>
+      <stop offset="60%" stop-color="#94a3b8" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#475569" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bubble2" cx="45%" cy="35%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.1"/>
+      <stop offset="55%" stop-color="#94a3b8" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#334155" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bubble3" cx="55%" cy="38%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="70%" stop-color="#64748b" stop-opacity="0.03"/>
+      <stop offset="100%" stop-color="#1e293b" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Reflet spéculaire en arc de cercle pour chaque bulle -->
+    <linearGradient id="specular-arc" x1="30%" y1="10%" x2="70%" y2="90%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3"/>
+      <stop offset="40%" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Fibre de carbone subtile -->
+    <pattern id="carbon-weave" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect width="8" height="8" fill="transparent"/>
+      <rect x="0" y="0" width="4" height="4" fill="rgba(255,255,255,0.02)" rx="0.5"/>
+      <rect x="4" y="4" width="4" height="4" fill="rgba(255,255,255,0.02)" rx="0.5"/>
+    </pattern>
+  </defs>
+
+  <!-- Trame carbone de fond -->
+  <rect width="100%" height="100%" fill="url(#carbon-weave)" />
+
+  <!-- Grandes bulles de verre flottantes -->
+  <g>
+    <!-- Bulle 1 (grande, haut-gauche) -->
+    <circle cx="200" cy="220" r="120" fill="url(#bubble1)" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+    <ellipse cx="175" cy="175" rx="55" ry="20" fill="url(#specular-arc)" transform="rotate(-15 175 175)"/>
+
+    <!-- Bulle 2 (moyenne, centre-droite) -->
+    <circle cx="900" cy="350" r="90" fill="url(#bubble2)" stroke="rgba(255,255,255,0.06)" stroke-width="0.8"/>
+    <ellipse cx="878" cy="310" rx="40" ry="14" fill="url(#specular-arc)" transform="rotate(-20 878 310)"/>
+
+    <!-- Bulle 3 (petite, bas-gauche) -->
+    <circle cx="350" cy="680" r="65" fill="url(#bubble3)" stroke="rgba(255,255,255,0.06)" stroke-width="0.7"/>
+    <ellipse cx="333" cy="652" rx="28" ry="10" fill="url(#specular-arc)" transform="rotate(-12 333 652)"/>
+
+    <!-- Bulle 4 (grande, bas-droite) -->
+    <circle cx="1000" cy="700" r="110" fill="url(#bubble1)" stroke="rgba(255,255,255,0.07)" stroke-width="0.9"/>
+    <ellipse cx="975" cy="650" rx="48" ry="16" fill="url(#specular-arc)" transform="rotate(-18 975 650)"/>
+
+    <!-- Micro-bulles dispersées -->
+    <circle cx="500" cy="150" r="25" fill="url(#bubble3)" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+    <circle cx="750" cy="180" r="18" fill="url(#bubble2)" stroke="rgba(255,255,255,0.04)" stroke-width="0.4"/>
+    <circle cx="150" cy="500" r="20" fill="url(#bubble3)" stroke="rgba(255,255,255,0.04)" stroke-width="0.4"/>
+    <circle cx="1100" cy="180" r="30" fill="url(#bubble2)" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+    <circle cx="600" cy="800" r="22" fill="url(#bubble3)" stroke="rgba(255,255,255,0.04)" stroke-width="0.4"/>
+    <circle cx="450" cy="420" r="15" fill="url(#bubble2)" stroke="rgba(255,255,255,0.03)" stroke-width="0.3"/>
+    <circle cx="820" cy="550" r="12" fill="url(#bubble3)" stroke="rgba(255,255,255,0.03)" stroke-width="0.3"/>
+  </g>
+
+  <!-- Lignes de flux liquide ondulant -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M 0 450 Q 300 380 600 450 T 1200 450" stroke="rgba(255,255,255,0.04)" stroke-width="1.5"/>
+    <path d="M 0 460 Q 300 400 600 460 T 1200 460" stroke="rgba(148,163,184,0.04)" stroke-width="1"/>
+    <path d="M 0 470 Q 300 420 600 470 T 1200 470" stroke="rgba(255,255,255,0.03)" stroke-width="0.8"/>
+  </g>
+
+  <!-- Particules de poussière d'étoiles -->
+  <g fill="#ffffff">
+    <circle cx="120" cy="130" r="1.2" opacity="0.25"/>
+    <circle cx="340" cy="90" r="0.8" opacity="0.2"/>
+    <circle cx="580" cy="260" r="1" opacity="0.18"/>
+    <circle cx="720" cy="120" r="0.7" opacity="0.15"/>
+    <circle cx="950" cy="230" r="1.1" opacity="0.2"/>
+    <circle cx="1080" cy="400" r="0.9" opacity="0.18"/>
+    <circle cx="280" cy="580" r="0.8" opacity="0.15"/>
+    <circle cx="650" cy="650" r="1.2" opacity="0.22"/>
+    <circle cx="1050" cy="600" r="0.7" opacity="0.12"/>
+    <circle cx="430" cy="780" r="1" opacity="0.2"/>
+    <circle cx="850" cy="780" r="0.9" opacity="0.16"/>
+  </g>
+</svg>
