@@ -237,13 +237,17 @@ function applyAppLogo(theme, notify = false) {
     localStorage.setItem('carnet_app_theme', chosen);
   } catch (e) {}
 
-  // 0. Basculer la classe de thème global (Glassmorphism Cyber-Mécanique)
+  // 0. Basculer les classes de thèmes globaux (Glassmorphism / Prestige Bleu / Noir Carbone)
   if (typeof document !== 'undefined') {
     if (document.body) {
-      document.body.classList.toggle('theme-glass', chosen === 'glass');
+      document.body.classList.remove('theme-glass', 'theme-blue');
+      if (chosen === 'glass') document.body.classList.add('theme-glass');
+      else if (chosen === 'blue') document.body.classList.add('theme-blue');
     }
     if (document.documentElement) {
-      document.documentElement.classList.toggle('theme-glass', chosen === 'glass');
+      document.documentElement.classList.remove('theme-glass', 'theme-blue');
+      if (chosen === 'glass') document.documentElement.classList.add('theme-glass');
+      else if (chosen === 'blue') document.documentElement.classList.add('theme-blue');
     }
   }
 
@@ -259,6 +263,22 @@ function applyAppLogo(theme, notify = false) {
     } else {
       logoImg.src = 'icons/logo-dark.png';
       logoImg.alt = "Logo Carnet d'Entretien Noir & Carbone";
+    }
+  }
+
+  // 1b. Mettre à jour le bouton de bascule rapide de thème dans l'en-tête
+  const headerIcon = document.getElementById('headerThemeIcon');
+  const headerText = document.getElementById('headerThemeText');
+  if (headerIcon && headerText) {
+    if (chosen === 'glass') {
+      headerIcon.textContent = '💎';
+      headerText.textContent = 'Cyber Glass';
+    } else if (chosen === 'blue') {
+      headerIcon.textContent = '👑';
+      headerText.textContent = 'Bleu & Or';
+    } else {
+      headerIcon.textContent = '🌑';
+      headerText.textContent = 'Carbone';
     }
   }
 
@@ -327,18 +347,35 @@ function applyAppLogo(theme, notify = false) {
   }
 
   if (notify && typeof showToast === 'function') {
-    let msg = '✨ Logo Noir & Carbone activé !';
+    let msg = '✨ Thème Noir & Carbone activé !';
     if (chosen === 'glass') {
-      msg = '✨ Thème Cyber Glassmorphism activé !';
+      msg = '✨ Thème Cyber Glassmorphism activé pour toute l\'application !';
     } else if (chosen === 'blue') {
-      msg = '✨ Logo Prestige Bleu & Or activé !';
+      msg = '👑 Thème Prestige Bleu & Or activé pour toute l\'application !';
     }
     showToast(msg, 'success');
   }
 }
 
+/**
+ * Fait défiler le thème de l'application en boucle (Carbone -> Bleu & Or -> Cyber Glass)
+ */
+function cycleAppTheme() {
+  const current = (appState.settings && appState.settings.appLogo) || localStorage.getItem('carnet_app_theme') || localStorage.getItem('carnet_app_logo') || 'dark';
+  let next = 'glass';
+  if (current === 'glass') {
+    next = 'dark';
+  } else if (current === 'dark') {
+    next = 'blue';
+  } else if (current === 'blue') {
+    next = 'glass';
+  }
+  applyAppLogo(next, true);
+}
+
 if (typeof window !== 'undefined') {
   window.applyAppLogo = applyAppLogo;
+  window.cycleAppTheme = cycleAppTheme;
 }
 
 // ============================================================================
@@ -5472,6 +5509,7 @@ function attachEventListeners() {
   document.getElementById('logoOptionDark')?.addEventListener('click', () => applyAppLogo('dark', true));
   document.getElementById('logoOptionBlue')?.addEventListener('click', () => applyAppLogo('blue', true));
   document.getElementById('logoOptionGlass')?.addEventListener('click', () => applyAppLogo('glass', true));
+  document.getElementById('btnHeaderThemeSwitch')?.addEventListener('click', cycleAppTheme);
   document.getElementById('appBrandIconContainer')?.addEventListener('click', () => {
     switchView('settings');
     const logoCard = document.getElementById('settingsAppLogoCard');

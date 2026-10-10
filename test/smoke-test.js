@@ -712,6 +712,26 @@ try {
     assert.strictEqual(activeBadge.textContent.trim(), 'Noir & Carbone', 'Le badge indique Noir & Carbone');
   }
 
+  // Test du bouton de bascule rapide de thème dans l'en-tête (btnHeaderThemeSwitch)
+  const btnHeaderTheme = document.getElementById('btnHeaderThemeSwitch');
+  assert(btnHeaderTheme, 'Bouton de bascule rapide de thème présent dans l\'en-tête');
+  
+  // Actuellement en 'dark' -> un clic sur le bouton d'en-tête doit basculer vers 'blue'
+  btnHeaderTheme.click();
+  assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'blue', 'Bascule rapide vers blue');
+  assert(document.body.classList.contains('theme-blue'), 'Body a la classe theme-blue');
+
+  // Second clic -> bascule vers 'glass'
+  btnHeaderTheme.click();
+  assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'glass', 'Bascule rapide vers glass');
+  assert(document.body.classList.contains('theme-glass'), 'Body a la classe theme-glass');
+
+  // Troisième clic -> retour vers 'dark'
+  btnHeaderTheme.click();
+  assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'dark', 'Bascule rapide retour vers dark');
+  assert(!document.body.classList.contains('theme-glass'), 'Body n\'a plus theme-glass');
+  assert(!document.body.classList.contains('theme-blue'), 'Body n\'a plus theme-blue');
+
   console.log('24. Vérification des notifications de l\'appareil (Web Push & Alertes PWA)');
   const notifCard = document.getElementById('settingsNotificationsCard');
   const notifBadge = document.getElementById('notifStatusBadge');

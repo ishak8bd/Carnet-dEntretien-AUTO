@@ -2845,143 +2845,348 @@ body {
   border: 1px solid rgba(37, 99, 235, 0.3);
 }
 
+/* Bouton de bascule rapide de thème dans l'en-tête */
+.theme-quick-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card-subtle);
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.theme-quick-switch-btn:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 /* ==========================================================================
-   Thème 3 : Cyber Glassmorphism (Nébuleuse & Verre Fumé)
-   Design futuriste inspiré du logo cyber-mécanique :
-   Verre dépoli (frosted glass), bordures réflectives, halo néon cyan et touches électriques.
+   Thème 2 : Bleu & Or Prestige (Thème complet pour toute l'application)
+   ========================================================================== */
+body.theme-blue {
+  background-color: #060b18 !important;
+  background-image: 
+    radial-gradient(circle at 50% 120px, rgba(37, 99, 235, 0.2) 0%, transparent 450px),
+    radial-gradient(circle at 85% 80%, rgba(234, 179, 8, 0.08) 0%, transparent 350px) !important;
+  color: #f8fafc !important;
+}
+
+body.theme-blue .card,
+body.theme-blue .odometer-card,
+body.theme-blue .stat-card {
+  background: rgba(10, 20, 44, 0.82) !important;
+  border: 1.5px solid rgba(59, 130, 246, 0.35) !important;
+  box-shadow: inset 0 1px 0 rgba(234, 179, 8, 0.2), 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.theme-blue .btn-primary {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #1e40af 100%) !important;
+  border: 1px solid rgba(234, 179, 8, 0.4) !important;
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.4) !important;
+  color: #ffffff !important;
+}
+
+body.theme-blue .theme-quick-switch-btn {
+  background: rgba(37, 99, 235, 0.15) !important;
+  border-color: rgba(234, 179, 8, 0.4) !important;
+  color: #fbbf24 !important;
+}
+
+/* ==========================================================================
+   Thème 3 : Cyber Glassmorphism (Thème complet pour toute l'application)
+   Design inspiré fidèlement de l'image :
+   Verre dépoli (frosted glass), bordures titane brossé chanfreinées,
+   circuits orbitaux stellaires, reflets spéculaires et lueur néon blanche.
    ========================================================================== */
 
 :root.theme-glass,
 html.theme-glass,
 body.theme-glass {
-  --bg-body: #070b14;
-  --bg-card: rgba(13, 21, 38, 0.68);
-  --bg-card-subtle: rgba(18, 30, 54, 0.55);
-  --bg-input: rgba(10, 16, 30, 0.72);
-  --border-color: rgba(255, 255, 255, 0.13);
+  --bg-body: #080c15;
+  --bg-card: rgba(18, 26, 44, 0.72);
+  --bg-card-subtle: rgba(22, 32, 54, 0.6);
+  --bg-input: rgba(9, 14, 25, 0.75);
+  --border-color: rgba(255, 255, 255, 0.14);
   --border-focus: #38bdf8;
 
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
-  --text-inverted: #070b14;
+  --text-inverted: #080c15;
 
-  --primary: #0ea5e9;
-  --primary-hover: #38bdf8;
-  --primary-subtle: rgba(14, 165, 233, 0.15);
+  --primary: #38bdf8;
+  --primary-hover: #7dd3fc;
+  --primary-subtle: rgba(56, 189, 248, 0.15);
 
-  --success: #10b981;
+  --success: #34d399;
   --success-subtle: rgba(16, 185, 129, 0.18);
-  --success-text: #34d399;
+  --success-text: #6ee7b7;
 
-  --warning: #f59e0b;
+  --warning: #fbbf24;
   --warning-subtle: rgba(245, 158, 11, 0.18);
-  --warning-text: #fbbf24;
+  --warning-text: #fde68a;
 
-  --danger: #ef4444;
+  --danger: #f87171;
   --danger-subtle: rgba(239, 68, 68, 0.22);
-  --danger-text: #f87171;
+  --danger-text: #fca5a5;
 
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 1px rgba(255, 255, 255, 0.15);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(14, 165, 233, 0.15);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.75), inset 0 1.5px 0.5px rgba(255, 255, 255, 0.3);
 }
 
+/* Toile de fond cosmique avec constellations et circuits orbitaux */
 body.theme-glass {
-  background-color: #070b14;
-  background-image:
-    radial-gradient(circle at 10% 12%, rgba(6, 182, 212, 0.14) 0%, transparent 40%),
-    radial-gradient(circle at 90% 88%, rgba(99, 102, 241, 0.13) 0%, transparent 45%),
-    radial-gradient(circle at 50% 45%, rgba(14, 165, 233, 0.06) 0%, transparent 60%),
-    radial-gradient(circle at 80% 15%, rgba(16, 185, 129, 0.06) 0%, transparent 35%);
-  background-attachment: fixed;
-  background-size: cover;
-  color: #f8fafc;
+  background-color: #080c15 !important;
+  background-image: 
+    radial-gradient(circle at 50% 160px, rgba(56, 189, 248, 0.15) 0%, transparent 480px),
+    radial-gradient(circle at 10% 30%, rgba(99, 102, 241, 0.12) 0%, transparent 420px),
+    radial-gradient(circle at 90% 75%, rgba(16, 185, 129, 0.08) 0%, transparent 400px),
+    url('icons/bg-orbits.svg') !important;
+  background-repeat: no-repeat !important;
+  background-position: center top !important;
+  background-size: cover, cover, cover, min(100vw, 960px) auto !important;
+  background-attachment: fixed !important;
+  color: #f8fafc !important;
 }
 
-/* Cartes et conteneurs dépolis (Frosted Glass) */
-body.theme-glass .card,
-body.theme-glass .odometer-card,
-body.theme-glass .stat-card,
-body.theme-glass .maint-item-card,
-body.theme-glass .history-item-card,
-body.theme-glass .vehicle-badge-card {
-  background: rgba(13, 21, 38, 0.68) !important;
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.13) !important;
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15), 0 8px 30px rgba(0, 0, 0, 0.45) !important;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+body.theme-glass .app-container {
+  background: transparent !important;
 }
 
-body.theme-glass .card:hover,
-body.theme-glass .stat-card:hover,
-body.theme-glass .maint-item-card:hover {
-  border-color: rgba(56, 189, 248, 0.45) !important;
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.25), 0 12px 36px rgba(0, 0, 0, 0.55), 0 0 16px rgba(56, 189, 248, 0.15) !important;
-}
-
-/* En-tête & Icône de marque avec bague lumineuse */
+/* En-tête de l'application en verre dépoli et titane */
 body.theme-glass .app-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 12px;
+  background: linear-gradient(180deg, rgba(18, 27, 46, 0.8) 0%, rgba(10, 15, 27, 0.7) 100%) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.08) !important;
+  padding: 10px 14px 12px 14px !important;
+  border-radius: 0 0 18px 18px !important;
+  margin-bottom: 14px !important;
 }
 
 body.theme-glass .brand-icon {
-  border: 1.5px solid rgba(56, 189, 248, 0.5);
-  box-shadow: 0 0 15px rgba(6, 182, 212, 0.35), inset 0 0 8px rgba(56, 189, 248, 0.2);
+  border: 1.5px solid rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.4) !important;
+  background: #080c14 !important;
 }
 
 body.theme-glass .brand-icon:hover {
-  border-color: #38bdf8;
-  box-shadow: 0 0 20px rgba(6, 182, 212, 0.5), inset 0 0 12px rgba(56, 189, 248, 0.3);
+  border-color: #ffffff !important;
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.6) !important;
 }
 
 body.theme-glass .brand-text h1 {
-  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 50%, #38bdf8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 50%, #94a3b8 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  letter-spacing: -0.01em;
 }
 
-/* Barre de navigation basse flottante en verre dépoli */
-body.theme-glass .bottom-nav {
-  background: rgba(9, 15, 28, 0.75) !important;
-  backdrop-filter: blur(20px) saturate(190%);
-  -webkit-backdrop-filter: blur(20px) saturate(190%);
-  border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-}
-
-body.theme-glass .nav-tab.active {
+/* Bouton de bascule rapide de thème */
+body.theme-glass .theme-quick-switch-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
   color: #38bdf8 !important;
-  text-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
 }
 
-body.theme-glass .nav-tab.active .nav-tab-icon {
-  transform: translateY(-2px);
-  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.6));
+body.theme-glass .theme-quick-switch-btn:hover {
+  background: rgba(56, 189, 248, 0.16) !important;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
 }
 
-/* Modales en verre fumé profond */
-body.theme-glass .modal {
-  background-color: rgba(4, 7, 14, 0.72) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+/* Barre de sélection du véhicule */
+body.theme-glass .vehicle-selector-bar {
+  background: linear-gradient(175deg, rgba(22, 32, 54, 0.78) 0%, rgba(10, 15, 27, 0.88) 100%) !important;
+  backdrop-filter: blur(18px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: inset 0 1.5px 0.5px rgba(255, 255, 255, 0.3), 0 8px 26px rgba(0, 0, 0, 0.55) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 8px 10px !important;
 }
 
-body.theme-glass .modal-content {
-  background: rgba(11, 18, 33, 0.88) !important;
-  backdrop-filter: blur(24px) saturate(190%);
-  -webkit-backdrop-filter: blur(24px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 30px rgba(14, 165, 233, 0.2) !important;
+/* TOUTES LES CARTES : Finition chanfreinée en verre dépoli (Frosted Glass Squircle) */
+body.theme-glass .card {
+  background: linear-gradient(175deg, rgba(22, 31, 52, 0.76) 0%, rgba(9, 14, 25, 0.88) 100%) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 2px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.35),
+    inset 0 -1.5px 1px rgba(0, 0, 0, 0.7),
+    0 14px 40px rgba(0, 0, 0, 0.7) !important;
+  border-radius: 20px !important;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease !important;
 }
 
-body.theme-glass .modal-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+body.theme-glass .card:hover {
+  border-color: rgba(56, 189, 248, 0.5) !important;
+  box-shadow: 
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.45),
+    inset 0 -1.5px 1px rgba(0, 0, 0, 0.7),
+    0 20px 50px rgba(0, 0, 0, 0.8),
+    0 0 20px rgba(56, 189, 248, 0.2) !important;
+  transform: translateY(-2px) !important;
 }
 
-body.theme-glass .modal-footer {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+/* Compteur kilométrique (Cockpit Cybernétique avec silhouette lumineuse) */
+body.theme-glass .odometer-card {
+  background: 
+    radial-gradient(circle at 50% 30%, rgba(56, 189, 248, 0.16) 0%, transparent 70%),
+    linear-gradient(175deg, rgba(24, 35, 58, 0.82) 0%, rgba(8, 12, 22, 0.94) 100%) !important;
+  backdrop-filter: blur(24px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
+  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 
+    inset 0 2px 1px rgba(255, 255, 255, 0.38),
+    inset 0 -2px 2px rgba(0, 0, 0, 0.8),
+    0 18px 45px rgba(0, 0, 0, 0.8),
+    0 0 25px rgba(56, 189, 248, 0.2) !important;
+  border-radius: 24px !important;
+}
+
+body.theme-glass .odometer-value,
+body.theme-glass .km-display-value,
+body.theme-glass #dashboardCurrentKm {
+  color: #ffffff !important;
+  text-shadow: 0 0 18px rgba(255, 255, 255, 0.85), 0 0 35px rgba(56, 189, 248, 0.5) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+}
+
+body.theme-glass .odometer-unit {
+  color: #38bdf8 !important;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.6) !important;
+  font-weight: 700 !important;
+}
+
+/* Cartes de statistiques (Inspirées des 3 badges de diagnostic : ECG, Engrenage, Cœur) */
+body.theme-glass .stat-card {
+  background: linear-gradient(165deg, rgba(24, 34, 56, 0.76) 0%, rgba(10, 15, 28, 0.86) 100%) !important;
+  backdrop-filter: blur(18px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 8px 24px rgba(0, 0, 0, 0.55) !important;
+  border-radius: 18px !important;
+  transition: all 0.2s ease !important;
+}
+
+body.theme-glass .stat-card:hover {
+  border-color: rgba(56, 189, 248, 0.5) !important;
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 14px 32px rgba(0, 0, 0, 0.7),
+    0 0 18px rgba(56, 189, 248, 0.25) !important;
+  transform: translateY(-2px) !important;
+}
+
+body.theme-glass .stat-icon {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 100%) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 4px 10px rgba(0, 0, 0, 0.45) !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+body.theme-glass .stat-value {
+  color: #ffffff !important;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.6) !important;
+  font-weight: 800 !important;
+}
+
+/* Boutons primaires lumineux (Inspirés de la silhouette blanche centrale et de la clé à molette) */
+body.theme-glass .btn-primary {
+  background: linear-gradient(145deg, #ffffff 0%, #e2e8f0 45%, #cbd5e1 100%) !important;
+  color: #080c16 !important;
+  font-weight: 700 !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 
+    0 0 20px rgba(255, 255, 255, 0.45),
+    0 6px 18px rgba(0, 0, 0, 0.65) !important;
+  border-radius: var(--radius-md) !important;
+  text-shadow: none !important;
+  transition: all 0.2s ease !important;
+}
+
+body.theme-glass .btn-primary:hover {
+  background: #ffffff !important;
+  color: #05080e !important;
+  border-color: #ffffff !important;
+  box-shadow: 
+    0 0 32px rgba(255, 255, 255, 0.8),
+    0 8px 24px rgba(0, 0, 0, 0.75) !important;
+  transform: translateY(-2px) !important;
+}
+
+body.theme-glass .btn-primary:active {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+/* Boutons secondaires & d'action en titane brossé */
+body.theme-glass .btn-secondary,
+body.theme-glass .btn-icon {
+  background: linear-gradient(145deg, rgba(30, 42, 66, 0.72) 0%, rgba(14, 20, 36, 0.82) 100%) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.16) !important;
+  color: #f1f5f9 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 14px rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+body.theme-glass .btn-secondary:hover,
+body.theme-glass .btn-icon:hover {
+  background: linear-gradient(145deg, rgba(56, 189, 248, 0.25) 0%, rgba(14, 20, 36, 0.85) 100%) !important;
+  border-color: rgba(56, 189, 248, 0.6) !important;
+  color: #38bdf8 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 6px 18px rgba(0, 0, 0, 0.55), 0 0 16px rgba(56, 189, 248, 0.3) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Éléments d'entretien, historique et fiches */
+body.theme-glass .maint-item-card,
+body.theme-glass .history-item-card,
+body.theme-glass .km-log-item,
+body.theme-glass .contact-card-row,
+body.theme-glass .activity-feed-item {
+  background: linear-gradient(165deg, rgba(22, 32, 54, 0.74) 0%, rgba(9, 14, 26, 0.84) 100%) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 22px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 16px !important;
+}
+
+body.theme-glass .maint-item-card:hover,
+body.theme-glass .history-item-card:hover,
+body.theme-glass .km-log-item:hover {
+  border-color: rgba(56, 189, 248, 0.5) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 12px 30px rgba(0, 0, 0, 0.65), 0 0 18px rgba(56, 189, 248, 0.2) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Jauges et barres de progression */
+body.theme-glass .progress-bar-track {
+  background: rgba(14, 20, 34, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6) !important;
+}
+
+body.theme-glass .progress-bar-fill {
+  background: linear-gradient(90deg, #0ea5e9 0%, #38bdf8 50%, #818cf8 100%) !important;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.7) !important;
 }
 
 /* Champs de formulaires en verre fumé */
@@ -2993,11 +3198,13 @@ body.theme-glass input[type="tel"],
 body.theme-glass textarea,
 body.theme-glass select,
 body.theme-glass .form-control {
-  background: rgba(8, 14, 26, 0.7) !important;
-  border: 1px solid rgba(255, 255, 255, 0.13) !important;
-  color: #f8fafc !important;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(8, 13, 24, 0.78) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
 }
 
 body.theme-glass input:focus,
@@ -3005,102 +3212,92 @@ body.theme-glass textarea:focus,
 body.theme-glass select:focus,
 body.theme-glass .form-control:focus {
   border-color: #38bdf8 !important;
-  background: rgba(10, 18, 34, 0.85) !important;
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.22) !important;
+  background: rgba(10, 17, 32, 0.92) !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.5) !important;
 }
 
-body.theme-glass .vehicle-select-container {
-  background: rgba(13, 21, 38, 0.65) !important;
-  border: 1px solid rgba(255, 255, 255, 0.13) !important;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-/* Boutons néon et verre */
-body.theme-glass .btn-primary {
-  background: linear-gradient(135deg, #0284c7 0%, #0369a1 50%, #1e40af 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.22) !important;
-  box-shadow: 0 4px 16px rgba(2, 132, 199, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
-  color: #ffffff !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-body.theme-glass .btn-primary:hover {
-  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #2563eb 100%) !important;
-  border-color: rgba(255, 255, 255, 0.35) !important;
-  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
-}
-
-body.theme-glass .btn-secondary,
-body.theme-glass .btn-icon {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.13) !important;
-  color: #e2e8f0 !important;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-body.theme-glass .btn-secondary:hover,
-body.theme-glass .btn-icon:hover {
-  background: rgba(56, 189, 248, 0.14) !important;
-  border-color: rgba(56, 189, 248, 0.4) !important;
-  color: #38bdf8 !important;
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.2) !important;
-}
-
-/* Badges d'état & Glass Badge */
+/* Badges d'urgence & capsules d'état */
 .status-badge-glass {
-  background: rgba(6, 182, 212, 0.16) !important;
+  background: rgba(6, 182, 212, 0.18) !important;
   color: #38bdf8 !important;
-  border: 1px solid rgba(6, 182, 212, 0.38) !important;
-  box-shadow: 0 0 8px rgba(6, 182, 212, 0.2);
+  border: 1px solid rgba(6, 182, 212, 0.42) !important;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
 }
 
 body.theme-glass .status-badge-success {
-  background: rgba(16, 185, 129, 0.16) !important;
+  background: rgba(16, 185, 129, 0.18) !important;
   color: #34d399 !important;
-  border: 1px solid rgba(16, 185, 129, 0.38) !important;
+  border: 1px solid rgba(16, 185, 129, 0.45) !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25) !important;
 }
 
 body.theme-glass .status-badge-warning {
-  background: rgba(245, 158, 11, 0.16) !important;
+  background: rgba(245, 158, 11, 0.18) !important;
   color: #fbbf24 !important;
-  border: 1px solid rgba(245, 158, 11, 0.38) !important;
+  border: 1px solid rgba(245, 158, 11, 0.45) !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25) !important;
 }
 
 body.theme-glass .status-badge-danger {
-  background: rgba(239, 68, 68, 0.18) !important;
+  background: rgba(239, 68, 68, 0.2) !important;
   color: #f87171 !important;
-  border: 1px solid rgba(239, 68, 68, 0.42) !important;
+  border: 1px solid rgba(239, 68, 68, 0.5) !important;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3) !important;
 }
 
-/* Tableaux et listes */
-body.theme-glass table {
-  border-collapse: separate;
-  border-spacing: 0;
+/* Modales profondes en verre dépoli */
+body.theme-glass .modal {
+  background-color: rgba(3, 6, 12, 0.78) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
 }
 
-body.theme-glass th {
-  background: rgba(15, 25, 45, 0.65) !important;
+body.theme-glass .modal-content {
+  background: linear-gradient(175deg, rgba(22, 31, 52, 0.94) 0%, rgba(9, 13, 24, 0.98) 100%) !important;
+  backdrop-filter: blur(30px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(200%) !important;
+  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 
+    inset 0 2px 1px rgba(255, 255, 255, 0.35),
+    inset 0 -2px 2px rgba(0, 0, 0, 0.8),
+    0 30px 70px rgba(0, 0, 0, 0.9),
+    0 0 40px rgba(56, 189, 248, 0.25) !important;
+  border-radius: 24px !important;
+}
+
+body.theme-glass .modal-header {
   border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+body.theme-glass .modal-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Barre de navigation basse flottante (Dock en verre) */
+body.theme-glass .bottom-nav {
+  background: linear-gradient(180deg, rgba(16, 24, 42, 0.84) 0%, rgba(8, 12, 22, 0.94) 100%) !important;
+  backdrop-filter: blur(24px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(200%) !important;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 
+    0 -8px 28px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  border-radius: 20px 20px 0 0 !important;
+}
+
+body.theme-glass .nav-tab {
   color: #94a3b8 !important;
+  transition: all 0.2s ease !important;
 }
 
-body.theme-glass td {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+body.theme-glass .nav-tab.active {
+  color: #38bdf8 !important;
+  text-shadow: 0 0 14px rgba(56, 189, 248, 0.7) !important;
 }
 
-body.theme-glass tr:hover td {
-  background: rgba(56, 189, 248, 0.05) !important;
-}
-
-body.theme-glass .contact-card-row,
-body.theme-glass .activity-feed-item,
-body.theme-glass .km-log-item {
-  background: rgba(10, 16, 30, 0.65) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+body.theme-glass .nav-tab.active .nav-tab-icon {
+  transform: translateY(-3px) scale(1.1) !important;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.8)) !important;
 }
 
 /* Aperçu & carte de sélection Thème Glass */
@@ -3111,8 +3308,8 @@ body.theme-glass .km-log-item {
 
 .logo-picker-card[data-logo="glass"].active {
   border-color: #38bdf8 !important;
-  background: rgba(6, 182, 212, 0.12) !important;
-  box-shadow: 0 0 0 1px #38bdf8, 0 6px 20px rgba(6, 182, 212, 0.25) !important;
+  background: rgba(6, 182, 212, 0.14) !important;
+  box-shadow: 0 0 0 1px #38bdf8, 0 6px 20px rgba(6, 182, 212, 0.3) !important;
 }
 
 .logo-picker-card[data-logo="glass"] .logo-picker-check {

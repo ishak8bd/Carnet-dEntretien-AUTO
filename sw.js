@@ -1,5 +1,5 @@
 // Service Worker - Suivi Entretien Véhicule PWA (100% Hors-Ligne & Support Firebase)
-const CACHE_NAME = 'entretien-v18';
+const CACHE_NAME = 'entretien-v19';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -21,6 +21,7 @@ const ASSETS_TO_CACHE = [
   './icons/icon-glass-192.png',
   './icons/icon-glass-512.png',
   './icons/icon.svg',
+  './icons/bg-orbits.svg',
   // Fichiers SDK Firebase versionnés et épinglés pour démarrage 100% hors-ligne
   'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js',
   'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js',

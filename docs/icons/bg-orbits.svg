@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" fill="none">
+  <!-- Glowing ambient radial glow in center-top -->
+  <radialGradient id="ambGlow" cx="50%" cy="30%" r="50%">
+    <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.14"/>
+    <stop offset="40%" stop-color="#6366f1" stop-opacity="0.08"/>
+    <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+  </radialGradient>
+  <rect width="1200" height="1200" fill="url(#ambGlow)"/>
+
+  <!-- Orbital ellipse 1 -->
+  <ellipse cx="600" cy="400" rx="480" ry="240" stroke="rgba(255,255,255,0.18)" stroke-width="1.5" transform="rotate(-18 600 400)"/>
+  
+  <!-- Orbital ellipse 2 (dashed) -->
+  <ellipse cx="600" cy="410" rx="390" ry="190" stroke="rgba(255,255,255,0.22)" stroke-width="1.3" stroke-dasharray="6 8" transform="rotate(-12 600 410)"/>
+
+  <!-- Orbital ellipse 3 (inner counter-tilt) -->
+  <ellipse cx="580" cy="430" rx="330" ry="160" stroke="rgba(56,189,248,0.22)" stroke-width="1.2" transform="rotate(15 580 430)"/>
+  
+  <!-- Circuit lines with terminal dots -->
+  <path d="M 200 260 L 310 260 L 380 320 L 480 320" stroke="rgba(255,255,255,0.2)" stroke-width="1.3" fill="none"/>
+  <circle cx="200" cy="260" r="4" fill="#ffffff" fill-opacity="0.6"/>
+  <circle cx="480" cy="320" r="3.5" fill="#38bdf8" fill-opacity="0.8"/>
+
+  <path d="M 720 240 L 830 240 L 900 300 L 1000 300" stroke="rgba(255,255,255,0.2)" stroke-width="1.3" fill="none"/>
+  <circle cx="720" cy="240" r="4" fill="#38bdf8" fill-opacity="0.7"/>
+  <circle cx="1000" cy="300" r="4" fill="#ffffff" fill-opacity="0.6"/>
+
+  <!-- Circuit branch 2 -->
+  <path d="M 360 560 L 440 610 L 520 610" stroke="rgba(255,255,255,0.18)" stroke-width="1.2" fill="none"/>
+  <circle cx="360" cy="560" r="3.5" fill="#ffffff" fill-opacity="0.5"/>
+  <circle cx="520" cy="610" r="3" fill="#38bdf8" fill-opacity="0.7"/>
+
+  <path d="M 680 610 L 760 610 L 840 550" stroke="rgba(255,255,255,0.18)" stroke-width="1.2" fill="none"/>
+  <circle cx="680" cy="610" r="3" fill="#38bdf8" fill-opacity="0.7"/>
+  <circle cx="840" cy="550" r="3.5" fill="#ffffff" fill-opacity="0.5"/>
+
+  <!-- Star sparkles (4-pointed stars ✦) -->
+  <g fill="rgba(255,255,255,0.85)">
+    <!-- Star 1 -->
+    <path d="M 270 200 Q 270 212 282 212 Q 270 212 270 224 Q 270 212 258 212 Q 270 212 270 200 Z"/>
+    <!-- Star 2 -->
+    <path d="M 910 190 Q 910 204 924 204 Q 910 204 910 218 Q 910 204 896 204 Q 910 204 910 190 Z"/>
+    <!-- Star 3 -->
+    <path d="M 190 440 Q 190 452 202 452 Q 190 452 190 464 Q 190 452 178 452 Q 190 452 190 440 Z"/>
+    <!-- Star 4 -->
+    <path d="M 990 450 Q 990 462 1002 462 Q 990 462 990 474 Q 990 462 978 462 Q 990 462 990 450 Z"/>
+    <!-- Star 5 -->
+    <path d="M 430 160 Q 430 170 440 170 Q 430 170 430 180 Q 430 170 420 170 Q 430 170 430 160 Z"/>
+    <!-- Star 6 -->
+    <path d="M 770 150 Q 770 160 780 160 Q 770 160 770 170 Q 770 160 760 160 Q 770 160 770 150 Z"/>
+  </g>
+
+  <!-- Twinkle dots -->
+  <circle cx="330" cy="220" r="2" fill="#ffffff" fill-opacity="0.8"/>
+  <circle cx="500" cy="180" r="2" fill="#ffffff" fill-opacity="0.9"/>
+  <circle cx="700" cy="170" r="2" fill="#ffffff" fill-opacity="0.9"/>
+  <circle cx="850" cy="210" r="2" fill="#ffffff" fill-opacity="0.8"/>
+  <circle cx="140" cy="360" r="2" fill="#ffffff" fill-opacity="0.7"/>
+  <circle cx="1040" cy="370" r="2" fill="#ffffff" fill-opacity="0.7"/>
+  <circle cx="240" cy="520" r="2" fill="#ffffff" fill-opacity="0.8"/>
+  <circle cx="960" cy="510" r="2" fill="#ffffff" fill-opacity="0.8"/>
+  <circle cx="470" cy="650" r="2" fill="#ffffff" fill-opacity="0.7"/>
+  <circle cx="730" cy="650" r="2" fill="#ffffff" fill-opacity="0.7"/>
+</svg>
