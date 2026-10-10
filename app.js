@@ -342,6 +342,7 @@ function applyAppLogo(theme, notify = false) {
   const glassCard = document.getElementById('logoOptionGlass');
   const steelCard = document.getElementById('logoOptionSteel');
   const bubbleCard = document.getElementById('logoOptionBubble');
+  const liquidCard = document.getElementById('logoOptionLiquid');
   const darkCheck = document.getElementById('logoCheckDark');
   const blueCheck = document.getElementById('logoCheckBlue');
   const glassCheck = document.getElementById('logoCheckGlass');
