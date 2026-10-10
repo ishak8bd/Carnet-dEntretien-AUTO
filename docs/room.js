@@ -982,6 +982,9 @@ export function assembleRoomState() {
   if (window.renderApp) {
     window.renderApp();
   }
+  if (typeof window.checkAndSendPendingMaintenanceNotifications === 'function') {
+    window.checkAndSendPendingMaintenanceNotifications();
+  }
 }
 
 /** Enregistre un relevé kilométrique dans la salle partagée avec auteur */

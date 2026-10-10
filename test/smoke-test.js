@@ -718,7 +718,23 @@ try {
   assert(lastMock.title.includes('Carnet Auto'), 'Le titre de la notification doit mentionner Carnet Auto');
 
   // Tester la vérification d'échéances sans planter
-  await window.checkAndSendPendingMaintenanceNotifications();
+  const selThreshold = document.getElementById('selectNotifThreshold');
+  assert(selThreshold, 'Sélecteur de seuil d\'échéance présente dans les paramètres');
+  assert.strictEqual(window.appState.settings.notifThresholdDays, 15, 'Seuil par défaut à 15 jours');
+
+  // Simuler un véhicule avec une opération proche (ex: 5 jours restants)
+  const countBefore = mockSentNotifications.length;
+  const targetTestVehicle = window.getActiveVehicle();
+  if (targetTestVehicle && targetTestVehicle.maintenanceItems && targetTestVehicle.maintenanceItems.length > 0) {
+    const item = targetTestVehicle.maintenanceItems[0];
+    item.lastDate = '2025-01-01'; // Ancienne date
+    item.intervalMonths = 12;     // Échue ou très proche
+    await window.checkAndSendPendingMaintenanceNotifications();
+    assert(mockSentNotifications.length > countBefore, 'Une notification directe doit être émise dès qu\'un entretien devient proche ou urgent');
+    const newNotifs = mockSentNotifications.slice(countBefore);
+    const hasAlert = newNotifs.some(n => n.title.includes('Entretien') || n.title.includes('Échéance') || n.title.includes('Relevé'));
+    assert(hasAlert, 'Une alerte d\'échéance ou de relevé doit être présente');
+  }
 
   console.log('✅ TOUS LES TESTS DU SMOKE TEST (24/24) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);

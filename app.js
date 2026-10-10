@@ -43,7 +43,8 @@ let appState = {
     appLogo: 'dark',
     notificationsEnabled: false,
     notifUrgentMaint: true,
-    notifStaleKm: true
+    notifStaleKm: true,
+    notifThresholdDays: 15
   },
   isDemo: false
 };
@@ -323,12 +324,16 @@ function updateNotificationSettingsUI() {
   const testBtn = document.getElementById('btnTestNotification');
   const chkUrgent = document.getElementById('chkNotifUrgentMaint');
   const chkStale = document.getElementById('chkNotifStaleKm');
+  const selThreshold = document.getElementById('selectNotifThreshold');
 
   if (chkUrgent && appState.settings) {
     chkUrgent.checked = appState.settings.notifUrgentMaint !== false;
   }
   if (chkStale && appState.settings) {
     chkStale.checked = appState.settings.notifStaleKm !== false;
+  }
+  if (selThreshold && appState.settings) {
+    selThreshold.value = String(appState.settings.notifThresholdDays || 15);
   }
 
   const permission = getNotificationPermission();
@@ -504,71 +509,134 @@ async function sendTestNotification() {
 }
 
 /**
- * Vérifie les alertes d'entretien et de kilométrage et émet une notification locale si nécessaire
+ * Vérifie les alertes d'entretien et de kilométrage sur l'ensemble des véhicules
+ * et émet une notification locale directement dès qu'une date devient proche ou urgente.
  */
 async function checkAndSendPendingMaintenanceNotifications() {
   if (!isNotificationSupported()) return;
   if (Notification.permission !== 'granted') return;
   if (!appState.settings || !appState.settings.notificationsEnabled) return;
 
-  const vehicle = getActiveVehicle();
-  if (!vehicle) return;
+  const vehicles = Array.isArray(appState.vehicles) ? appState.vehicles : [];
+  if (vehicles.length === 0) return;
 
-  // Anti-spam / Cooldown : maximum une alerte automatique toutes les 12 heures
-  const lastNotif = parseInt(localStorage.getItem('carnet_last_auto_notif_time') || '0', 10);
+  const thresholdDays = parseInt(appState.settings.notifThresholdDays, 10) || 15;
+  const thresholdKm = thresholdDays >= 15 ? 500 : (thresholdDays >= 7 ? 250 : 100);
   const now = Date.now();
-  const twelveHours = 12 * 60 * 60 * 1000;
-  if (now - lastNotif < twelveHours) return;
 
-  const engine = computePredictionEngine(vehicle);
-  const items = Array.isArray(vehicle.maintenanceItems) ? vehicle.maintenanceItems : [];
+  for (const vehicle of vehicles) {
+    if (!vehicle) continue;
+    const vehName = `${vehicle.brand || ''} ${vehicle.model || ''}`.trim() || vehicle.name || "Véhicule";
+    const engine = computePredictionEngine(vehicle);
+    const items = Array.isArray(vehicle.maintenanceItems) ? vehicle.maintenanceItems : [];
 
-  // 1. Vérifier les entretiens urgents ou en retard
-  if (appState.settings.notifUrgentMaint !== false) {
-    const overdue = [];
-    const dueSoon = [];
+    // 1. Vérification de chaque entretien
+    if (appState.settings.notifUrgentMaint !== false) {
+      for (const it of items) {
+        if (!it) continue;
+        if (it.lastDate === null && it.lastKm === null) continue; // À renseigner
 
-    items.forEach(it => {
-      const pred = engine[it.id];
-      if (!pred) return;
-      if (pred.isOverdue) {
-        overdue.push(it.name);
-      } else if (pred.estimatedDaysRemaining !== null && pred.estimatedDaysRemaining <= 7) {
-        dueSoon.push({ name: it.name, days: pred.estimatedDaysRemaining });
+        const pred = engine[it.id];
+        if (!pred) continue;
+
+        const daysRemaining = pred.estimatedDaysRemaining;
+        const kmRemaining = pred.remainingKm;
+        const isOverdue = Boolean(pred.isOverdue);
+
+        let stage = null;
+        let title = '';
+        let body = '';
+
+        if (isOverdue || (daysRemaining !== null && daysRemaining <= 2) || (kmRemaining !== null && kmRemaining <= 50)) {
+          stage = 'urgent';
+          const overdueInfo = (kmRemaining !== null && kmRemaining < 0) 
+            ? `dépassé de ${Math.abs(kmRemaining).toLocaleString('fr-FR')} km` 
+            : (daysRemaining !== null && daysRemaining < 0 ? `dépassé de ${Math.abs(daysRemaining)} jour(s)` : `échéance immédiate`);
+          title = `🚨 Entretien urgent : ${it.name} (${vehName})`;
+          body = `Intervention requise (${overdueInfo}). Pensez à l'effectuer dès que possible !`;
+        } else if ((daysRemaining !== null && daysRemaining <= 7) || (kmRemaining !== null && kmRemaining <= 250)) {
+          stage = 'imminent';
+          const timeInfo = daysRemaining !== null ? `dans ${daysRemaining} jour(s)` : '';
+          const kmInfo = kmRemaining !== null ? `reste ${kmRemaining.toLocaleString('fr-FR')} km` : '';
+          const info = [timeInfo, kmInfo].filter(Boolean).join(' ou ');
+          title = `⚠️ Échéance imminente : ${it.name} (${vehName})`;
+          body = `Échéance prévue ${info}. Prévoyez votre rendez-vous garage ou vos pièces !`;
+        } else if ((daysRemaining !== null && daysRemaining <= thresholdDays) || (kmRemaining !== null && kmRemaining <= thresholdKm)) {
+          stage = 'close';
+          const timeInfo = daysRemaining !== null ? `dans environ ${daysRemaining} jour(s)` : '';
+          const kmInfo = kmRemaining !== null ? `reste ${kmRemaining.toLocaleString('fr-FR')} km` : '';
+          const info = [timeInfo, kmInfo].filter(Boolean).join(' ou ');
+          title = `⏳ Échéance proche : ${it.name} (${vehName})`;
+          body = `À prévoir ${info}. Votre carnet d'entretien vous conseille d'anticiper.`;
+        }
+
+        if (stage) {
+          const notifKey = `carnet_notif_${vehicle.id}_${it.id}`;
+          let state = null;
+          try {
+            state = JSON.parse(localStorage.getItem(notifKey) || 'null');
+          } catch (e) {}
+
+          let shouldSend = false;
+          if (!state || !state.stage) {
+            shouldSend = true;
+          } else if (stage === 'urgent') {
+            // Re-notifier si on passe au stade urgent ou si l'urgence dure depuis plus de 24h
+            if (state.stage !== 'urgent' || (now - (state.sentAt || 0) > 24 * 60 * 60 * 1000)) {
+              shouldSend = true;
+            }
+          } else if (stage === 'imminent') {
+            // Re-notifier si on passe au stade imminent ou après 48h
+            if (state.stage === 'close' || (now - (state.sentAt || 0) > 48 * 60 * 60 * 1000)) {
+              shouldSend = true;
+            }
+          }
+
+          if (shouldSend) {
+            try {
+              localStorage.setItem(notifKey, JSON.stringify({
+                stage,
+                sentAt: now,
+                vehicleId: vehicle.id,
+                itemId: it.id
+              }));
+            } catch (e) {}
+
+            await showDeviceNotification(title, {
+              body,
+              tag: `maint-${vehicle.id}-${it.id}`,
+              data: { url: './index.html', vehicleId: vehicle.id, itemId: it.id }
+            });
+          }
+        }
       }
-    });
-
-    if (overdue.length > 0) {
-      localStorage.setItem('carnet_last_auto_notif_time', String(now));
-      await showDeviceNotification(`⚠️ Entretien en retard : ${vehicle.brand} ${vehicle.model}`, {
-        body: `${overdue.length} opération(s) à faire d'urgence : ${overdue.slice(0, 2).join(', ')}${overdue.length > 2 ? '...' : ''}.`,
-        tag: 'carnet-maint-overdue'
-      });
-      return;
     }
 
-    if (dueSoon.length > 0) {
-      localStorage.setItem('carnet_last_auto_notif_time', String(now));
-      const first = dueSoon[0];
-      await showDeviceNotification(`⏳ Échéance proche : ${vehicle.brand} ${vehicle.model}`, {
-        body: `${first.name} arrive à échéance dans ${first.days === 0 ? "aujourd'hui" : first.days + " jour(s)"}.`,
-        tag: 'carnet-maint-due-soon'
-      });
-      return;
-    }
-  }
+    // 2. Rappel de relevé kilométrique si ancien (> 15 jours)
+    if (appState.settings.notifStaleKm !== false) {
+      const lastUpdateDate = vehicle.updatedAt || (vehicle.kmLog && vehicle.kmLog.length > 0 ? vehicle.kmLog[vehicle.kmLog.length - 1].date : null);
+      if (lastUpdateDate) {
+        const daysElapsed = getDaysElapsed(lastUpdateDate);
+        if (daysElapsed >= 15) {
+          const kmKey = `carnet_notif_km_${vehicle.id}`;
+          let kmState = null;
+          try {
+            kmState = JSON.parse(localStorage.getItem(kmKey) || 'null');
+          } catch (e) {}
 
-  // 2. Vérifier si le relevé kilométrique est ancien (> 15 jours)
-  if (appState.settings.notifStaleKm !== false) {
-    const lastUpdateDate = vehicle.updatedAt || (vehicle.kmLog && vehicle.kmLog.length > 0 ? vehicle.kmLog[vehicle.kmLog.length - 1].date : null);
-    if (lastUpdateDate) {
-      const daysElapsed = getDaysElapsed(lastUpdateDate);
-      if (daysElapsed >= 15) {
-        localStorage.setItem('carnet_last_auto_notif_time', String(now));
-        await showDeviceNotification(`⏱️ Relevé compteur : ${vehicle.brand} ${vehicle.model}`, {
-          body: `Dernier relevé il y a ${daysElapsed} jours (${formatKm(vehicle.currentKm)} km). Mettez-le à jour pour affiner les prédictions !`,
-          tag: 'carnet-km-stale'
-        });
+          const oneWeek = 7 * 24 * 60 * 60 * 1000;
+          if (!kmState || (now - (kmState.sentAt || 0) > oneWeek)) {
+            try {
+              localStorage.setItem(kmKey, JSON.stringify({ sentAt: now }));
+            } catch (e) {}
+
+            await showDeviceNotification(`⏱️ Relevé compteur : ${vehName}`, {
+              body: `Dernier relevé il y a ${daysElapsed} jours (${formatKm(vehicle.currentKm)} km). Mettez-le à jour pour affiner les calculs !`,
+              tag: `km-stale-${vehicle.id}`,
+              data: { url: './index.html', vehicleId: vehicle.id }
+            });
+          }
+        }
       }
     }
   }
@@ -644,6 +712,9 @@ function loadState() {
       }
       if (parsed.settings.notifStaleKm === undefined) {
         parsed.settings.notifStaleKm = true;
+      }
+      if (parsed.settings.notifThresholdDays === undefined) {
+        parsed.settings.notifThresholdDays = 15;
       }
     }
 
@@ -1591,6 +1662,11 @@ function handleQuickKmSubmit(e) {
 
   vehicle.currentKm = newKm;
   saveState();
+
+  // Vérifier immédiatement si de nouvelles échéances sont devenues proches
+  if (typeof checkAndSendPendingMaintenanceNotifications === 'function') {
+    checkAndSendPendingMaintenanceNotifications();
+  }
 
   // Synchronisation avec la salle familiale si active (Point 10)
   if (window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive()) {
@@ -3170,6 +3246,14 @@ function handleDoneFormSubmit(e) {
 
   closeDoneModal();
   showToast(`✅ Entretien "${item.name}" enregistré avec succès !`, 'success');
+
+  // Réinitialiser le marqueur de notification pour cet élément désormais à jour
+  try {
+    localStorage.removeItem(`carnet_notif_${vehicle.id}_${item.id}`);
+  } catch (e) {}
+  if (typeof checkAndSendPendingMaintenanceNotifications === 'function') {
+    checkAndSendPendingMaintenanceNotifications();
+  }
 
   // Actualiser l'interface
   renderApp();
@@ -5360,12 +5444,30 @@ function attachEventListeners() {
     if (!appState.settings) appState.settings = {};
     appState.settings.notifUrgentMaint = e.target.checked;
     saveState();
+    checkAndSendPendingMaintenanceNotifications();
   });
   document.getElementById('chkNotifStaleKm')?.addEventListener('change', (e) => {
     if (!appState.settings) appState.settings = {};
     appState.settings.notifStaleKm = e.target.checked;
     saveState();
+    checkAndSendPendingMaintenanceNotifications();
   });
+  document.getElementById('selectNotifThreshold')?.addEventListener('change', (e) => {
+    if (!appState.settings) appState.settings = {};
+    appState.settings.notifThresholdDays = parseInt(e.target.value, 10) || 15;
+    saveState();
+    checkAndSendPendingMaintenanceNotifications();
+  });
+
+  // Vérification dès que l'utilisateur revient sur l'application ou périodiquement
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      checkAndSendPendingMaintenanceNotifications();
+    }
+  });
+  setInterval(() => {
+    checkAndSendPendingMaintenanceNotifications();
+  }, 15 * 60 * 1000);
 
 }
 

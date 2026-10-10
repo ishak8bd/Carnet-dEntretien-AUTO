@@ -528,14 +528,23 @@
           </button>
         </div>
 
-        <div id="notifPreferencesBox" style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; flex-direction: column; gap: 10px;">
+        <div id="notifPreferencesBox" style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; flex-direction: column; gap: 12px;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="selectNotifThreshold" style="font-size: 0.82rem;">Seuil de déclenchement dès qu'une date devient proche :</label>
+            <select id="selectNotifThreshold" class="form-input" style="padding: 7px 10px; font-size: 0.85rem;">
+              <option value="15" selected>Dès 15 jours avant ou 500 km (Recommandé)</option>
+              <option value="7">Dès 7 jours avant ou 250 km</option>
+              <option value="3">Dès 3 jours avant ou 100 km (Dernière minute)</option>
+            </select>
+          </div>
+
           <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-main); cursor: pointer;">
             <input type="checkbox" id="chkNotifUrgentMaint" checked style="accent-color: var(--primary); width: 18px; height: 18px;">
-            <span>Alerter pour les entretiens urgents &amp; en retard (J-7 et dépassés)</span>
+            <span>Alerter directement dès qu'une échéance approche ou devient urgente</span>
           </label>
           <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-main); cursor: pointer;">
             <input type="checkbox" id="chkNotifStaleKm" checked style="accent-color: var(--primary); width: 18px; height: 18px;">
-            <span>Rappeler le relevé kilométrique tous les 15 jours</span>
+            <span>Rappeler le relevé kilométrique si inchangé depuis 15 jours</span>
           </label>
         </div>
       </section>
