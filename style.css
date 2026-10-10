@@ -4092,148 +4092,441 @@ body.theme-bubble {
 }
 /* ==========================================================================
    Apple iOS 26 "Liquid Glass" Design System (.theme-liquid)
+   - Reusable Glass Component: .liquid-glass
+   - Rule 1: Glass ONLY for navigation and controls (pill tab bar, header, buttons, sheets, menus)
+   - Rule 2: Content stays SOLID underneath (#ffffff light / #111827 dark). No glass on glass. Max 3 glass elements on screen.
+   - Rule 3: backdrop-filter: blur(20px) saturate(180%) with -webkit- prefix, 1px light border, soft shadow, inset top highlight.
+   - Rule 4: Springy press feedback (scale 0.96) & droplet active-tab indicator.
+   - Rule 5: Mobile essentials: viewport-fit=cover, 100dvh, 44px min tap targets, safe-area insets.
+   - Rule 6: Fallbacks for prefers-reduced-transparency, prefers-contrast, prefers-reduced-motion, and no backdrop-filter.
    ========================================================================== */
 
-/* The liquid-glass base applies only under theme-liquid */
-body.theme-liquid .liquid-glass,
-body.theme-liquid .app-header.liquid-glass,
-body.theme-liquid .bottom-nav.liquid-glass,
-body.theme-liquid .modal-content.liquid-glass,
-body.theme-liquid .btn-primary.liquid-glass {
-  --glass-bg-light: rgba(255, 255, 255, 0.65);
-  --glass-bg-dark: rgba(20, 20, 20, 0.65);
-  --glass-border-light: rgba(255, 255, 255, 0.4);
-  --glass-border-dark: rgba(255, 255, 255, 0.15);
-  --glass-highlight-light: inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  --glass-highlight-dark: inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  
-  background: var(--glass-bg-light) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border: 1px solid var(--glass-border-light) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), var(--glass-highlight-light) !important;
-  border-radius: 24px !important;
+/* Design Tokens for Liquid Glass */
+:root.theme-liquid,
+html.theme-liquid,
+body.theme-liquid {
+  --liquid-bg-base: #f1f5f9;
+  --liquid-content-solid: #ffffff;
+  --liquid-content-border: rgba(226, 232, 240, 0.9);
+  --liquid-text-main: #0f172a;
+  --liquid-text-muted: #475569;
+  --liquid-text-subtle: #64748b;
+  --liquid-primary: #0284c7;
+  --liquid-primary-hover: #0369a1;
+  --liquid-accent: #38bdf8;
+
+  --liquid-glass-bg: rgba(255, 255, 255, 0.72);
+  --liquid-glass-border: rgba(255, 255, 255, 0.65);
+  --liquid-glass-highlight: inset 0 1px 1px 0 rgba(255, 255, 255, 0.9);
+  --liquid-glass-shadow: 0 12px 36px -4px rgba(15, 23, 42, 0.12), 0 4px 16px -2px rgba(15, 23, 42, 0.06);
+  --liquid-glass-filter: blur(20px) saturate(180%);
 }
 
 @media (prefers-color-scheme: dark) {
-  body.theme-liquid .liquid-glass,
-  body.theme-liquid .app-header.liquid-glass,
-  body.theme-liquid .bottom-nav.liquid-glass,
-  body.theme-liquid .modal-content.liquid-glass,
-  body.theme-liquid .btn-primary.liquid-glass {
-    background: var(--glass-bg-dark) !important;
-    border-color: var(--glass-border-dark) !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), var(--glass-highlight-dark) !important;
+  :root.theme-liquid,
+  html.theme-liquid,
+  body.theme-liquid {
+    --liquid-bg-base: #0b0f19;
+    --liquid-content-solid: #111827;
+    --liquid-content-border: rgba(55, 65, 81, 0.8);
+    --liquid-text-main: #f8fafc;
+    --liquid-text-muted: #94a3b8;
+    --liquid-text-subtle: #64748b;
+    --liquid-primary: #38bdf8;
+    --liquid-primary-hover: #0ea5e9;
+    --liquid-accent: #7dd3fc;
+
+    --liquid-glass-bg: rgba(17, 24, 39, 0.72);
+    --liquid-glass-border: rgba(255, 255, 255, 0.16);
+    --liquid-glass-highlight: inset 0 1px 1px 0 rgba(255, 255, 255, 0.22);
+    --liquid-glass-shadow: 0 16px 40px -4px rgba(0, 0, 0, 0.6), 0 4px 16px -2px rgba(0, 0, 0, 0.35);
   }
 }
 
-/* Fallback for no-backdrop-filter or prefers-reduced-transparency */
-@media (prefers-reduced-transparency: reduce) {
-  body.theme-liquid .liquid-glass {
-    background: #ffffff !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-  @media (prefers-color-scheme: dark) {
-    body.theme-liquid .liquid-glass {
-      background: #1c1c1e !important;
-    }
-  }
+/* Background Atmosphere */
+body.theme-liquid {
+  background-color: var(--liquid-bg-base) !important;
+  background-image: 
+    radial-gradient(ellipse at 15% 0%, rgba(56, 189, 248, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 100%, rgba(2, 132, 199, 0.1) 0%, transparent 50%) !important;
+  background-attachment: fixed !important;
+  color: var(--liquid-text-main) !important;
+  min-height: 100dvh;
 }
 
-/* High Contrast mode */
-@media (prefers-contrast: more) {
-  body.theme-liquid .liquid-glass {
-    border: 2px solid #000 !important;
-  }
-  @media (prefers-color-scheme: dark) {
-    body.theme-liquid .liquid-glass {
-      border: 2px solid #fff !important;
-    }
-  }
+/* --------------------------------------------------------------------------
+   ONE REUSABLE LIQUID GLASS COMPONENT (.liquid-glass)
+   Applied strictly to navigation, controls, headers, sheets, and menus.
+   -------------------------------------------------------------------------- */
+.liquid-glass,
+body.theme-liquid .liquid-glass,
+body.theme-liquid .app-header,
+body.theme-liquid .bottom-nav,
+body.theme-liquid .modal-content,
+body.theme-liquid .vehicle-selector-bar,
+body.theme-liquid .theme-quick-switch-btn,
+body.theme-liquid .btn-secondary,
+body.theme-liquid .btn-icon {
+  background: var(--liquid-glass-bg) !important;
+  -webkit-backdrop-filter: var(--liquid-glass-filter) !important;
+  backdrop-filter: var(--liquid-glass-filter) !important;
+  border: 1px solid var(--liquid-glass-border) !important;
+  box-shadow: var(--liquid-glass-shadow), var(--liquid-glass-highlight) !important;
 }
 
-/* Specific elements adjustments */
-/* Bottom Nav Floating Pill Tab Bar */
-body.theme-liquid .bottom-nav.liquid-glass {
+/* --------------------------------------------------------------------------
+   RULE 1 & 2: CONTENT REMAINS SOLID UNDERNEATH (NO GLASS ON GLASS)
+   Dashboard, odometers, statistics, cards, tables stay solid surfaces.
+   -------------------------------------------------------------------------- */
+body.theme-liquid .card,
+body.theme-liquid .odometer-card,
+body.theme-liquid .stat-card,
+body.theme-liquid .settings-card,
+body.theme-liquid .maint-item-card,
+body.theme-liquid .history-item-card,
+body.theme-liquid .km-log-item,
+body.theme-liquid .vehicle-card,
+body.theme-liquid .backup-info-box,
+body.theme-liquid .pwa-status-box,
+body.theme-liquid .table-container,
+body.theme-liquid .chart-container {
+  background: var(--liquid-content-solid) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: 1px solid var(--liquid-content-border) !important;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.03) !important;
+  border-radius: 24px !important;
+  color: var(--liquid-text-main) !important;
+}
+
+body.theme-liquid .card-title,
+body.theme-liquid .stat-title,
+body.theme-liquid .odometer-title {
+  color: var(--liquid-text-main) !important;
+  font-weight: 700 !important;
+}
+
+body.theme-liquid .card-subtitle,
+body.theme-liquid .stat-sub,
+body.theme-liquid .form-help,
+body.theme-liquid .text-muted {
+  color: var(--liquid-text-muted) !important;
+}
+
+/* --------------------------------------------------------------------------
+   FLOATING PILL TAB BAR (iOS 26 Liquid Capsule)
+   -------------------------------------------------------------------------- */
+body.theme-liquid .bottom-nav {
   position: fixed !important;
-  bottom: calc(env(safe-area-inset-bottom, 16px) + 16px) !important;
+  bottom: calc(env(safe-area-inset-bottom, 12px) + 12px) !important;
   left: 16px !important;
   right: 16px !important;
   width: auto !important;
-  border-radius: 32px !important;
-  padding: 8px 16px !important;
+  max-width: 520px !important;
+  margin: 0 auto !important;
+  border-radius: 9999px !important;
+  padding: 6px 12px !important;
   display: flex !important;
+  align-items: center !important;
   justify-content: space-around !important;
   z-index: 100 !important;
+  min-height: 60px !important;
   height: auto !important;
-  min-height: 64px !important;
-  border-bottom: 1px solid var(--glass-border-light) !important;
-}
-@media (prefers-color-scheme: dark) {
-  body.theme-liquid .bottom-nav.liquid-glass {
-    border-bottom: 1px solid var(--glass-border-dark) !important;
-  }
 }
 
-/* Header Adjustments */
-body.theme-liquid .app-header.liquid-glass {
-  margin: env(safe-area-inset-top, 16px) 16px 16px 16px !important;
-  border-radius: 24px !important;
-  padding: 12px 16px !important;
-}
-
-/* Modals / Sheets adjustments */
-body.theme-liquid .modal-content.liquid-glass {
-  border-radius: 32px 32px 0 0 !important;
-  margin-top: auto !important; /* Push to bottom for Vaul-like sheet */
-  margin-bottom: 0 !important;
-  padding-bottom: env(safe-area-inset-bottom, 32px) !important;
-}
-
-/* Active tab sliding droplet indicator */
+/* Nav Tabs with 44px min tap targets */
 body.theme-liquid .nav-tab {
   position: relative !important;
-  overflow: visible !important;
+  min-height: 48px !important;
+  min-width: 48px !important;
+  padding: 6px 12px !important;
+  border-radius: 9999px !important;
+  color: var(--liquid-text-muted) !important;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s ease, opacity 0.2s ease !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
 }
+
+/* Active Tab & Sliding Droplet Indicator */
+body.theme-liquid .nav-tab.active {
+  color: var(--liquid-primary) !important;
+  font-weight: 700 !important;
+}
+
 body.theme-liquid .nav-tab.active::after {
   content: '';
   position: absolute;
-  top: -8px;
+  bottom: 2px;
   left: 50%;
   transform: translateX(-50%);
-  width: 24px;
+  width: 18px;
   height: 4px;
-  background: var(--primary);
-  border-radius: 4px;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
-}
-body.theme-liquid .nav-tab.active {
-  color: var(--primary) !important;
+  border-radius: 9999px;
+  background: var(--liquid-primary);
+  box-shadow: 0 1px 8px rgba(2, 132, 199, 0.6);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
 }
 
-/* Springy Press Feedback */
-body.theme-liquid button.liquid-glass, 
-body.theme-liquid .liquid-glass button,
-body.theme-liquid .nav-tab,
-body.theme-liquid .btn-primary.liquid-glass {
-  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease !important;
-  min-height: 44px !important; /* Minimum tap target */
+/* --------------------------------------------------------------------------
+   HEADER (Floating Liquid Island)
+   -------------------------------------------------------------------------- */
+body.theme-liquid .app-header {
+  margin: calc(env(safe-area-inset-top, 8px) + 8px) 16px 16px 16px !important;
+  border-radius: 28px !important;
+  padding: 10px 18px !important;
+}
+
+body.theme-liquid .brand-icon {
+  border-radius: 18px !important;
+  border: 1px solid var(--liquid-glass-border) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08) !important;
+  background: var(--liquid-content-solid) !important;
+}
+
+body.theme-liquid .brand-text h1 {
+  color: var(--liquid-text-main) !important;
+  letter-spacing: -0.02em;
+}
+
+body.theme-liquid .vehicle-selector-bar {
+  border-radius: 24px !important;
+  margin: 0 16px 16px 16px !important;
+  padding: 8px 14px !important;
+}
+
+/* --------------------------------------------------------------------------
+   MODALS & BOTTOM SHEETS (Vaul / iOS Sheet Gesture Feel)
+   -------------------------------------------------------------------------- */
+body.theme-liquid .modal-overlay {
+  align-items: flex-end !important;
+  padding: 0 !important;
+}
+
+body.theme-liquid .modal-content {
+  border-radius: 36px 36px 0 0 !important;
+  width: 100% !important;
+  max-width: 620px !important;
+  margin: 0 auto !important;
+  padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 24px) !important;
+  border-bottom: none !important;
+  animation: liquidSheetSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes liquidSheetSlideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0.8;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   BUTTONS & SPRINGY PRESS FEEDBACK
+   Only animate transform and opacity (scale 0.96)
+   -------------------------------------------------------------------------- */
+body.theme-liquid .btn-primary,
+body.theme-liquid .btn-secondary,
+body.theme-liquid .theme-quick-switch-btn,
+body.theme-liquid .btn-icon {
+  min-height: 44px !important;
   min-width: 44px !important;
+  border-radius: 9999px !important;
+  font-weight: 600 !important;
+  transition: transform 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease !important;
 }
 
-body.theme-liquid button.liquid-glass:active, 
-body.theme-liquid .liquid-glass button:active,
+body.theme-liquid .btn-primary {
+  background: var(--liquid-primary) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  box-shadow: 0 4px 18px rgba(2, 132, 199, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.6) !important;
+}
+
+body.theme-liquid .btn-primary:hover {
+  background: var(--liquid-primary-hover) !important;
+}
+
+body.theme-liquid .theme-quick-switch-btn {
+  border-radius: 9999px !important;
+  padding: 6px 14px !important;
+}
+
+/* Springy active press scale ~0.96 */
+body.theme-liquid button:active,
 body.theme-liquid .nav-tab:active,
-body.theme-liquid .btn-primary.liquid-glass:active {
+body.theme-liquid .btn-primary:active,
+body.theme-liquid .btn-secondary:active,
+body.theme-liquid .theme-quick-switch-btn:active,
+body.theme-liquid .btn-icon:active,
+body.theme-liquid .logo-picker-card:active {
   transform: scale(0.96) !important;
 }
 
+/* --------------------------------------------------------------------------
+   LOGO PICKER & BADGES
+   -------------------------------------------------------------------------- */
+.status-badge-liquid {
+  background: rgba(2, 132, 199, 0.12) !important;
+  color: #0284c7 !important;
+  border: 1px solid rgba(2, 132, 199, 0.35) !important;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.15) !important;
+  font-weight: 700 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .status-badge-liquid {
+    background: rgba(56, 189, 248, 0.18) !important;
+    color: #38bdf8 !important;
+    border-color: rgba(56, 189, 248, 0.5) !important;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.3) !important;
+  }
+}
+
+.logo-picker-preview-liquid {
+  border: 1.5px solid rgba(56, 189, 248, 0.6) !important;
+  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25) !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  backdrop-filter: blur(10px) !important;
+  border-radius: 20px !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .logo-picker-preview-liquid {
+    background: rgba(15, 23, 42, 0.75) !important;
+  }
+}
+
+.logo-picker-card[data-logo="liquid"].active {
+  border-color: #0284c7 !important;
+  background: rgba(14, 165, 233, 0.12) !important;
+  box-shadow: 0 0 0 1px #0284c7, 0 8px 24px rgba(14, 165, 233, 0.25) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .logo-picker-card[data-logo="liquid"].active {
+    border-color: #38bdf8 !important;
+    background: rgba(56, 189, 248, 0.16) !important;
+    box-shadow: 0 0 0 1px #38bdf8, 0 8px 24px rgba(56, 189, 248, 0.3) !important;
+  }
+}
+
+.logo-picker-card[data-logo="liquid"] .logo-picker-check {
+  background: linear-gradient(135deg, #0284c7, #38bdf8) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6) !important;
+}
+
+/* --------------------------------------------------------------------------
+   ACCESSIBILITY & MEDIA QUERY FALLBACKS
+   -------------------------------------------------------------------------- */
+/* Fallback 1: prefers-reduced-transparency */
+@media (prefers-reduced-transparency: reduce) {
+  .liquid-glass,
+  body.theme-liquid .liquid-glass,
+  body.theme-liquid .app-header,
+  body.theme-liquid .bottom-nav,
+  body.theme-liquid .modal-content,
+  body.theme-liquid .vehicle-selector-bar,
+  body.theme-liquid .theme-quick-switch-btn,
+  body.theme-liquid .btn-secondary,
+  body.theme-liquid .btn-icon {
+    background: #ffffff !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  @media (prefers-color-scheme: dark) {
+    .liquid-glass,
+    body.theme-liquid .liquid-glass,
+    body.theme-liquid .app-header,
+    body.theme-liquid .bottom-nav,
+    body.theme-liquid .modal-content,
+    body.theme-liquid .vehicle-selector-bar,
+    body.theme-liquid .theme-quick-switch-btn,
+    body.theme-liquid .btn-secondary,
+    body.theme-liquid .btn-icon {
+      background: #1e293b !important;
+    }
+  }
+}
+
+/* Fallback 2: prefers-contrast: more */
+@media (prefers-contrast: more) {
+  body.theme-liquid .liquid-glass,
+  body.theme-liquid .app-header,
+  body.theme-liquid .bottom-nav,
+  body.theme-liquid .modal-content,
+  body.theme-liquid .card,
+  body.theme-liquid .btn-primary,
+  body.theme-liquid .btn-secondary {
+    border: 2px solid #0f172a !important;
+  }
+  @media (prefers-color-scheme: dark) {
+    body.theme-liquid .liquid-glass,
+    body.theme-liquid .app-header,
+    body.theme-liquid .bottom-nav,
+    body.theme-liquid .modal-content,
+    body.theme-liquid .card,
+    body.theme-liquid .btn-primary,
+    body.theme-liquid .btn-secondary {
+      border: 2px solid #f8fafc !important;
+    }
+  }
+}
+
+/* Fallback 3: prefers-reduced-motion: reduce */
 @media (prefers-reduced-motion: reduce) {
-  body.theme-liquid button.liquid-glass:active, 
-  body.theme-liquid .liquid-glass button:active,
+  body.theme-liquid *,
+  body.theme-liquid *::before,
+  body.theme-liquid *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  body.theme-liquid button:active,
   body.theme-liquid .nav-tab:active,
-  body.theme-liquid .btn-primary.liquid-glass:active {
+  body.theme-liquid .btn-primary:active,
+  body.theme-liquid .btn-secondary:active,
+  body.theme-liquid .theme-quick-switch-btn:active,
+  body.theme-liquid .btn-icon:active,
+  body.theme-liquid .logo-picker-card:active {
     transform: none !important;
+  }
+}
+
+/* Fallback 4: Browsers without backdrop-filter support */
+@supports not ((-webkit-backdrop-filter: blur(20px)) or (backdrop-filter: blur(20px))) {
+  .liquid-glass,
+  body.theme-liquid .liquid-glass,
+  body.theme-liquid .app-header,
+  body.theme-liquid .bottom-nav,
+  body.theme-liquid .modal-content,
+  body.theme-liquid .vehicle-selector-bar,
+  body.theme-liquid .theme-quick-switch-btn,
+  body.theme-liquid .btn-secondary,
+  body.theme-liquid .btn-icon {
+    background: rgba(255, 255, 255, 0.96) !important;
+  }
+  @media (prefers-color-scheme: dark) {
+    .liquid-glass,
+    body.theme-liquid .liquid-glass,
+    body.theme-liquid .app-header,
+    body.theme-liquid .bottom-nav,
+    body.theme-liquid .modal-content,
+    body.theme-liquid .vehicle-selector-bar,
+    body.theme-liquid .theme-quick-switch-btn,
+    body.theme-liquid .btn-secondary,
+    body.theme-liquid .btn-icon {
+      background: rgba(17, 24, 39, 0.96) !important;
+    }
   }
 }

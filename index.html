@@ -39,6 +39,10 @@
           if (fav) fav.href = 'icons/icon-bubble-192.png';
           if (apple) apple.href = 'icons/icon-bubble-192.png';
           document.documentElement.classList.add('theme-bubble');
+        } else if (savedTheme === 'liquid') {
+          if (fav) fav.href = 'icons/icon-liquid-192.png';
+          if (apple) apple.href = 'icons/icon-liquid-192.png';
+          document.documentElement.classList.add('theme-liquid');
         }
       } catch (e) {}
     })();
@@ -549,15 +553,7 @@
           </div>
 
           
-            <!-- Option 6 : iOS 26 Liquid Glass -->
-            <div class="logo-picker-card" id="logoOptionLiquid" data-logo="liquid" role="button" tabindex="0" aria-label="Choisir le thème iOS 26 Liquid Glass">
-              <div class="logo-picker-preview logo-picker-preview-liquid" style="border-radius:24px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px);">
-                <img src="icons/icon-192.png" alt="Aperçu Thème iOS 26 Liquid Glass">
-              </div>
-              <div class="logo-picker-name">iOS 26 Liquid</div>
-            </div>
-
-            <!-- Option 5 : Carbone & Bulle de Verre -->
+          <!-- Option 5 : Carbone & Bulle de Verre -->
           <div class="logo-picker-card" id="logoOptionBubble" data-logo="bubble" role="button" tabindex="0" aria-label="Choisir le thème Carbone & Bulle">
             <div class="logo-picker-preview logo-picker-preview-bubble">
               <img src="icons/logo-bubble.png" alt="Aperçu Thème Carbone & Bulle">
@@ -570,6 +566,21 @@
               <div class="logo-picker-desc">Sombre, bulles de verre et reflets liquides</div>
             </div>
             <div class="logo-picker-check" id="logoCheckBubble" style="display: none;" aria-hidden="true">✓</div>
+          </div>
+
+          <!-- Option 6 : Apple iOS 26 Liquid Glass -->
+          <div class="logo-picker-card" id="logoOptionLiquid" data-logo="liquid" role="button" tabindex="0" aria-label="Choisir le thème Apple iOS 26 Liquid Glass">
+            <div class="logo-picker-preview logo-picker-preview-liquid">
+              <img src="icons/logo-liquid.png" alt="Aperçu Thème Apple iOS 26 Liquid Glass">
+            </div>
+            <div class="logo-picker-info">
+              <div class="logo-picker-title">
+                <span>Apple Liquid Glass</span>
+                <span class="status-badge status-badge-liquid" style="font-size: 0.68rem; padding: 2px 6px;">iOS 26</span>
+              </div>
+              <div class="logo-picker-desc">Navigation flottante en verre liquide, barres pilule, reflets caustiques et contenu solide pur.</div>
+            </div>
+            <div class="logo-picker-check" id="logoCheckLiquid" style="display: none;" aria-hidden="true">✓</div>
           </div>
         </div>
       </section>

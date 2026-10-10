@@ -277,6 +277,9 @@ function applyAppLogo(theme, notify = false) {
     } else if (chosen === 'bubble') {
       logoImg.src = 'icons/logo-bubble.png';
       logoImg.alt = "Logo Carnet d'Entretien Carbone & Bulle";
+    } else if (chosen === 'liquid') {
+      logoImg.src = 'icons/logo-liquid.png';
+      logoImg.alt = "Logo Carnet d'Entretien Apple Liquid Glass iOS 26";
     } else {
       logoImg.src = 'icons/logo-dark.png';
       logoImg.alt = "Logo Carnet d'Entretien Noir & Carbone";
@@ -299,6 +302,9 @@ function applyAppLogo(theme, notify = false) {
     } else if (chosen === 'bubble') {
       headerIcon.textContent = '🫧';
       headerText.textContent = 'Bulle & Verre';
+    } else if (chosen === 'liquid') {
+      headerIcon.textContent = '💧';
+      headerText.textContent = 'Liquid Glass';
     } else {
       headerIcon.textContent = '🌑';
       headerText.textContent = 'Carbone';
@@ -316,6 +322,8 @@ function applyAppLogo(theme, notify = false) {
       fav.href = 'icons/icon-blue-192.png';
     } else if (chosen === 'bubble') {
       fav.href = 'icons/icon-bubble-192.png';
+    } else if (chosen === 'liquid') {
+      fav.href = 'icons/icon-liquid-192.png';
     } else {
       fav.href = 'icons/icon-192.png';
     }
@@ -330,6 +338,8 @@ function applyAppLogo(theme, notify = false) {
       apple.href = 'icons/icon-blue-192.png';
     } else if (chosen === 'bubble') {
       apple.href = 'icons/icon-bubble-192.png';
+    } else if (chosen === 'liquid') {
+      apple.href = 'icons/icon-liquid-192.png';
     } else {
       apple.href = 'icons/icon-192.png';
     }
@@ -347,6 +357,7 @@ function applyAppLogo(theme, notify = false) {
   const glassCheck = document.getElementById('logoCheckGlass');
   const steelCheck = document.getElementById('logoCheckSteel');
   const bubbleCheck = document.getElementById('logoCheckBubble');
+  const liquidCheck = document.getElementById('logoCheckLiquid');
   const activeBadge = document.getElementById('activeLogoBadge');
 
   if (darkCard) {
@@ -364,6 +375,9 @@ function applyAppLogo(theme, notify = false) {
   if (bubbleCard) {
     bubbleCard.classList.toggle('active', chosen === 'bubble');
   }
+  if (liquidCard) {
+    liquidCard.classList.toggle('active', chosen === 'liquid');
+  }
 
   if (darkCheck) {
     darkCheck.style.display = chosen === 'dark' ? 'inline-flex' : 'none';
@@ -380,6 +394,9 @@ function applyAppLogo(theme, notify = false) {
   if (bubbleCheck) {
     bubbleCheck.style.display = chosen === 'bubble' ? 'inline-flex' : 'none';
   }
+  if (liquidCheck) {
+    liquidCheck.style.display = chosen === 'liquid' ? 'inline-flex' : 'none';
+  }
 
   if (activeBadge) {
     if (chosen === 'steel') {
@@ -394,6 +411,9 @@ function applyAppLogo(theme, notify = false) {
     } else if (chosen === 'bubble') {
       activeBadge.textContent = 'Carbone & Bulle';
       activeBadge.className = 'status-badge status-badge-bubble';
+    } else if (chosen === 'liquid') {
+      activeBadge.textContent = 'Apple iOS 26 Liquid Glass';
+      activeBadge.className = 'status-badge status-badge-liquid';
     } else {
       activeBadge.textContent = 'Noir & Carbone';
       activeBadge.className = 'status-badge status-badge-info';
@@ -410,6 +430,8 @@ function applyAppLogo(theme, notify = false) {
       msg = '👑 Thème Prestige Bleu & Or activé pour toute l\'application !';
     } else if (chosen === 'bubble') {
       msg = '🫧 Thème Carbone & Bulle activé pour toute l\'application !';
+    } else if (chosen === 'liquid') {
+      msg = '💧 Thème Apple iOS 26 Liquid Glass activé pour toute l\'application !';
     }
     showToast(msg, 'success');
   }
