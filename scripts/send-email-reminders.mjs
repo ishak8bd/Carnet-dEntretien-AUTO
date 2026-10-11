@@ -778,7 +778,7 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
   const hasUrgent = alertsToSend.some(a => a.level === 'urgent');
   const urgentCount = alertsToSend.filter(a => a.level === 'urgent').length;
 
-  // Cooldown anti-spam : éviter d'envoyer plusieurs fois le même e-mail dans la même journée
+  // Cooldown anti-spam : en mode test, le délai est de 4 minutes pour permettre un envoi toutes les 5 minutes
   if (!isTest && !isDryRun && !force) {
     let emailHistory = null;
     try {
@@ -788,15 +788,24 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
     } catch (e) {}
 
     if (emailHistory && emailHistory.lastSent) {
-      const hoursSinceLast = (now - emailHistory.lastSent) / (1000 * 60 * 60);
+      const minutesSinceLast = (now - emailHistory.lastSent) / (1000 * 60);
+      const hoursSinceLast = minutesSinceLast / 60;
       const isSameOrFewerAlerts = alertsToSend.length <= (emailHistory.lastAlertCount || 0);
       const isSameOrFewerUrgents = urgentCount <= (emailHistory.lastUrgentCount || 0);
 
-      // Si l'e-mail a été envoyé il y a moins de 20h et qu'aucune nouvelle alerte n'est apparue
-      if (hoursSinceLast < 20 && isSameOrFewerAlerts && isSameOrFewerUrgents) {
-        console.log(`ℹ️ Les alertes du jour ont déjà été envoyées il y a ${Math.round(hoursSinceLast)}h. Prochain envoi automatique demain matin.`);
+      // Période de test : cooldown configuré à 4 minutes par défaut (permettant un test toutes les 5 min)
+      // Peut être surchargé via EMAIL_COOLDOWN_MINUTES (ex: 1200 pour 20h en production)
+      const cooldownMinutes = process.env.EMAIL_COOLDOWN_MINUTES !== undefined
+        ? Number(process.env.EMAIL_COOLDOWN_MINUTES)
+        : (cfg.emailCooldownMinutes !== undefined ? Number(cfg.emailCooldownMinutes) : 4);
+
+      if (minutesSinceLast < cooldownMinutes && isSameOrFewerAlerts && isSameOrFewerUrgents) {
+        const waitInfo = cooldownMinutes < 60 
+          ? `${Math.round(minutesSinceLast)} min (mode test toutes les 5 min)` 
+          : `${Math.round(hoursSinceLast)}h`;
+        console.log(`ℹ️ Les alertes ont déjà été envoyées il y a ${waitInfo}. Prochain envoi automatique dans quelques minutes.`);
         console.log(`💡 Pour forcer l'envoi immédiat, utilisez le paramètre : --force`);
-        appendLog(`COOLDOWN : Ignoré (${alertsToSend.length} alertes déjà envoyées il y a ${Math.round(hoursSinceLast)}h).`);
+        appendLog(`COOLDOWN : Ignoré (${alertsToSend.length} alertes déjà envoyées il y a ${waitInfo}).`);
         return { success: true, count: 0, skippedCooldown: true };
       }
     }

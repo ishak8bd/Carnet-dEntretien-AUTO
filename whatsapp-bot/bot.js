@@ -495,10 +495,11 @@ async function runReminderChecks() {
       const daysElapsed = Math.floor((now - lastLogDate) / (1000 * 60 * 60 * 24));
 
       if (daysElapsed >= 15) {
-        const lastSent = history.mileage[vehId] || 0;
-        const hoursSinceLastNotification = (now - lastSent) / (1000 * 60 * 60);
+        const isTestPeriod = process.env.TEST_MODE !== 'false';
+        const minutesSinceLast = (now - lastSent) / (1000 * 60);
+        const mileageCooldownMin = isTestPeriod ? 4 : (48 * 60);
 
-        if (hoursSinceLastNotification >= 48) {
+        if (minutesSinceLast >= mileageCooldownMin) {
           const msg = `🚗 *RAPPEL KILOMÉTRAGE - Carnet d'Entretien*\n\n` +
             `Bonjour ! Votre dernier relevé de compteur pour *${veh.name || 'votre véhicule'}* (${veh.brand} ${veh.model}) date d'il y a *${daysElapsed} jours* (le ${lastLog.date}).\n\n` +
             `📊 Dernier kilométrage enregistré : *${currentKm.toLocaleString('fr-FR')} km*\n\n` +
@@ -588,10 +589,12 @@ async function runReminderChecks() {
       }
 
       const itemHist = history.items[itemId] || { lastSent: 0, level: 0 };
-      const hoursSinceLast = (now - itemHist.lastSent) / (1000 * 60 * 60);
+      const minutesSinceLast = (now - itemHist.lastSent) / (1000 * 60);
+      const isTestPeriod = process.env.TEST_MODE !== 'false';
+      const itemCooldownMin = isTestPeriod ? 4 : (cooldownHours * 60);
       const urgencyIncreased = level > itemHist.level;
 
-      if (hoursSinceLast >= cooldownHours || urgencyIncreased) {
+      if (minutesSinceLast >= itemCooldownMin || urgencyIncreased) {
         let msg = '';
         const kmInfo = remainingKm !== null
           ? (remainingKm <= 0 ? `⚠️ Dépassé de ${Math.abs(remainingKm)} km` : `reste ${remainingKm.toLocaleString('fr-FR')} km`)
@@ -1081,9 +1084,11 @@ async function startWhatsAppBot() {
         }, 3000);
       }
 
-      // Programmer la vérification récurrente (toutes les X heures)
-      const cronExpr = `0 */${cfg.checkHours} * * *`;
-      console.log(`⏰ Planification des vérifications automatiques (toutes les ${cfg.checkHours} heures)`);
+      // Programmer la vérification récurrente (toutes les 5 minutes pour les tests ou selon config)
+      const isTestPeriod = process.env.TEST_MODE !== 'false';
+      const checkMinutes = isTestPeriod ? 5 : (process.env.CHECK_INTERVAL_MINUTES ? parseInt(process.env.CHECK_INTERVAL_MINUTES, 10) : null);
+      const cronExpr = checkMinutes ? `*/${checkMinutes} * * * *` : `0 */${cfg.checkHours} * * *`;
+      console.log(`⏰ Planification des vérifications automatiques (toutes les ${checkMinutes ? checkMinutes + ' minutes (Mode Test)' : cfg.checkHours + ' heures'})`);
       cron.schedule(cronExpr, () => {
         runReminderChecks();
       });

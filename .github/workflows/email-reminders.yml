@@ -1,9 +1,9 @@
 name: Rappels d'Entretien par E-mail
 
 on:
-  # Exécution automatique chaque matin à 08h00 UTC (09h00 CET)
+  # Période de test : exécution automatique toutes les 5 minutes
   schedule:
-    - cron: '0 8 * * *'
+    - cron: '*/5 * * * *'
   # Possibilité de déclencher manuellement depuis l'onglet Actions sur GitHub
   workflow_dispatch:
     inputs:

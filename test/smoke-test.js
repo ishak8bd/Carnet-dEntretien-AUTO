@@ -842,6 +842,7 @@ try {
   assert(btnTestNotif, 'Bouton de test des notifications présent');
   assert(chkUrgent, 'Case à cocher pour les entretiens urgents présente');
   assert(chkStale, 'Case à cocher pour le rappel kilométrique présente');
+  assert(document.getElementById('chkNotifTestMode'), 'Case à cocher pour le mode test toutes les 5 min présente');
 
   // Activer les notifications
   await window.toggleDeviceNotifications();

@@ -483,6 +483,7 @@ function updateNotificationSettingsUI() {
   const testBtn = document.getElementById('btnTestNotification');
   const chkUrgent = document.getElementById('chkNotifUrgentMaint');
   const chkStale = document.getElementById('chkNotifStaleKm');
+  const chkTestMode = document.getElementById('chkNotifTestMode');
   const selThreshold = document.getElementById('selectNotifThreshold');
 
   if (chkUrgent && appState.settings) {
@@ -490,6 +491,9 @@ function updateNotificationSettingsUI() {
   }
   if (chkStale && appState.settings) {
     chkStale.checked = appState.settings.notifStaleKm !== false;
+  }
+  if (chkTestMode && appState.settings) {
+    chkTestMode.checked = appState.settings.notifTestMode !== false;
   }
   if (selThreshold && appState.settings) {
     selThreshold.value = String(appState.settings.notifThresholdDays || 15);
@@ -736,19 +740,26 @@ async function checkAndSendPendingMaintenanceNotifications() {
             state = JSON.parse(localStorage.getItem(notifKey) || 'null');
           } catch (e) {}
 
+          // Intervalle de répétition des notifications (Mode test : toutes les 5 minutes)
+          const isTestMode = !appState.settings || appState.settings.notifTestMode !== false;
+          const repeatIntervalMs = isTestMode ? (5 * 60 * 1000) : (24 * 60 * 60 * 1000);
+          const imminentRepeatMs = isTestMode ? (5 * 60 * 1000) : (48 * 60 * 60 * 1000);
+
           let shouldSend = false;
           if (!state || !state.stage) {
             shouldSend = true;
           } else if (stage === 'urgent') {
-            // Re-notifier si on passe au stade urgent ou si l'urgence dure depuis plus de 24h
-            if (state.stage !== 'urgent' || (now - (state.sentAt || 0) > 24 * 60 * 60 * 1000)) {
+            // Re-notifier si on passe au stade urgent ou si l'urgence dure depuis plus du délai (5 min en mode test)
+            if (state.stage !== 'urgent' || (now - (state.sentAt || 0) > repeatIntervalMs)) {
               shouldSend = true;
             }
           } else if (stage === 'imminent') {
-            // Re-notifier si on passe au stade imminent ou après 48h
-            if (state.stage === 'close' || (now - (state.sentAt || 0) > 48 * 60 * 60 * 1000)) {
+            // Re-notifier si on passe au stade imminent ou après le délai (5 min en mode test)
+            if (state.stage === 'close' || (now - (state.sentAt || 0) > imminentRepeatMs)) {
               shouldSend = true;
             }
+          } else if (isTestMode && (now - (state.sentAt || 0) > repeatIntervalMs)) {
+            shouldSend = true;
           }
 
           if (shouldSend) {
@@ -783,8 +794,9 @@ async function checkAndSendPendingMaintenanceNotifications() {
             kmState = JSON.parse(localStorage.getItem(kmKey) || 'null');
           } catch (e) {}
 
-          const oneWeek = 7 * 24 * 60 * 60 * 1000;
-          if (!kmState || (now - (kmState.sentAt || 0) > oneWeek)) {
+          const isTestMode = !appState.settings || appState.settings.notifTestMode !== false;
+          const kmRepeatMs = isTestMode ? (5 * 60 * 1000) : (7 * 24 * 60 * 60 * 1000);
+          if (!kmState || (now - (kmState.sentAt || 0) > kmRepeatMs)) {
             try {
               localStorage.setItem(kmKey, JSON.stringify({ sentAt: now }));
             } catch (e) {}
@@ -5616,6 +5628,12 @@ function attachEventListeners() {
     saveState();
     checkAndSendPendingMaintenanceNotifications();
   });
+  document.getElementById('chkNotifTestMode')?.addEventListener('change', (e) => {
+    if (!appState.settings) appState.settings = {};
+    appState.settings.notifTestMode = e.target.checked;
+    saveState();
+    checkAndSendPendingMaintenanceNotifications();
+  });
   document.getElementById('selectNotifThreshold')?.addEventListener('change', (e) => {
     if (!appState.settings) appState.settings = {};
     appState.settings.notifThresholdDays = parseInt(e.target.value, 10) || 15;
@@ -5623,7 +5641,7 @@ function attachEventListeners() {
     checkAndSendPendingMaintenanceNotifications();
   });
 
-  // Vérification dès que l'utilisateur revient sur l'application ou périodiquement
+  // Vérification dès que l'utilisateur revient sur l'application ou périodiquement (chaque minute pour respecter les 5 min)
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       checkAndSendPendingMaintenanceNotifications();
@@ -5631,7 +5649,7 @@ function attachEventListeners() {
   });
   setInterval(() => {
     checkAndSendPendingMaintenanceNotifications();
-  }, 15 * 60 * 1000);
+  }, 60 * 1000);
 
 }
 
