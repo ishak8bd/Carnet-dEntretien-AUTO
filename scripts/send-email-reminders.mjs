@@ -477,7 +477,7 @@ function buildEmailHtml({ title, subtitle, badges = [], sections = [], appUrl })
 /**
  * Fonction principale d'évaluation des rappels et d'envoi des e-mails
  */
-export async function runEmailReminders({ isTest = false, isDryRun = false } = {}) {
+export async function runEmailReminders({ isTest = false, isDryRun = false, force = false } = {}) {
   console.log(`\n======================================================`);
   console.log(`  RAPPELS AUTOMATIQUES PAR E-MAIL - CARNET D'ENTRETIEN`);
   console.log(`  Date : ${new Date().toLocaleString('fr-FR')}`);
@@ -757,14 +757,51 @@ export async function runEmailReminders({ isTest = false, isDryRun = false } = {
     }
   }
 
+  const HISTORY_FILE = path.join(__dirname, 'email-history.json');
+  const LOG_FILE = path.join(__dirname, 'reminders.log');
+
+  function appendLog(line) {
+    try {
+      const timestamp = new Date().toLocaleString('fr-FR');
+      fs.appendFileSync(LOG_FILE, `[${timestamp}] ${line}\n`, 'utf-8');
+    } catch (e) {}
+  }
+
   if (alertsToSend.length === 0) {
     console.log("✅ Aucune échéance urgente ni relevé en retard détecté aujourd'hui. Aucun e-mail envoyé.");
+    appendLog("VÉRIFICATION : 0 alerte. Tous les véhicules sont à jour.");
     return { success: true, count: 0 };
   }
 
   console.log(`🔔 ${alertsToSend.length} alerte(s) détectée(s). Préparation de l'e-mail de synthèse...`);
 
   const hasUrgent = alertsToSend.some(a => a.level === 'urgent');
+  const urgentCount = alertsToSend.filter(a => a.level === 'urgent').length;
+
+  // Cooldown anti-spam : éviter d'envoyer plusieurs fois le même e-mail dans la même journée
+  if (!isTest && !isDryRun && !force) {
+    let emailHistory = null;
+    try {
+      if (fs.existsSync(HISTORY_FILE)) {
+        emailHistory = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf-8'));
+      }
+    } catch (e) {}
+
+    if (emailHistory && emailHistory.lastSent) {
+      const hoursSinceLast = (now - emailHistory.lastSent) / (1000 * 60 * 60);
+      const isSameOrFewerAlerts = alertsToSend.length <= (emailHistory.lastAlertCount || 0);
+      const isSameOrFewerUrgents = urgentCount <= (emailHistory.lastUrgentCount || 0);
+
+      // Si l'e-mail a été envoyé il y a moins de 20h et qu'aucune nouvelle alerte n'est apparue
+      if (hoursSinceLast < 20 && isSameOrFewerAlerts && isSameOrFewerUrgents) {
+        console.log(`ℹ️ Les alertes du jour ont déjà été envoyées il y a ${Math.round(hoursSinceLast)}h. Prochain envoi automatique demain matin.`);
+        console.log(`💡 Pour forcer l'envoi immédiat, utilisez le paramètre : --force`);
+        appendLog(`COOLDOWN : Ignoré (${alertsToSend.length} alertes déjà envoyées il y a ${Math.round(hoursSinceLast)}h).`);
+        return { success: true, count: 0, skippedCooldown: true };
+      }
+    }
+  }
+
   const subjectPrefix = hasUrgent ? "🚨 URGENT :" : "⚠️ RAPPEL :";
   const subject = `${subjectPrefix} ${alertsToSend.length} entretien(s) & rappel(s) - Carnet d'Entretien`;
 
@@ -814,6 +851,22 @@ export async function runEmailReminders({ isTest = false, isDryRun = false } = {
 
   const successCount = sendResults.filter(r => r.success).length;
   console.log(`✨ Bilan d'envoi des alertes : ${successCount}/${recipients.length} destinataire(s) ont reçu leur notification !`);
+
+  // Enregistrer l'historique et le journal de log
+  if (successCount > 0) {
+    try {
+      fs.writeFileSync(HISTORY_FILE, JSON.stringify({
+        lastSent: now,
+        lastAlertCount: alertsToSend.length,
+        lastUrgentCount: urgentCount,
+        recipients: recipientList
+      }, null, 2), 'utf-8');
+    } catch (e) {}
+    appendLog(`SUCCÈS : ${alertsToSend.length} alertes envoyées à ${successCount}/${recipients.length} destinataires (${recipientList.join(', ')}).`);
+  } else {
+    appendLog(`ÉCHEC : Erreur d'envoi à tous les destinataires.`);
+  }
+
   return { success: successCount > 0, alertsCount: alertsToSend.length, details: sendResults };
 }
 
@@ -823,8 +876,9 @@ if (isDirectExecution) {
   const args = process.argv.slice(2);
   const isTest = args.includes('--test');
   const isDryRun = args.includes('--dry-run');
+  const force = args.includes('--force');
 
-  runEmailReminders({ isTest, isDryRun })
+  runEmailReminders({ isTest, isDryRun, force })
     .then(() => process.exit(0))
     .catch(err => {
       console.error("❌ Erreur lors de l'exécution :", err.message);

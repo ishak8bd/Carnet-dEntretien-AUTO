@@ -13,6 +13,8 @@ whatsapp-bot/notification_history.json
 whatsapp-bot/bot_firebase_auth.json
 scripts/email-config.json
 *email-config.json
+scripts/email-history.json
+*email-history.json
 serviceAccountKey.json
 *serviceAccount*.json
 .env
