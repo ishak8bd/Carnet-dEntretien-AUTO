@@ -473,6 +473,78 @@ function getNotificationPermission() {
 }
 
 /**
+ * Retourne la durée en millisecondes pour un niveau de fréquence ('red' ou 'orange')
+ */
+function getAlertFrequencyMs(level) {
+  if (!appState.settings) appState.settings = {};
+  if (level === 'red') {
+    const val = Math.max(1, parseInt(appState.settings.alertFreqRedValue, 10) || 5);
+    const unit = appState.settings.alertFreqRedUnit || 'minutes';
+    if (unit === 'hours') return val * 60 * 60 * 1000;
+    if (unit === 'days') return val * 24 * 60 * 60 * 1000;
+    return val * 60 * 1000; // minutes
+  } else {
+    const val = Math.max(1, parseInt(appState.settings.alertFreqOrangeValue, 10) || 15);
+    const unit = appState.settings.alertFreqOrangeUnit || 'minutes';
+    if (unit === 'hours') return val * 60 * 60 * 1000;
+    if (unit === 'days') return val * 24 * 60 * 60 * 1000;
+    return val * 60 * 1000; // minutes
+  }
+}
+
+/**
+ * Retourne la durée en minutes pour un niveau de fréquence ('red' ou 'orange')
+ */
+function getAlertFrequencyMinutes(level) {
+  return Math.round(getAlertFrequencyMs(level) / (60 * 1000));
+}
+
+/**
+ * Formate un libellé lisible pour la fréquence d'alerte : "5 minutes", "12 heures", "2 jours"
+ */
+function formatAlertFrequencyLabel(val, unit) {
+  const v = Math.max(1, parseInt(val, 10) || 1);
+  if (unit === 'hours') return `${v} heure${v > 1 ? 's' : ''}`;
+  if (unit === 'days') return `${v} jour${v > 1 ? 's' : ''}`;
+  return `${v} minute${v > 1 ? 's' : ''}`;
+}
+
+/**
+ * Enregistre les fréquences d'alertes personnalisées saisies librement par l'utilisateur
+ */
+function saveAlertFrequenciesFromInputs() {
+  if (!appState.settings) appState.settings = {};
+  const inputRedVal = document.getElementById('inputAlertFreqRedValue');
+  const selectRedUnit = document.getElementById('selectAlertFreqRedUnit');
+  const inputOrangeVal = document.getElementById('inputAlertFreqOrangeValue');
+  const selectOrangeUnit = document.getElementById('selectAlertFreqOrangeUnit');
+
+  if (inputRedVal && selectRedUnit) {
+    appState.settings.alertFreqRedValue = Math.max(1, parseInt(inputRedVal.value, 10) || 5);
+    appState.settings.alertFreqRedUnit = selectRedUnit.value || 'minutes';
+  }
+  if (inputOrangeVal && selectOrangeUnit) {
+    appState.settings.alertFreqOrangeValue = Math.max(1, parseInt(inputOrangeVal.value, 10) || 15);
+    appState.settings.alertFreqOrangeUnit = selectOrangeUnit.value || 'minutes';
+  }
+
+  saveState();
+  updateNotificationSettingsUI();
+
+  // Si connecté à une salle Firestore, synchroniser sur le document de salle
+  if (typeof window !== 'undefined' && window.FamilyRoom && typeof window.FamilyRoom.syncAlertFrequenciesToRoom === 'function') {
+    window.FamilyRoom.syncAlertFrequenciesToRoom({
+      redValue: appState.settings.alertFreqRedValue,
+      redUnit: appState.settings.alertFreqRedUnit,
+      redMinutes: getAlertFrequencyMinutes('red'),
+      orangeValue: appState.settings.alertFreqOrangeValue,
+      orangeUnit: appState.settings.alertFreqOrangeUnit,
+      orangeMinutes: getAlertFrequencyMinutes('orange')
+    });
+  }
+}
+
+/**
  * Met à jour l'interface des paramètres de notifications
  */
 function updateNotificationSettingsUI() {
@@ -485,6 +557,27 @@ function updateNotificationSettingsUI() {
   const chkStale = document.getElementById('chkNotifStaleKm');
   const chkTestMode = document.getElementById('chkNotifTestMode');
   const selThreshold = document.getElementById('selectNotifThreshold');
+
+  // Champs de saisie libre des fréquences
+  const inputRedVal = document.getElementById('inputAlertFreqRedValue');
+  const selectRedUnit = document.getElementById('selectAlertFreqRedUnit');
+  const lblRed = document.getElementById('lblCurrentRedFreq');
+  const inputOrangeVal = document.getElementById('inputAlertFreqOrangeValue');
+  const selectOrangeUnit = document.getElementById('selectAlertFreqOrangeUnit');
+  const lblOrange = document.getElementById('lblCurrentOrangeFreq');
+
+  const redVal = appState.settings?.alertFreqRedValue !== undefined ? appState.settings.alertFreqRedValue : 5;
+  const redUnit = appState.settings?.alertFreqRedUnit || 'minutes';
+  const orangeVal = appState.settings?.alertFreqOrangeValue !== undefined ? appState.settings.alertFreqOrangeValue : 15;
+  const orangeUnit = appState.settings?.alertFreqOrangeUnit || 'minutes';
+
+  if (inputRedVal && document.activeElement !== inputRedVal) inputRedVal.value = String(redVal);
+  if (selectRedUnit) selectRedUnit.value = redUnit;
+  if (lblRed) lblRed.textContent = formatAlertFrequencyLabel(redVal, redUnit);
+
+  if (inputOrangeVal && document.activeElement !== inputOrangeVal) inputOrangeVal.value = String(orangeVal);
+  if (selectOrangeUnit) selectOrangeUnit.value = orangeUnit;
+  if (lblOrange) lblOrange.textContent = formatAlertFrequencyLabel(orangeVal, orangeUnit);
 
   if (chkUrgent && appState.settings) {
     chkUrgent.checked = appState.settings.notifUrgentMaint !== false;
@@ -740,26 +833,23 @@ async function checkAndSendPendingMaintenanceNotifications() {
             state = JSON.parse(localStorage.getItem(notifKey) || 'null');
           } catch (e) {}
 
-          // Intervalle de répétition des notifications (Mode test : toutes les 5 minutes)
-          const isTestMode = !appState.settings || appState.settings.notifTestMode !== false;
-          const repeatIntervalMs = isTestMode ? (5 * 60 * 1000) : (24 * 60 * 60 * 1000);
-          const imminentRepeatMs = isTestMode ? (5 * 60 * 1000) : (48 * 60 * 60 * 1000);
+          // Durée personnalisée pour la phase ROUGE et la phase ORANGE (saisie libre admin)
+          const redRepeatMs = getAlertFrequencyMs('red');
+          const orangeRepeatMs = getAlertFrequencyMs('orange');
 
           let shouldSend = false;
           if (!state || !state.stage) {
             shouldSend = true;
           } else if (stage === 'urgent') {
-            // Re-notifier si on passe au stade urgent ou si l'urgence dure depuis plus du délai (5 min en mode test)
-            if (state.stage !== 'urgent' || (now - (state.sentAt || 0) > repeatIntervalMs)) {
+            // Phase ROUGE : re-notifier si on passe au stade urgent ou si l'urgence dure depuis plus de la cadence Rouge
+            if (state.stage !== 'urgent' || (now - (state.sentAt || 0) > redRepeatMs)) {
               shouldSend = true;
             }
-          } else if (stage === 'imminent') {
-            // Re-notifier si on passe au stade imminent ou après le délai (5 min en mode test)
-            if (state.stage === 'close' || (now - (state.sentAt || 0) > imminentRepeatMs)) {
+          } else if (stage === 'imminent' || stage === 'close') {
+            // Phase ORANGE : re-notifier selon la cadence Orange
+            if (!state.stage || (now - (state.sentAt || 0) > orangeRepeatMs)) {
               shouldSend = true;
             }
-          } else if (isTestMode && (now - (state.sentAt || 0) > repeatIntervalMs)) {
-            shouldSend = true;
           }
 
           if (shouldSend) {
@@ -782,7 +872,7 @@ async function checkAndSendPendingMaintenanceNotifications() {
       }
     }
 
-    // 2. Rappel de relevé kilométrique si ancien (> 15 jours)
+    // 2. Rappel de relevé kilométrique si ancien (> 15 jours, phase ORANGE)
     if (appState.settings.notifStaleKm !== false) {
       const lastUpdateDate = vehicle.updatedAt || (vehicle.kmLog && vehicle.kmLog.length > 0 ? vehicle.kmLog[vehicle.kmLog.length - 1].date : null);
       if (lastUpdateDate) {
@@ -794,9 +884,8 @@ async function checkAndSendPendingMaintenanceNotifications() {
             kmState = JSON.parse(localStorage.getItem(kmKey) || 'null');
           } catch (e) {}
 
-          const isTestMode = !appState.settings || appState.settings.notifTestMode !== false;
-          const kmRepeatMs = isTestMode ? (5 * 60 * 1000) : (7 * 24 * 60 * 60 * 1000);
-          if (!kmState || (now - (kmState.sentAt || 0) > kmRepeatMs)) {
+          const orangeRepeatMs = getAlertFrequencyMs('orange');
+          if (!kmState || (now - (kmState.sentAt || 0) > orangeRepeatMs)) {
             try {
               localStorage.setItem(kmKey, JSON.stringify({ sentAt: now }));
             } catch (e) {}
@@ -821,6 +910,9 @@ if (typeof window !== 'undefined') {
   window.toggleDeviceNotifications = toggleDeviceNotifications;
   window.sendTestNotification = sendTestNotification;
   window.checkAndSendPendingMaintenanceNotifications = checkAndSendPendingMaintenanceNotifications;
+  window.getAlertFrequencyMs = getAlertFrequencyMs;
+  window.getAlertFrequencyMinutes = getAlertFrequencyMinutes;
+  window.saveAlertFrequenciesFromInputs = saveAlertFrequenciesFromInputs;
 }
 
 // ============================================================================
@@ -5639,6 +5731,50 @@ function attachEventListeners() {
     appState.settings.notifThresholdDays = parseInt(e.target.value, 10) || 15;
     saveState();
     checkAndSendPendingMaintenanceNotifications();
+  });
+
+  // Écouteurs de saisie libre des fréquences d'alertes
+  const inputRed = document.getElementById('inputAlertFreqRedValue');
+  const unitRed = document.getElementById('selectAlertFreqRedUnit');
+  const inputOrange = document.getElementById('inputAlertFreqOrangeValue');
+  const unitOrange = document.getElementById('selectAlertFreqOrangeUnit');
+
+  inputRed?.addEventListener('input', saveAlertFrequenciesFromInputs);
+  inputRed?.addEventListener('change', () => {
+    saveAlertFrequenciesFromInputs();
+    checkAndSendPendingMaintenanceNotifications();
+  });
+  unitRed?.addEventListener('change', () => {
+    saveAlertFrequenciesFromInputs();
+    checkAndSendPendingMaintenanceNotifications();
+  });
+
+  inputOrange?.addEventListener('input', saveAlertFrequenciesFromInputs);
+  inputOrange?.addEventListener('change', () => {
+    saveAlertFrequenciesFromInputs();
+    checkAndSendPendingMaintenanceNotifications();
+  });
+  unitOrange?.addEventListener('change', () => {
+    saveAlertFrequenciesFromInputs();
+    checkAndSendPendingMaintenanceNotifications();
+  });
+
+  // Boutons rapides de fréquence
+  document.querySelectorAll('[data-quick-freq]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const type = btn.getAttribute('data-quick-freq');
+      const val = btn.getAttribute('data-val');
+      const unit = btn.getAttribute('data-unit');
+      if (type === 'red') {
+        if (inputRed) inputRed.value = val;
+        if (unitRed) unitRed.value = unit;
+      } else if (type === 'orange') {
+        if (inputOrange) inputOrange.value = val;
+        if (unitOrange) unitOrange.value = unit;
+      }
+      saveAlertFrequenciesFromInputs();
+      checkAndSendPendingMaintenanceNotifications();
+    });
   });
 
   // Vérification dès que l'utilisateur revient sur l'application ou périodiquement (chaque minute pour respecter les 5 min)

@@ -844,6 +844,44 @@ try {
   assert(chkStale, 'Case à cocher pour le rappel kilométrique présente');
   assert(document.getElementById('chkNotifTestMode'), 'Case à cocher pour le mode test toutes les 5 min présente');
 
+  // Vérification de la saisie libre des fréquences d'alertes (Rouge et Orange)
+  const inputRed = document.getElementById('inputAlertFreqRedValue');
+  const unitRed = document.getElementById('selectAlertFreqRedUnit');
+  const lblRed = document.getElementById('lblCurrentRedFreq');
+  const inputOrange = document.getElementById('inputAlertFreqOrangeValue');
+  const unitOrange = document.getElementById('selectAlertFreqOrangeUnit');
+  const lblOrange = document.getElementById('lblCurrentOrangeFreq');
+
+  assert(inputRed, 'Champ de saisie libre fréquence rouge présent');
+  assert(unitRed, 'Sélecteur unité fréquence rouge présent');
+  assert(lblRed, 'Label fréquence rouge présent');
+  assert(inputOrange, 'Champ de saisie libre fréquence orange présent');
+  assert(unitOrange, 'Sélecteur unité fréquence orange présent');
+  assert(lblOrange, 'Label fréquence orange présent');
+
+  // Test de modification libre des fréquences
+  inputRed.value = '10';
+  unitRed.value = 'minutes';
+  inputOrange.value = '3';
+  unitOrange.value = 'days';
+  window.saveAlertFrequenciesFromInputs();
+
+  assert.strictEqual(window.appState.settings.alertFreqRedValue, 10, 'Fréquence rouge mise à jour à 10');
+  assert.strictEqual(window.appState.settings.alertFreqRedUnit, 'minutes', 'Unité rouge mise à jour à minutes');
+  assert.strictEqual(window.getAlertFrequencyMinutes('red'), 10, 'Cadence rouge = 10 min');
+  assert.strictEqual(window.appState.settings.alertFreqOrangeValue, 3, 'Fréquence orange mise à jour à 3');
+  assert.strictEqual(window.appState.settings.alertFreqOrangeUnit, 'days', 'Unité orange mise à jour à days');
+  assert.strictEqual(window.getAlertFrequencyMinutes('orange'), 3 * 24 * 60, 'Cadence orange = 3 jours');
+  assert(lblRed.textContent.includes('10 minute'), 'Label rouge reflète 10 minutes');
+  assert(lblOrange.textContent.includes('3 jour'), 'Label orange reflète 3 jours');
+
+  // Remettre en mode test 5 min / 15 min
+  inputRed.value = '5';
+  unitRed.value = 'minutes';
+  inputOrange.value = '15';
+  unitOrange.value = 'minutes';
+  window.saveAlertFrequenciesFromInputs();
+
   // Activer les notifications
   await window.toggleDeviceNotifications();
   assert.strictEqual(window.appState.settings.notificationsEnabled, true, 'notificationsEnabled doit être à true après activation');

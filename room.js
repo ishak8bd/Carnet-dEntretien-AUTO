@@ -167,6 +167,23 @@ export async function pingRoomActivity(roomId) {
 }
 
 /**
+ * Enregistre les fréquences d'alertes personnalisées sur le document de salle dans Firestore
+ */
+export async function syncAlertFrequenciesToRoom(freqData) {
+  const profile = getStoredRoomProfile();
+  if (!profile || !profile.roomId) return;
+  try {
+    const roomRef = doc(db, 'rooms', profile.roomId);
+    await updateDoc(roomRef, {
+      alertFrequencies: freqData,
+      lastActivityAt: serverTimestamp()
+    });
+  } catch (err) {
+    // Échec discret si non propriétaire
+  }
+}
+
+/**
  * Crée une nouvelle salle familiale avec son premier lien d'invitation
  */
 export async function createFamilyRoom({ roomName, ownerName, ownerPhone = '', ownerEmail = '', expiryHours = 24, maxUses = 5, migrateLocal = false }) {
@@ -2128,7 +2145,8 @@ window.FamilyRoom = {
   ensureAuth,
   getExternalContacts,
   saveExternalContact,
-  deleteExternalContact
+  deleteExternalContact,
+  syncAlertFrequenciesToRoom
 };
 
 if (document.readyState === 'loading') {

@@ -634,6 +634,75 @@
             <input type="checkbox" id="chkNotifTestMode" checked style="accent-color: var(--primary); width: 18px; height: 18px;">
             <span>⚡ Mode Test Actif : Répéter les alertes toutes les 5 minutes (au lieu de 24h)</span>
           </label>
+
+          <!-- SECTION : Configuration Administrateur des Fréquences d'Alertes Libres -->
+          <div class="alert-freq-box" id="adminAlertFrequencyBox">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+              <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                <span>⚙️ Fréquence personnalisée des alertes (Saisie libre Admin)</span>
+              </div>
+              <span class="status-badge status-badge-info" style="font-size: 0.72rem;">Saisie libre</span>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
+              Saisissez librement le rythme auquel le système réémet les rappels pour chaque niveau tant que l'intervention n'est pas effectuée.
+            </p>
+
+            <!-- 1. Fréquence ROUGE -->
+            <div class="alert-freq-card alert-freq-card-red">
+              <div class="alert-freq-header">
+                <label for="inputAlertFreqRedValue" class="alert-freq-title" style="color: #ef4444;">
+                  <span>🔴 Phase ROUGE (Échéance dépassée ou critique)</span>
+                </label>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Actuelle : <strong id="lblCurrentRedFreq">5 minutes</strong></span>
+              </div>
+              <div class="alert-freq-inputs-row">
+                <span style="font-size: 0.82rem; color: var(--text-main);">Répéter chaque :</span>
+                <input type="number" id="inputAlertFreqRedValue" class="form-input alert-freq-value-input" min="1" max="999" value="5" aria-label="Nombre pour fréquence rouge">
+                <select id="selectAlertFreqRedUnit" class="form-input alert-freq-unit-select" aria-label="Unité fréquence rouge">
+                  <option value="minutes" selected>Minute(s)</option>
+                  <option value="hours">Heure(s)</option>
+                  <option value="days">Jour(s)</option>
+                </select>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                  <button type="button" class="btn-chip" data-quick-freq="red" data-val="5" data-unit="minutes">5 min (Test)</button>
+                  <button type="button" class="btn-chip" data-quick-freq="red" data-val="1" data-unit="hours">1 h</button>
+                  <button type="button" class="btn-chip" data-quick-freq="red" data-val="12" data-unit="hours">12 h</button>
+                  <button type="button" class="btn-chip" data-quick-freq="red" data-val="1" data-unit="days">24 h</button>
+                </div>
+              </div>
+              <div style="font-size: 0.74rem; color: var(--text-muted);">
+                Déclenchée quand le kilométrage/date est dépassé ou qu'il reste ≤ 2 jours / 50 km.
+              </div>
+            </div>
+
+            <!-- 2. Fréquence ORANGE -->
+            <div class="alert-freq-card alert-freq-card-orange">
+              <div class="alert-freq-header">
+                <label for="inputAlertFreqOrangeValue" class="alert-freq-title" style="color: #f59e0b;">
+                  <span>🟠 Phase ORANGE (Échéance proche / À prévoir)</span>
+                </label>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Actuelle : <strong id="lblCurrentOrangeFreq">15 minutes</strong></span>
+              </div>
+              <div class="alert-freq-inputs-row">
+                <span style="font-size: 0.82rem; color: var(--text-main);">Répéter chaque :</span>
+                <input type="number" id="inputAlertFreqOrangeValue" class="form-input alert-freq-value-input" min="1" max="999" value="15" aria-label="Nombre pour fréquence orange">
+                <select id="selectAlertFreqOrangeUnit" class="form-input alert-freq-unit-select" aria-label="Unité fréquence orange">
+                  <option value="minutes" selected>Minute(s)</option>
+                  <option value="hours">Heure(s)</option>
+                  <option value="days">Jour(s)</option>
+                </select>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                  <button type="button" class="btn-chip" data-quick-freq="orange" data-val="15" data-unit="minutes">15 min (Test)</button>
+                  <button type="button" class="btn-chip" data-quick-freq="orange" data-val="12" data-unit="hours">12 h</button>
+                  <button type="button" class="btn-chip" data-quick-freq="orange" data-val="1" data-unit="days">24 h</button>
+                  <button type="button" class="btn-chip" data-quick-freq="orange" data-val="2" data-unit="days">2 jours</button>
+                </div>
+              </div>
+              <div style="font-size: 0.74rem; color: var(--text-muted);">
+                Déclenchée quand il reste ≤ 15 jours ou ≤ 500 km (ou relevé de compteur > 15 jours).
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

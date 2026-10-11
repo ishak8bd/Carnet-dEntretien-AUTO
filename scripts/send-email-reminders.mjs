@@ -203,6 +203,21 @@ async function initFirebaseAdminIfAvailable() {
 }
 
 /**
+ * Récupère le document racine de la salle Firestore sous rooms/{roomId}
+ */
+async function fetchRoomDocument(auth, cfg) {
+  if (adminDb) {
+    try {
+      const snap = await adminDb.collection('rooms').doc(cfg.roomId).get();
+      return snap.exists ? snap.data() : null;
+    } catch (e) {
+      console.warn("Erreur lecture document room:", e.message);
+    }
+  }
+  return null;
+}
+
+/**
  * Récupère une sous-collection Firestore sous rooms/{roomId}/{subcollection}
  */
 async function fetchFirestoreCollection(subcollection, auth, cfg) {
@@ -502,6 +517,7 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
   await initFirebaseAdminIfAvailable();
   hasPermissionDenied = false;
   const auth = !adminDb ? await getFirebaseAuthToken(cfg) : null;
+  const roomDoc = await fetchRoomDocument(auth, cfg);
   const vehicles = await fetchFirestoreCollection('vehicles', auth, cfg);
   const items = await fetchFirestoreCollection('items', auth, cfg);
   const kmLogs = await fetchFirestoreCollection('kmLogs', auth, cfg);
@@ -793,19 +809,32 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
       const isSameOrFewerAlerts = alertsToSend.length <= (emailHistory.lastAlertCount || 0);
       const isSameOrFewerUrgents = urgentCount <= (emailHistory.lastUrgentCount || 0);
 
-      // Période de test : cooldown configuré à 4 minutes par défaut (permettant un test toutes les 5 min)
-      // Peut être surchargé via EMAIL_COOLDOWN_MINUTES (ex: 1200 pour 20h en production)
-      const cooldownMinutes = process.env.EMAIL_COOLDOWN_MINUTES !== undefined
-        ? Number(process.env.EMAIL_COOLDOWN_MINUTES)
-        : (cfg.emailCooldownMinutes !== undefined ? Number(cfg.emailCooldownMinutes) : 4);
+      // Récupération des cadences d'alertes configurées par l'administrateur
+      let redMinutes = 5;
+      let orangeMinutes = 15;
+      if (roomDoc && roomDoc.alertFrequencies) {
+        if (roomDoc.alertFrequencies.redMinutes) redMinutes = Math.max(1, Number(roomDoc.alertFrequencies.redMinutes));
+        if (roomDoc.alertFrequencies.orangeMinutes) orangeMinutes = Math.max(1, Number(roomDoc.alertFrequencies.orangeMinutes));
+      }
+      if (process.env.EMAIL_COOLDOWN_RED_MINUTES) redMinutes = Number(process.env.EMAIL_COOLDOWN_RED_MINUTES);
+      if (process.env.EMAIL_COOLDOWN_ORANGE_MINUTES) orangeMinutes = Number(process.env.EMAIL_COOLDOWN_ORANGE_MINUTES);
+      if (process.env.EMAIL_COOLDOWN_MINUTES) {
+        redMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
+        orangeMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
+      }
+
+      // Si le lot contient des alertes ROUGES (urgentes), utiliser la cadence Rouge
+      // S'il ne contient QUE des alertes ORANGES, utiliser la cadence Orange
+      const cooldownMinutes = hasUrgent ? redMinutes : orangeMinutes;
+      const phaseName = hasUrgent ? "ROUGE" : "ORANGE";
 
       if (minutesSinceLast < cooldownMinutes && isSameOrFewerAlerts && isSameOrFewerUrgents) {
         const waitInfo = cooldownMinutes < 60 
-          ? `${Math.round(minutesSinceLast)} min (mode test toutes les 5 min)` 
-          : `${Math.round(hoursSinceLast)}h`;
-        console.log(`ℹ️ Les alertes ont déjà été envoyées il y a ${waitInfo}. Prochain envoi automatique dans quelques minutes.`);
+          ? `${Math.round(minutesSinceLast)} min (cadence ${phaseName} = ${cooldownMinutes} min)` 
+          : `${Math.round(hoursSinceLast)}h (cadence ${phaseName} = ${Math.round(cooldownMinutes / 60)}h)`;
+        console.log(`ℹ️ Les alertes (${phaseName}) ont déjà été envoyées il y a ${waitInfo}. Prochain envoi automatique selon la cadence ${phaseName}.`);
         console.log(`💡 Pour forcer l'envoi immédiat, utilisez le paramètre : --force`);
-        appendLog(`COOLDOWN : Ignoré (${alertsToSend.length} alertes déjà envoyées il y a ${waitInfo}).`);
+        appendLog(`COOLDOWN : Ignoré (${alertsToSend.length} alertes [${phaseName}] déjà envoyées il y a ${Math.round(minutesSinceLast)} min, cadence = ${cooldownMinutes} min).`);
         return { success: true, count: 0, skippedCooldown: true };
       }
     }

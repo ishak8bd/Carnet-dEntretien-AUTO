@@ -4530,3 +4530,92 @@ body.theme-liquid .logo-picker-card:active {
     }
   }
 }
+
+/* ========================================================================== */
+/* FRÉQUENCE LIBRE DES ALERTES (ORANGE & ROUGE)                               */
+/* ========================================================================== */
+.alert-freq-box {
+  margin-top: 14px;
+  border-top: 1px dashed var(--border-color);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.alert-freq-card {
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: var(--transition);
+}
+
+.alert-freq-card-red {
+  background: rgba(220, 38, 38, 0.05);
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+.alert-freq-card-orange {
+  background: rgba(217, 119, 6, 0.05);
+  border-color: rgba(217, 119, 6, 0.25);
+}
+
+.alert-freq-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.alert-freq-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.alert-freq-inputs-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.alert-freq-value-input {
+  width: 76px !important;
+  text-align: center !important;
+  font-weight: 700 !important;
+  font-size: 0.95rem !important;
+  padding: 6px 8px !important;
+}
+
+.alert-freq-unit-select {
+  width: 120px !important;
+  padding: 6px 8px !important;
+  font-size: 0.86rem !important;
+}
+
+.btn-chip {
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-chip:hover {
+  color: var(--text-main);
+  border-color: var(--primary);
+  background: var(--bg-card-subtle);
+}
