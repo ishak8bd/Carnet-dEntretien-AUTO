@@ -7,8 +7,13 @@ on:
   # Possibilité de déclencher manuellement depuis l'onglet Actions sur GitHub
   workflow_dispatch:
     inputs:
+      force_send:
+        description: "Forcer l'envoi immédiat de toutes les alertes (ignore le cooldown) ?"
+        required: false
+        type: boolean
+        default: true
       test_mode:
-        description: "Envoyer un e-mail de test immédiat ?"
+        description: "Envoyer un e-mail de test immédiat au lieu des vraies alertes ?"
         required: false
         type: boolean
         default: false
@@ -40,6 +45,8 @@ jobs:
         run: |
           if [ "${{ inputs.test_mode }}" = "true" ]; then
             node scripts/send-email-reminders.mjs --test
+          elif [ "${{ inputs.force_send }}" = "true" ]; then
+            node scripts/send-email-reminders.mjs --force
           else
             node scripts/send-email-reminders.mjs
           fi

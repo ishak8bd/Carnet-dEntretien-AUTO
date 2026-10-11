@@ -9,6 +9,9 @@
   "scripts": {
     "test": "node test/smoke-test.js && node test/prediction-engine.test.mjs",
     "test:rules": "firebase emulators:exec --only firestore \"node --test test/firestore-rules.test.js\"",
+    "email:send": "node scripts/send-email-reminders.mjs --force",
+    "email:test": "node scripts/send-email-reminders.mjs --test",
+    "email:dry-run": "node scripts/send-email-reminders.mjs --dry-run",
     "sync-docs": "node scripts/sync-docs.js"
   },
   "repository": {
