@@ -283,6 +283,22 @@ body {
   color: var(--warning-text);
 }
 
+.banner-notif {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.12), rgba(99, 102, 241, 0.12));
+  border: 1px solid rgba(2, 132, 199, 0.4);
+  color: var(--text-main);
+  margin-bottom: 14px;
+}
+
+.banner-btn-notif {
+  background-color: var(--primary);
+  color: #fff;
+}
+
+.banner-btn-notif:hover {
+  background-color: var(--primary-hover);
+}
+
 .banner-demo {
   background-color: var(--primary-subtle);
   border: 1px solid var(--primary);

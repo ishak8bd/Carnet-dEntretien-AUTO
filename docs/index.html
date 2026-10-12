@@ -107,6 +107,23 @@
         </div>
       </div>
 
+      <!-- Bannière d'activation rapide des notifications d'appareil -->
+      <div id="notifPermissionBanner" class="banner banner-notif hidden">
+        <div class="banner-content">
+          <span class="banner-icon">🔔</span>
+          <div class="banner-text">
+            <strong>Activez les alertes sur cet appareil</strong>
+            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
+              Recevez les notifications d'échéances d'entretien directement sur votre écran.
+            </div>
+          </div>
+        </div>
+        <div class="banner-actions">
+          <button type="button" id="btnBannerEnableNotif" class="banner-btn banner-btn-notif liquid-glass">📲 Activer</button>
+          <button type="button" id="btnBannerDismissNotif" class="banner-btn banner-btn-subtle" title="Masquer">✕</button>
+        </div>
+      </div>
+
       <!-- Carte Odomètre / Kilométrage Actuel & Saisie Rapide -->
       <main class="card odometer-card">
         <div class="card-header">

@@ -11,6 +11,7 @@ import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { execFile } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,6 +53,41 @@ export function loadConfig() {
   } catch (e) {}
 
   return cfg;
+}
+
+/**
+ * Déclenche une notification locale Windows (Bulle/Toast) si exécuté sous Windows
+ */
+export function triggerWindowsNotification(title, message) {
+  if (process.platform !== 'win32') return;
+  try {
+    const psScript = path.join(__dirname, 'show-windows-notification.ps1');
+    if (!fs.existsSync(psScript)) return;
+
+    // Nettoyer les caractères pour compatibilité PowerShell
+    const cleanTitle = (title || "Carnet d'Entretien")
+      .replace(/[^\x20-\x7E\u00C0-\u017F:!?,.\-\(\)]/g, '')
+      .trim() || "Carnet d'Entretien";
+    const cleanMsg = (message || "Alerte d'entretien")
+      .replace(/[^\x20-\x7E\u00C0-\u017F:!?,.\-\(\)]/g, '')
+      .trim() || "Alerte d'entretien";
+
+    execFile('powershell.exe', [
+      '-ExecutionPolicy', 'Bypass',
+      '-WindowStyle', 'Hidden',
+      '-File', psScript,
+      '-Title', cleanTitle,
+      '-Message', cleanMsg
+    ], (err) => {
+      if (err) {
+        console.warn("⚠️ Impossible d'afficher la notification Windows:", err.message);
+      } else {
+        console.log("📢 Notification bureau Windows affichée sur votre écran !");
+      }
+    });
+  } catch (err) {
+    console.warn("⚠️ Erreur notification Windows:", err.message);
+  }
 }
 
 /**
@@ -660,6 +696,9 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
 
     const allSuccessful = testResults.filter(r => r.success).length;
     console.log(`✨ Bilan du test : ${allSuccessful}/${recipients.length} destinataire(s) validé(s).`);
+    if (allSuccessful > 0) {
+      triggerWindowsNotification("Carnet d'Entretien (Test)", "Test de notification réussi ! Vos alertes fonctionnent parfaitement sur cet ordinateur.");
+    }
     return { success: allSuccessful > 0, recipients: recipientList, details: testResults };
   }
 
@@ -890,6 +929,18 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
   const successCount = sendResults.filter(r => r.success).length;
   console.log(`✨ Bilan d'envoi des alertes : ${successCount}/${recipients.length} destinataire(s) ont reçu leur notification !`);
 
+  // Déclencher la notification bureau Windows si des alertes ont été émises
+  if (successCount > 0 || isDryRun) {
+    const notifTitle = hasUrgent 
+      ? `Carnet Auto : ${urgentCount} entretien(s) URGENT(S) !` 
+      : `Carnet Auto : ${alertsToSend.length} rappel(s) d'entretien`;
+    const notifMsg = alertsToSend.length === 1
+      ? alertsToSend[0].title.replace(/^[^a-zA-ZÀ-ÿ0-9]+/, '').trim()
+      : `${alertsToSend.length} alertes détectées (${urgentCount} urgentes). Consultez l'application ou votre boîte mail.`;
+
+    triggerWindowsNotification(notifTitle, notifMsg);
+  }
+
   // Enregistrer l'historique et le journal de log
   if (successCount > 0) {
     try {
@@ -915,11 +966,18 @@ if (isDirectExecution) {
   const isTest = args.includes('--test');
   const isDryRun = args.includes('--dry-run');
   const force = args.includes('--force');
+  const isTestNotif = args.includes('--test-notif');
 
-  runEmailReminders({ isTest, isDryRun, force })
-    .then(() => process.exit(0))
-    .catch(err => {
-      console.error("❌ Erreur lors de l'exécution :", err.message);
-      process.exit(1);
-    });
+  if (isTestNotif) {
+    console.log("📢 Test direct de la notification Windows bureau...");
+    triggerWindowsNotification("Carnet d'Entretien", "Test de notification Windows : Vos alertes s'affichent avec succès sur cet écran ! 🎉");
+    setTimeout(() => process.exit(0), 1200);
+  } else {
+    runEmailReminders({ isTest, isDryRun, force })
+      .then(() => process.exit(0))
+      .catch(err => {
+        console.error("❌ Erreur lors de l'exécution :", err.message);
+        process.exit(1);
+      });
+  }
 }

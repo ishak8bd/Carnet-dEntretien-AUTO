@@ -655,6 +655,17 @@ function updateNotificationSettingsUI() {
     }
     if (testBtn) testBtn.style.display = 'none';
   }
+
+  // 6. Mise à jour de la bannière sur le tableau de bord
+  const notifBanner = document.getElementById('notifPermissionBanner');
+  if (notifBanner) {
+    const isDismissed = sessionStorage.getItem('carnet_dismiss_notif_banner') === 'true';
+    if (isEnabled || permission === 'unsupported' || isDismissed) {
+      notifBanner.classList.add('hidden');
+    } else {
+      notifBanner.classList.remove('hidden');
+    }
+  }
 }
 
 /**
@@ -679,14 +690,24 @@ async function showDeviceNotification(title, options = {}) {
 
   try {
     if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.ready;
-      if (reg && typeof reg.showNotification === 'function') {
-        await reg.showNotification(title, finalOptions);
-        return true;
+      try {
+        const reg = await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout')), 1200))
+        ]);
+        if (reg && typeof reg.showNotification === 'function') {
+          await reg.showNotification(title, finalOptions);
+          return true;
+        }
+      } catch (swErr) {
+        // Fallback immédiat si le Service Worker tarde ou est indisponible
       }
     }
-    new Notification(title, finalOptions);
-    return true;
+    if (typeof Notification === 'function') {
+      new Notification(title, finalOptions);
+      return true;
+    }
+    return false;
   } catch (err) {
     console.warn("Impossible d'afficher la notification système:", err);
     return false;
@@ -712,6 +733,7 @@ async function toggleDeviceNotifications() {
   if (isCurrentlyActive) {
     if (!appState.settings) appState.settings = {};
     appState.settings.notificationsEnabled = false;
+    appState.settings.notificationsExplicitlyDisabled = true;
     saveState();
     updateNotificationSettingsUI();
     showToast("Notifications locales désactivées sur cet appareil.", "info");
@@ -723,6 +745,7 @@ async function toggleDeviceNotifications() {
     if (result === 'granted') {
       if (!appState.settings) appState.settings = {};
       appState.settings.notificationsEnabled = true;
+      appState.settings.notificationsExplicitlyDisabled = false;
       saveState();
       updateNotificationSettingsUI();
       showToast("🔔 Notifications activées avec succès !", "success");
@@ -771,7 +794,11 @@ async function sendTestNotification() {
 async function checkAndSendPendingMaintenanceNotifications() {
   if (!isNotificationSupported()) return;
   if (Notification.permission !== 'granted') return;
-  if (!appState.settings || !appState.settings.notificationsEnabled) return;
+  if (!appState.settings) appState.settings = {};
+  if (!appState.settings.notificationsExplicitlyDisabled && !appState.settings.notificationsEnabled) {
+    appState.settings.notificationsEnabled = true;
+  }
+  if (!appState.settings.notificationsEnabled) return;
 
   const vehicles = Array.isArray(appState.vehicles) ? appState.vehicles : [];
   if (vehicles.length === 0) return;
@@ -967,7 +994,9 @@ function loadState() {
           parsed.settings.appLogo = 'dark';
         }
       }
-      if (parsed.settings.notificationsEnabled === undefined) {
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && !parsed.settings.notificationsExplicitlyDisabled) {
+        parsed.settings.notificationsEnabled = true;
+      } else if (parsed.settings.notificationsEnabled === undefined) {
         parsed.settings.notificationsEnabled = false;
       }
       if (parsed.settings.notifUrgentMaint === undefined) {
@@ -5706,6 +5735,11 @@ function attachEventListeners() {
   });
 
   // Gestion des notifications de l'appareil
+  document.getElementById('btnBannerEnableNotif')?.addEventListener('click', toggleDeviceNotifications);
+  document.getElementById('btnBannerDismissNotif')?.addEventListener('click', () => {
+    sessionStorage.setItem('carnet_dismiss_notif_banner', 'true');
+    document.getElementById('notifPermissionBanner')?.classList.add('hidden');
+  });
   document.getElementById('btnToggleNotifications')?.addEventListener('click', toggleDeviceNotifications);
   document.getElementById('btnTestNotification')?.addEventListener('click', sendTestNotification);
   document.getElementById('chkNotifUrgentMaint')?.addEventListener('change', (e) => {

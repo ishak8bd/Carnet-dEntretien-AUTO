@@ -882,6 +882,14 @@ try {
   unitOrange.value = 'minutes';
   window.saveAlertFrequenciesFromInputs();
 
+  // Vérification de la bannière d'activation sur le tableau de bord
+  const notifBanner = document.getElementById('notifPermissionBanner');
+  const btnBannerEnable = document.getElementById('btnBannerEnableNotif');
+  const btnBannerDismiss = document.getElementById('btnBannerDismissNotif');
+  assert(notifBanner, 'Bannière d\'activation rapide des notifications présente');
+  assert(btnBannerEnable, 'Bouton d\'activation sur la bannière présent');
+  assert(btnBannerDismiss, 'Bouton de masquage sur la bannière présent');
+
   // Activer les notifications
   await window.toggleDeviceNotifications();
   assert.strictEqual(window.appState.settings.notificationsEnabled, true, 'notificationsEnabled doit être à true après activation');
