@@ -1156,11 +1156,11 @@ async function checkAndSendPendingMaintenanceNotifications() {
         let title = '';
         let body = '';
 
-        if (isOverdue || (daysRemaining !== null && daysRemaining <= 2) || (kmRemaining !== null && kmRemaining <= 50)) {
+        if (isOverdue) {
           stage = 'urgent';
           const overdueInfo = (kmRemaining !== null && kmRemaining < 0) 
             ? `dépassé de ${Math.abs(kmRemaining).toLocaleString('fr-FR')} km` 
-            : (daysRemaining !== null && daysRemaining < 0 ? `dépassé de ${Math.abs(daysRemaining)} jour(s)` : `échéance immédiate`);
+            : (daysRemaining !== null && daysRemaining < 0 ? `dépassé de ${Math.abs(daysRemaining)} jour(s)` : `échéance dépassée`);
           title = `🚨 Entretien urgent : ${it.name} (${vehName})`;
           body = `Intervention requise (${overdueInfo}). Pensez à l'effectuer dès que possible !`;
         } else if ((daysRemaining !== null && daysRemaining <= 7) || (kmRemaining !== null && kmRemaining <= 250)) {

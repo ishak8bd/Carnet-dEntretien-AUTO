@@ -874,14 +874,17 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
         effectiveRemainingDays = remainingDaysByDate;
       }
 
-      if (effectiveRemainingDays <= 15 || (remainingKm !== null && remainingKm <= 500)) {
-        let level = 'info';
-        let levelLabel = 'ℹ️ À PRÉVOIR';
-        let badgeBg = '#0284c7';
+      const isOverdue = (effectiveRemainingDays <= 0) || (remainingKm !== null && remainingKm <= 0);
+      const thresholdDays = Math.max(1, Number(roomDoc?.settings?.notifThresholdDays || cfg?.notifThresholdDays || 30));
 
-        if (effectiveRemainingDays <= 2 || (remainingKm !== null && remainingKm <= 100)) {
+      if (isOverdue || effectiveRemainingDays <= thresholdDays || (remainingKm !== null && remainingKm <= 1000)) {
+        let level = 'warning';
+        let levelLabel = '⏳ ÉCHÉANCE PROCHE';
+        let badgeBg = '#d97706';
+
+        if (isOverdue) {
           level = 'urgent';
-          levelLabel = '🚨 URGENT / RETARD';
+          levelLabel = '🚨 URGENT / DÉPASSÉ';
           badgeBg = '#dc2626';
         } else if (effectiveRemainingDays <= 7 || (remainingKm !== null && remainingKm <= 250)) {
           level = 'warning';
