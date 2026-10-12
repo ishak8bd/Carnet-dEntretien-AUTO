@@ -4806,8 +4806,61 @@ function checkBackupReminder() {
   }
 }
 
+/**
+ * Initialise la navigation par sous-onglets dans l'écran des Paramètres
+ */
+function initSettingsTabs() {
+  const tabBtns = document.querySelectorAll('.settings-tab-btn');
+  if (!tabBtns || tabBtns.length === 0) return;
+
+  tabBtns.forEach(btn => {
+    btn.onclick = () => {
+      const tabKey = btn.getAttribute('data-settings-tab');
+      if (tabKey) switchSettingsTab(tabKey);
+    };
+  });
+
+  const savedTab = localStorage.getItem('carnet_settings_active_tab') || 'alerts';
+  switchSettingsTab(savedTab);
+}
+
+/**
+ * Bascule vers un sous-onglet spécifique dans l'écran des Paramètres
+ * ('alerts', 'room', 'appearance', 'intervals', 'system')
+ */
+function switchSettingsTab(tabKey) {
+  const validTabs = ['alerts', 'room', 'appearance', 'intervals', 'system'];
+  const targetKey = validTabs.includes(tabKey) ? tabKey : 'alerts';
+
+  const tabBtns = document.querySelectorAll('.settings-tab-btn');
+  tabBtns.forEach(btn => {
+    const isTarget = btn.getAttribute('data-settings-tab') === targetKey;
+    btn.classList.toggle('active', isTarget);
+    btn.setAttribute('aria-selected', isTarget ? 'true' : 'false');
+  });
+
+  const panels = document.querySelectorAll('.settings-tab-panel');
+  panels.forEach(panel => {
+    const isTarget = panel.id === `panelSettings_${targetKey}`;
+    if (isTarget) {
+      panel.classList.remove('hidden');
+    } else {
+      panel.classList.add('hidden');
+    }
+  });
+
+  try {
+    localStorage.setItem('carnet_settings_active_tab', targetKey);
+  } catch (e) {}
+}
+
+window.switchSettingsTab = switchSettingsTab;
+
 /** Rendu complet de l'écran des Paramètres */
 function renderSettingsScreen() {
+  // 0. Organisation des sous-onglets
+  initSettingsTabs();
+
   const lastBackupEl = document.getElementById('lastBackupDateDisplay');
   const backupBadge = document.getElementById('backupStatusBadge');
   const listEl = document.getElementById('defaultIntervalsList');
@@ -6011,6 +6064,8 @@ function attachEventListeners() {
     checkAndSendPendingMaintenanceNotifications();
   }, 60 * 1000);
 
+  // Initialisation des sous-onglets de la page Paramètres
+  initSettingsTabs();
 }
 
 // ============================================================================

@@ -489,15 +489,44 @@
       <div class="settings-hero">
         <h2 class="habitudes-hero-title">⚙️ Paramètres &amp; Sauvegardes</h2>
         <p class="card-subtitle">
-          Gérez vos sauvegardes de données, vos intervalles d'entretien par défaut et l'installation hors-ligne de l'application.
+          Gérez vos alertes, votre salle partagée, le thème visuel, les intervalles et les sauvegardes.
         </p>
       </div>
 
-      <!-- SECTION MULTI-UTILISATEURS & SYNCHRONISATION MULTI-APPAREILS -->
-      <div id="settingsRoomContainer"></div>
+      <!-- Barre d'onglets thématiques pour organiser les paramètres -->
+      <div class="settings-nav-bar" role="tablist" aria-label="Catégories des paramètres">
+        <button type="button" class="settings-tab-btn active" data-settings-tab="alerts" role="tab" aria-selected="true" aria-controls="panelSettings_alerts">
+          <span class="settings-tab-icon">🔔</span>
+          <span class="settings-tab-text">Alertes &amp; Fréquences</span>
+        </button>
+        <button type="button" class="settings-tab-btn" data-settings-tab="room" role="tab" aria-selected="false" aria-controls="panelSettings_room">
+          <span class="settings-tab-icon">👥</span>
+          <span class="settings-tab-text">Salle Partagée</span>
+        </button>
+        <button type="button" class="settings-tab-btn" data-settings-tab="appearance" role="tab" aria-selected="false" aria-controls="panelSettings_appearance">
+          <span class="settings-tab-icon">🎨</span>
+          <span class="settings-tab-text">Apparence</span>
+        </button>
+        <button type="button" class="settings-tab-btn" data-settings-tab="intervals" role="tab" aria-selected="false" aria-controls="panelSettings_intervals">
+          <span class="settings-tab-icon">🛠️</span>
+          <span class="settings-tab-text">Intervalles</span>
+        </button>
+        <button type="button" class="settings-tab-btn" data-settings-tab="system" role="tab" aria-selected="false" aria-controls="panelSettings_system">
+          <span class="settings-tab-icon">💾</span>
+          <span class="settings-tab-text">Données &amp; PWA</span>
+        </button>
+      </div>
 
-      <!-- CARTE : Thème & Apparence de l'application -->
-      <section class="card settings-card" id="settingsAppLogoCard">
+      <!-- ONGLET 2 : SALLE PARTAGÉE (MULTI-UTILISATEURS & SYNCHRONISATION) -->
+      <div id="panelSettings_room" class="settings-tab-panel hidden" role="tabpanel" aria-label="Salle Partagée">
+        <!-- SECTION MULTI-UTILISATEURS & SYNCHRONISATION MULTI-APPAREILS -->
+        <div id="settingsRoomContainer"></div>
+      </div>
+
+      <!-- ONGLET 3 : THÈME & APPARENCE DE L'APPLICATION -->
+      <div id="panelSettings_appearance" class="settings-tab-panel hidden" role="tabpanel" aria-label="Apparence et Thème">
+        <!-- CARTE : Thème & Apparence de l'application -->
+        <section class="card settings-card" id="settingsAppLogoCard">
         <div class="card-header">
           <div class="card-title">
             <span>🎨 Thème &amp; Apparence globale de l'application</span>
@@ -601,9 +630,12 @@
           </div>
         </div>
       </section>
+      </div> <!-- /panelSettings_appearance -->
 
-      <!-- CARTE : Notifications directes sur l'appareil (Web Push & Alertes PWA) -->
-      <section class="card settings-card" id="settingsNotificationsCard">
+      <!-- ONGLET 1 : ALERTES & FRÉQUENCES (ACTIF PAR DÉFAUT) -->
+      <div id="panelSettings_alerts" class="settings-tab-panel" role="tabpanel" aria-label="Alertes et Fréquences">
+        <!-- CARTE : Notifications directes sur l'appareil (Web Push & Alertes PWA) -->
+        <section class="card settings-card" id="settingsNotificationsCard">
         <div class="card-header">
           <div class="card-title">
             <span>🔔 Notifications sur cet appareil</span>
@@ -789,9 +821,12 @@
           </div>
         </div>
       </section>
+      </div> <!-- /panelSettings_alerts -->
 
-      <!-- CARTE : Intervalles par défaut (Settings) -->
-      <section class="card settings-card">
+      <!-- ONGLET 4 : INTERVALLES PAR DÉFAUT -->
+      <div id="panelSettings_intervals" class="settings-tab-panel hidden" role="tabpanel" aria-label="Intervalles par défaut">
+        <!-- CARTE : Intervalles par défaut (Settings) -->
+        <section class="card settings-card">
         <div class="card-header">
           <div class="card-title">
             <span>🛠️ Intervalles par défaut</span>
@@ -824,9 +859,12 @@
           </div>
         </form>
       </section>
+      </div> <!-- /panelSettings_intervals -->
 
-      <!-- CARTE 1 : Sauvegarde & Restauration JSON -->
-      <section class="card settings-card">
+      <!-- ONGLET 5 : DONNÉES, SAUVEGARDES & PWA -->
+      <div id="panelSettings_system" class="settings-tab-panel hidden" role="tabpanel" aria-label="Données, Sauvegardes et PWA">
+        <!-- CARTE 1 : Sauvegarde & Restauration JSON -->
+        <section class="card settings-card">
         <div class="card-header">
           <div class="card-title">
             <span>💾 Sauvegarde &amp; Restauration</span>
@@ -918,6 +956,7 @@
           </button>
         </div>
       </section>
+      </div> <!-- /panelSettings_system -->
     </div> <!-- /viewSettings -->
 
   </div>

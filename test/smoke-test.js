@@ -942,7 +942,45 @@ try {
     assert(hasMaintAlert, 'Une alerte spécifique pour l\'entretien testé doit être émise');
   }
 
-  console.log('✅ TOUS LES TESTS DU SMOKE TEST (24/24) ONT RÉUSSI SANS AUCUNE ERREUR !');
+  console.log('25. Vérification de l\'organisation des paramètres par sous-onglets');
+  const settingsTabAlerts = document.querySelector('.settings-tab-btn[data-settings-tab="alerts"]');
+  const settingsTabRoom = document.querySelector('.settings-tab-btn[data-settings-tab="room"]');
+  const settingsTabAppearance = document.querySelector('.settings-tab-btn[data-settings-tab="appearance"]');
+  const settingsTabIntervals = document.querySelector('.settings-tab-btn[data-settings-tab="intervals"]');
+  const settingsTabSystem = document.querySelector('.settings-tab-btn[data-settings-tab="system"]');
+
+  assert(settingsTabAlerts && settingsTabRoom && settingsTabAppearance && settingsTabIntervals && settingsTabSystem, 'Tous les 5 sous-onglets de paramètres sont présents');
+
+  const panelAlerts = document.getElementById('panelSettings_alerts');
+  const panelRoom = document.getElementById('panelSettings_room');
+  const panelAppearance = document.getElementById('panelSettings_appearance');
+  const panelIntervals = document.getElementById('panelSettings_intervals');
+  const panelSystem = document.getElementById('panelSettings_system');
+
+  assert(panelAlerts && panelRoom && panelAppearance && panelIntervals && panelSystem, 'Tous les 5 panneaux de paramètres sont présents');
+
+  // Test du clic sur chaque onglet
+  settingsTabRoom.click();
+  assert(!panelRoom.classList.contains('hidden'), 'Panneau Salle affiché après clic');
+  assert(panelAlerts.classList.contains('hidden'), 'Panneau Alertes masqué');
+  assert.strictEqual(window.localStorage.getItem('carnet_settings_active_tab'), 'room', 'Onglet room persisté');
+
+  settingsTabAppearance.click();
+  assert(!panelAppearance.classList.contains('hidden'), 'Panneau Apparence affiché après clic');
+  assert(panelRoom.classList.contains('hidden'), 'Panneau Salle masqué');
+
+  settingsTabIntervals.click();
+  assert(!panelIntervals.classList.contains('hidden'), 'Panneau Intervalles affiché après clic');
+
+  settingsTabSystem.click();
+  assert(!panelSystem.classList.contains('hidden'), 'Panneau Système affiché après clic');
+
+  // Retour à Alertes
+  settingsTabAlerts.click();
+  assert(!panelAlerts.classList.contains('hidden'), 'Panneau Alertes réaffiché');
+  assert(panelSystem.classList.contains('hidden'), 'Panneau Système masqué');
+
+  console.log('✅ TOUS LES TESTS DU SMOKE TEST (25/25) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
 } catch (err) {
   console.error('❌ Échec du smoke test:', err);

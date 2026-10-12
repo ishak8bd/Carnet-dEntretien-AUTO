@@ -4635,3 +4635,78 @@ body.theme-liquid .logo-picker-card:active {
   border-color: var(--primary);
   background: var(--bg-card-subtle);
 }
+
+/* ==========================================================================
+   Navigation par Onglets de l'écran des Paramètres
+   ========================================================================== */
+
+.settings-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 14px 2px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin-bottom: 8px;
+}
+
+.settings-nav-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-tab-btn {
+  padding: 9px 15px;
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1.5px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+  outline: none;
+}
+
+.settings-tab-btn:hover {
+  background: var(--bg-card-subtle);
+  color: var(--text-main);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.settings-tab-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  font-weight: 700;
+}
+
+.settings-tab-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.settings-tab-text {
+  font-size: 0.84rem;
+  letter-spacing: -0.01em;
+}
+
+.settings-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.22s ease-out;
+}
+
+.settings-tab-panel.hidden {
+  display: none !important;
+}
