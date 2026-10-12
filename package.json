@@ -12,6 +12,7 @@
     "email:send": "node scripts/send-email-reminders.mjs --force",
     "email:test": "node scripts/send-email-reminders.mjs --test",
     "email:dry-run": "node scripts/send-email-reminders.mjs --dry-run",
+    "push:test": "node scripts/send-email-reminders.mjs --test-push",
     "sync-docs": "node scripts/sync-docs.js"
   },
   "repository": {
@@ -31,6 +32,7 @@
   },
   "dependencies": {
     "firebase-admin": "^14.5.0",
-    "nodemailer": "^10.0.16"
+    "nodemailer": "^10.0.16",
+    "web-push": "^3.6.7"
   }
 }

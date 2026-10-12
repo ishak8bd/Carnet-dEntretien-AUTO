@@ -16,6 +16,7 @@
  * 9. Optional WhatsApp phone number on members and self-update permissions.
  * 10. Optional email address on members and self-update permissions.
  * 11. External contacts subcollection validation (owner CRUD, member read-only, non-member deny).
+ * 12. Web Push subscriptions subcollection validation (approved member CRUD, pending/outsider deny, endpoint & key validation).
  */
 
 const fs = require('fs');
@@ -1088,6 +1089,349 @@ describe('Family Room Car Maintenance Tracker - Firestore Security Rules', () =>
 
       // Delete contact
       await assertSucceeds(removeDoc(ownerDb, 'rooms/room_1/contacts/contact_1'));
+    });
+  });
+
+  // -------------------------------------------------------------
+  // 12. Web Push Subscriptions Subcollection Validation
+  // -------------------------------------------------------------
+  describe('12. Web Push subscriptions subcollection validation', () => {
+    const validSubscription = {
+      endpoint: 'https://fcm.googleapis.com/fcm/send/fake_push_token_abcdef1234567890',
+      keys: {
+        p256dh: 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QT9AcUbVYOEkKa8tinZgyShaD3itbOj97AOZZ8JC4hp0gqVc',
+        auth: 'tBHItJI5svbpez7KI4CCXg',
+      },
+      authorUid: 'user_approved',
+      authorName: 'Bob Member',
+      deviceName: 'Chrome on Linux',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it('allows approved member to register/create their pushSubscription with valid payload', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      await assertSucceeds(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_1', {
+        ...validSubscription,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+    });
+
+    it('allows approved member to register pushSubscription without optional authorName and deviceName', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      const minimalSubscription = {
+        endpoint: 'https://fcm.googleapis.com/fcm/send/token_minimal_12345',
+        keys: {
+          p256dh: 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QT9AcUbVYOEkKa8tinZgyShaD3itbOj97AOZZ8JC4hp0gqVc',
+          auth: 'tBHItJI5svbpez7KI4CCXg',
+        },
+        authorUid: 'user_approved',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      await assertSucceeds(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_minimal', minimalSubscription));
+    });
+
+    it('rejects pushSubscription creation if authorUid does not match request.auth.uid (spoofing)', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_spoof', {
+        ...validSubscription,
+        authorUid: 'user_owner', // Trying to spoof owner UID
+      }));
+    });
+
+    it('allows approved member to update their pushSubscription', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+      const createdDate = new Date();
+
+      await writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_1', {
+        ...validSubscription,
+        createdAt: createdDate,
+        updatedAt: createdDate,
+      });
+
+      const updatedDate = new Date();
+      await assertSucceeds(patchDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_1', {
+        deviceName: 'Firefox on Android',
+        updatedAt: updatedDate,
+      }));
+    });
+
+    it('rejects updating pushSubscription if immutable fields (authorUid or createdAt) are modified', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+      const createdDate = new Date();
+
+      await writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_1', {
+        ...validSubscription,
+        createdAt: createdDate,
+        updatedAt: createdDate,
+      });
+
+      // Modifying authorUid is rejected
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_1', {
+        authorUid: 'user_other',
+      }));
+
+      // Modifying createdAt is rejected
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_1', {
+        createdAt: new Date(Date.now() - 100000),
+      }));
+    });
+
+    it('allows approved member to delete their own pushSubscription', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      await writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_1', {
+        ...validSubscription,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await assertSucceeds(removeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_1'));
+    });
+
+    it('allows room owner to delete any pushSubscription', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+
+      await writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_1', {
+        ...validSubscription,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await assertSucceeds(removeDoc(ownerDb, 'rooms/room_1/pushSubscriptions/sub_1'));
+    });
+
+    it('denies an approved member from deleting another member pushSubscription', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const ownerDb = testEnv.authenticatedContext('user_owner').firestore();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      await writeDoc(ownerDb, 'rooms/room_1/pushSubscriptions/sub_owner', {
+        ...validSubscription,
+        authorUid: 'user_owner',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await assertFails(removeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_owner'));
+    });
+
+    it('allows approved members to read pushSubscriptions', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      await writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_1', {
+        ...validSubscription,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await assertSucceeds(readDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_1'));
+    });
+
+    it('denies pending member from reading, creating, updating, or deleting pushSubscriptions', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+      await writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_1', {
+        ...validSubscription,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const pendingDb = testEnv.authenticatedContext('user_pending').firestore();
+
+      // Read denied
+      await assertFails(readDoc(pendingDb, 'rooms/room_1/pushSubscriptions/sub_1'));
+
+      // Create denied
+      await assertFails(writeDoc(pendingDb, 'rooms/room_1/pushSubscriptions/sub_pending', {
+        ...validSubscription,
+        authorUid: 'user_pending',
+      }));
+
+      // Update denied
+      await assertFails(patchDoc(pendingDb, 'rooms/room_1/pushSubscriptions/sub_1', {
+        deviceName: 'Hacked device',
+      }));
+
+      // Delete denied
+      await assertFails(removeDoc(pendingDb, 'rooms/room_1/pushSubscriptions/sub_1'));
+    });
+
+    it('denies non-member or unauthenticated user from reading or writing pushSubscriptions', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+      await writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_1', {
+        ...validSubscription,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const unauthDb = testEnv.unauthenticatedContext().firestore();
+      const outsiderDb = testEnv.authenticatedContext('user_outsider').firestore();
+
+      // Read denied
+      await assertFails(readDoc(unauthDb, 'rooms/room_1/pushSubscriptions/sub_1'));
+      await assertFails(readDoc(outsiderDb, 'rooms/room_1/pushSubscriptions/sub_1'));
+
+      // Create denied
+      await assertFails(writeDoc(unauthDb, 'rooms/room_1/pushSubscriptions/sub_unauth', {
+        ...validSubscription,
+        authorUid: 'user_unauth',
+      }));
+      await assertFails(writeDoc(outsiderDb, 'rooms/room_1/pushSubscriptions/sub_outsider', {
+        ...validSubscription,
+        authorUid: 'user_outsider',
+      }));
+
+      // Update denied
+      await assertFails(patchDoc(outsiderDb, 'rooms/room_1/pushSubscriptions/sub_1', {
+        deviceName: 'Outsider device',
+      }));
+
+      // Delete denied
+      await assertFails(removeDoc(outsiderDb, 'rooms/room_1/pushSubscriptions/sub_1'));
+    });
+
+    it('rejects pushSubscription without valid endpoint', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      // Missing endpoint
+      const { endpoint: _, ...noEndpoint } = validSubscription;
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_1', noEndpoint));
+
+      // Non-https endpoint
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_2', {
+        ...validSubscription,
+        endpoint: 'http://fcm.googleapis.com/fcm/send/insecure-endpoint',
+      }));
+
+      // Too short endpoint (< 10 chars)
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_3', {
+        ...validSubscription,
+        endpoint: 'https://a',
+      }));
+
+      // Non-string endpoint
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_4', {
+        ...validSubscription,
+        endpoint: 1234567890,
+      }));
+
+      // Too long endpoint (> 1000 chars)
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_5', {
+        ...validSubscription,
+        endpoint: 'https://' + 'a'.repeat(1005),
+      }));
+    });
+
+    it('rejects pushSubscription without valid keys', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      // Missing keys
+      const { keys: _, ...noKeys } = validSubscription;
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_keys_1', noKeys));
+
+      // Keys is not a map
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_keys_2', {
+        ...validSubscription,
+        keys: 'string_instead_of_map',
+      }));
+
+      // Missing p256dh
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_keys_3', {
+        ...validSubscription,
+        keys: { auth: 'valid_auth_key' },
+      }));
+
+      // Missing auth
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_keys_4', {
+        ...validSubscription,
+        keys: { p256dh: 'valid_p256dh_key' },
+      }));
+
+      // Empty p256dh
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_keys_5', {
+        ...validSubscription,
+        keys: { p256dh: '', auth: 'valid_auth_key' },
+      }));
+
+      // Too long p256dh (> 200 chars)
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_keys_6', {
+        ...validSubscription,
+        keys: { p256dh: 'k'.repeat(205), auth: 'valid_auth_key' },
+      }));
+
+      // Empty auth
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_keys_7', {
+        ...validSubscription,
+        keys: { p256dh: 'valid_p256dh_key', auth: '' },
+      }));
+
+      // Too long auth (> 100 chars)
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_keys_8', {
+        ...validSubscription,
+        keys: { p256dh: 'valid_p256dh_key', auth: 'a'.repeat(105) },
+      }));
+    });
+
+    it('rejects pushSubscription if optional strings exceed size constraints or invalid timestamps', async () => {
+      if (!testEnv) return;
+      await seedRoomFixtures();
+      const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
+
+      // authorName > 100 chars
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_opt_1', {
+        ...validSubscription,
+        authorName: 'n'.repeat(105),
+      }));
+
+      // deviceName > 100 chars
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_opt_2', {
+        ...validSubscription,
+        deviceName: 'd'.repeat(105),
+      }));
+
+      // createdAt not timestamp
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_opt_3', {
+        ...validSubscription,
+        createdAt: '2026-04-01T00:00:00Z',
+      }));
+
+      // updatedAt not timestamp
+      await assertFails(writeDoc(approvedDb, 'rooms/room_1/pushSubscriptions/sub_bad_opt_4', {
+        ...validSubscription,
+        updatedAt: 123456789,
+      }));
     });
   });
 });

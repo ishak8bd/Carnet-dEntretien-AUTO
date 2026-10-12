@@ -1,4 +1,4 @@
-name: Rappels d'Entretien par E-mail
+name: Rappels d'Entretien par E-mail & Web Push
 
 on:
   # Période de test : exécution automatique toutes les 5 minutes
@@ -17,6 +17,11 @@ on:
         required: false
         type: boolean
         default: false
+      test_push:
+        description: "Envoyer une notification Web Push de test immédiate sur les téléphones ?"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   send-email-reminders:
@@ -32,9 +37,9 @@ jobs:
           cache: 'npm'
 
       - name: Installation des dépendances
-        run: npm install nodemailer firebase-admin
+        run: npm install nodemailer firebase-admin web-push
 
-      - name: Vérification des échéances et envoi des e-mails
+      - name: Vérification des échéances et envoi des alertes
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
@@ -42,8 +47,13 @@ jobs:
           FIREBASE_ROOM_ID: ${{ secrets.FIREBASE_ROOM_ID || 'roommv13dgxrc6c448ac3b69' }}
           FIREBASE_PROJECT_ID: 'entretien-auto-tracker'
           APP_URL: 'https://ishak8bd.github.io/Carnet-dEntretien-AUTO/'
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY || 'BBkQiwciU2eY1iWtPhEZhVHffN1p82QiHSF5DLi5nefWrS6sDsAGbw7Zqy83jH-5Qn97YMd6uLHQM1wfHLFv5_0' }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT || 'mailto:contact@carnet-auto.local' }}
         run: |
-          if [ "${{ inputs.test_mode }}" = "true" ]; then
+          if [ "${{ inputs.test_push }}" = "true" ]; then
+            node scripts/send-email-reminders.mjs --test-push
+          elif [ "${{ inputs.test_mode }}" = "true" ]; then
             node scripts/send-email-reminders.mjs --test
           elif [ "${{ inputs.force_send }}" = "true" ]; then
             node scripts/send-email-reminders.mjs --force

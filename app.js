@@ -715,6 +715,65 @@ async function showDeviceNotification(title, options = {}) {
 }
 
 /**
+ * Convertit une clé VAPID base64 en tableau binaire pour pushManager.subscribe
+ */
+function urlBase64ToUint8Array(base64String) {
+  if (!base64String) return new Uint8Array(0);
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+/**
+ * Enregistre le jeton Web Push auprès du Service Worker et de Firebase
+ */
+async function subscribeToWebPushNotifications() {
+  if (typeof window === 'undefined') return null;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    return null;
+  }
+  if (getNotificationPermission() !== 'granted') {
+    return null;
+  }
+
+  const vapidKey = window.VAPID_PUBLIC_KEY || "BBkQiwciU2eY1iWtPhEZhVHffN1p82QiHSF5DLi5nefWrS6sDsAGbw7Zqy83jH-5Qn97YMd6uLHQM1wfHLFv5_0";
+  if (!vapidKey) return null;
+
+  try {
+    const reg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout')), 2500))
+    ]);
+
+    if (!reg || !reg.pushManager) return null;
+
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const convertedVapidKey = urlBase64ToUint8Array(vapidKey);
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedVapidKey
+      });
+    }
+
+    if (sub && window.FamilyRoom && typeof window.FamilyRoom.registerPushSubscriptionInRoom === 'function') {
+      await window.FamilyRoom.registerPushSubscriptionInRoom(sub);
+    }
+    return sub;
+  } catch (err) {
+    console.warn("Avertissement enregistrement Web Push:", err.message);
+    return null;
+  }
+}
+
+/**
  * Demande la permission et active les notifications
  */
 async function toggleDeviceNotifications() {
@@ -749,6 +808,9 @@ async function toggleDeviceNotifications() {
       saveState();
       updateNotificationSettingsUI();
       showToast("🔔 Notifications activées avec succès !", "success");
+
+      // Abonnement Web Push en arrière-plan (permet de recevoir les alertes même application fermée)
+      subscribeToWebPushNotifications().catch(() => {});
 
       await showDeviceNotification("🔔 Carnet Auto : Notifications activées !", {
         body: "Votre téléphone recevra désormais vos rappels d'entretien et de kilométrage.",
@@ -5842,6 +5904,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Vérification et émission des notifications d'échéances en arrière-plan
   checkAndSendPendingMaintenanceNotifications();
+
+  // Enregistrement / mise à jour de l'abonnement Web Push si autorisé
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    subscribeToWebPushNotifications().catch(() => {});
+  }
 
   // Détection connectivité réseau (En ligne / Hors-ligne)
   window.addEventListener('online', updateNetworkStatus);

@@ -47,6 +47,11 @@ export const firebaseConfig = {
   appId: "1:642031831676:web:fe3be6aa0bdaa602ee17f9"
 };
 
+export const VAPID_PUBLIC_KEY = "BBkQiwciU2eY1iWtPhEZhVHffN1p82QiHSF5DLi5nefWrS6sDsAGbw7Zqy83jH-5Qn97YMd6uLHQM1wfHLFv5_0";
+if (typeof window !== 'undefined') {
+  window.VAPID_PUBLIC_KEY = VAPID_PUBLIC_KEY;
+}
+
 // Vérifie si la configuration est prête
 export function isFirebaseConfigured() {
   return firebaseConfig.apiKey && 

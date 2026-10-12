@@ -2100,6 +2100,61 @@ export async function initFamilyRoom() {
   });
 }
 
+/**
+ * Enregistre ou met à jour l'abonnement Web Push d'un appareil dans la salle Firestore
+ */
+export async function registerPushSubscriptionInRoom(subscription) {
+  if (!subscription || !subscription.endpoint) return null;
+  const profile = getStoredRoomProfile();
+  if (!profile || !profile.roomId || profile.status !== 'approved') return null;
+
+  try {
+    const user = await ensureAuth();
+    if (!user) return null;
+
+    // Extraire les clés cryptographiques de l'abonnement
+    const p256dhKey = subscription.getKey('p256dh');
+    const authKey = subscription.getKey('auth');
+
+    if (!p256dhKey || !authKey) return null;
+
+    const p256dh = btoa(String.fromCharCode.apply(null, new Uint8Array(p256dhKey)));
+    const auth = btoa(String.fromCharCode.apply(null, new Uint8Array(authKey)));
+
+    // Identifiant déterministe pour cet appareil/endpoint
+    const endpointHash = Math.abs(subscription.endpoint.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0)).toString(36);
+
+    const subId = `sub_${user.uid}_${endpointHash}`;
+    const subRef = doc(db, 'rooms', profile.roomId, 'pushSubscriptions', subId);
+
+    const deviceName = (navigator.userAgentData && navigator.userAgentData.platform) 
+      ? `${navigator.userAgentData.platform} Browser` 
+      : (navigator.userAgent.includes('Android') ? 'Android Device' : (navigator.userAgent.includes('iPhone') ? 'iPhone' : 'Web Browser'));
+
+    await setDoc(subRef, {
+      endpoint: subscription.endpoint,
+      keys: {
+        p256dh: p256dh,
+        auth: auth
+      },
+      authorUid: user.uid,
+      authorName: (profile.memberName || 'Membre').trim(),
+      deviceName: deviceName.slice(0, 100),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    console.log("📲 Abonnement Web Push synchronisé avec succès dans la salle Firestore :", subId);
+    return subId;
+  } catch (err) {
+    console.warn("Avertissement: Impossible d'enregistrer l'abonnement Web Push dans Firestore:", err.message);
+    return null;
+  }
+}
+
 // Attacher à window pour faciliter l'interopérabilité
 window.FamilyRoom = {
   createFamilyRoom,
@@ -2147,7 +2202,8 @@ window.FamilyRoom = {
   getExternalContacts,
   saveExternalContact,
   deleteExternalContact,
-  syncAlertFrequenciesToRoom
+  syncAlertFrequenciesToRoom,
+  registerPushSubscriptionInRoom
 };
 
 if (document.readyState === 'loading') {

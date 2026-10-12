@@ -12,6 +12,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { execFile } from 'child_process';
+import webpush from 'web-push';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,7 +32,10 @@ export function loadConfig() {
     roomId: process.env.FIREBASE_ROOM_ID || 'roommv13dgxrc6c448ac3b69',
     projectId: process.env.FIREBASE_PROJECT_ID || 'entretien-auto-tracker',
     apiKey: process.env.FIREBASE_API_KEY || 'AIzaSyA7qjZi_aWunCo15Y96BbvsZfX7n7O8LO8',
-    appUrl: process.env.APP_URL || 'https://ishak8bd.github.io/Carnet-dEntretien-AUTO/'
+    appUrl: process.env.APP_URL || 'https://ishak8bd.github.io/Carnet-dEntretien-AUTO/',
+    vapidPublicKey: process.env.VAPID_PUBLIC_KEY || '',
+    vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || '',
+    vapidSubject: process.env.VAPID_SUBJECT || ''
   };
 
   // Charger depuis scripts/email-config.json si présent
@@ -88,6 +92,62 @@ export function triggerWindowsNotification(title, message) {
   } catch (err) {
     console.warn("⚠️ Erreur notification Windows:", err.message);
   }
+}
+
+/**
+ * Envoie une notification Web Push aux appareils abonnés (téléphones/PC même fermés)
+ */
+export async function sendWebPushReminders({ pushSubscriptions = [], title, body, url, cfg, tag }) {
+  if (!cfg || !cfg.vapidPublicKey || !cfg.vapidPrivateKey) {
+    return { success: false, reason: 'missing_vapid_keys' };
+  }
+  if (!Array.isArray(pushSubscriptions) || pushSubscriptions.length === 0) {
+    return { success: true, count: 0, reason: 'no_subscriptions' };
+  }
+
+  try {
+    webpush.setVapidDetails(
+      cfg.vapidSubject || (cfg.gmailUser ? `mailto:${cfg.gmailUser}` : 'mailto:contact@carnet-auto.local'),
+      cfg.vapidPublicKey,
+      cfg.vapidPrivateKey
+    );
+  } catch (err) {
+    console.warn("⚠️ Erreur configuration VAPID:", err.message);
+    return { success: false, error: err.message };
+  }
+
+  const payload = JSON.stringify({
+    title,
+    body,
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    tag: tag || `carnet-push-${Date.now()}`,
+    url: url || cfg.appUrl || './index.html'
+  });
+
+  const results = [];
+  for (const sub of pushSubscriptions) {
+    if (!sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) continue;
+    const pushSub = {
+      endpoint: sub.endpoint,
+      keys: {
+        p256dh: sub.keys.p256dh,
+        auth: sub.keys.auth
+      }
+    };
+    try {
+      await webpush.sendNotification(pushSub, payload);
+      results.push({ id: sub.id, success: true, device: sub.deviceName });
+      console.log(`  📲 Notification Web Push délivrée avec succès à l'appareil [${sub.deviceName || sub.authorName || 'Téléphone'}] !`);
+    } catch (err) {
+      console.warn(`  ⚠️ Échec de livraison Web Push à [${sub.deviceName || 'Appareil'}] :`, err.statusCode || err.message);
+      results.push({ id: sub.id, success: false, statusCode: err.statusCode, error: err.message });
+    }
+  }
+
+  const successCount = results.filter(r => r.success).length;
+  console.log(`✨ Bilan Web Push : ${successCount}/${results.length} appareil(s) notifié(s) directement dans leur poche !`);
+  return { success: successCount > 0, count: successCount, total: results.length, details: results };
 }
 
 /**
@@ -560,6 +620,7 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
   const members = await fetchFirestoreCollection('members', auth, cfg);
   const history = await fetchFirestoreCollection('history', auth, cfg);
   const contacts = await fetchFirestoreCollection('contacts', auth, cfg);
+  const pushSubscriptions = await fetchFirestoreCollection('pushSubscriptions', auth, cfg);
 
   if (hasPermissionDenied) {
     console.error(`\n🔒 [Firestore] ACCÈS EN ATTENTE D'APPROBATION (Erreur 403) :`);
@@ -579,7 +640,7 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
     return { success: false, error: 'no_vehicles' };
   }
 
-  console.log(`📊 Données récupérées : ${vehicles.length} véhicule(s), ${items.length} entretien(s), ${kmLogs.length} relevé(s), ${history.length} intervention(s), ${members.length} membre(s), ${contacts.length} contact(s) externe(s).`);
+  console.log(`📊 Données récupérées : ${vehicles.length} véhicule(s), ${items.length} entretien(s), ${kmLogs.length} relevé(s), ${history.length} intervention(s), ${members.length} membre(s), ${contacts.length} contact(s) externe(s), ${pushSubscriptions.length} appareil(s) Web Push.`);
 
   // Extraire la liste des destinataires e-mail avec nom et rôle
   const recipientMap = new Map();
@@ -698,6 +759,13 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
     console.log(`✨ Bilan du test : ${allSuccessful}/${recipients.length} destinataire(s) validé(s).`);
     if (allSuccessful > 0) {
       triggerWindowsNotification("Carnet d'Entretien (Test)", "Test de notification réussi ! Vos alertes fonctionnent parfaitement sur cet ordinateur.");
+      await sendWebPushReminders({
+        pushSubscriptions,
+        title: "🚗 Carnet d'Entretien (Test Push)",
+        body: "Test Web Push réussi ! Vos alertes fonctionnent même quand l'application est fermée. 🎉",
+        url: cfg.appUrl,
+        cfg
+      });
     }
     return { success: allSuccessful > 0, recipients: recipientList, details: testResults };
   }
@@ -929,7 +997,7 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
   const successCount = sendResults.filter(r => r.success).length;
   console.log(`✨ Bilan d'envoi des alertes : ${successCount}/${recipients.length} destinataire(s) ont reçu leur notification !`);
 
-  // Déclencher la notification bureau Windows si des alertes ont été émises
+  // Déclencher la notification bureau Windows et Web Push si des alertes ont été émises
   if (successCount > 0 || isDryRun) {
     const notifTitle = hasUrgent 
       ? `Carnet Auto : ${urgentCount} entretien(s) URGENT(S) !` 
@@ -939,6 +1007,16 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
       : `${alertsToSend.length} alertes détectées (${urgentCount} urgentes). Consultez l'application ou votre boîte mail.`;
 
     triggerWindowsNotification(notifTitle, notifMsg);
+
+    if (!isDryRun) {
+      await sendWebPushReminders({
+        pushSubscriptions,
+        title: notifTitle,
+        body: notifMsg,
+        url: cfg.appUrl,
+        cfg
+      });
+    }
   }
 
   // Enregistrer l'historique et le journal de log
@@ -967,11 +1045,37 @@ if (isDirectExecution) {
   const isDryRun = args.includes('--dry-run');
   const force = args.includes('--force');
   const isTestNotif = args.includes('--test-notif');
+  const isTestPush = args.includes('--test-push');
 
   if (isTestNotif) {
     console.log("📢 Test direct de la notification Windows bureau...");
     triggerWindowsNotification("Carnet d'Entretien", "Test de notification Windows : Vos alertes s'affichent avec succès sur cet écran ! 🎉");
     setTimeout(() => process.exit(0), 1200);
+  } else if (isTestPush) {
+    console.log("📲 Test direct de la notification Web Push sur tous les appareils abonnés...");
+    (async () => {
+      const cfg = loadConfig();
+      await initFirebaseAdminIfAvailable();
+      const auth = !adminDb ? await getFirebaseAuthToken(cfg) : null;
+      const pushSubscriptions = await fetchFirestoreCollection('pushSubscriptions', auth, cfg);
+      console.log(`📱 ${pushSubscriptions.length} appareil(s) Web Push trouvé(s) dans la salle.`);
+      if (pushSubscriptions.length === 0) {
+        console.warn("⚠️ Aucun appareil abonné au Web Push dans cette salle.");
+        console.warn("👉 Ouvrez l'application sur votre téléphone, autorisez les notifications, puis réessayez.");
+        process.exit(0);
+      }
+      const res = await sendWebPushReminders({
+        pushSubscriptions,
+        title: "🚗 Carnet d'Entretien (Test Push Mobile)",
+        body: "Alerte reçue même si l'application est fermée ! Votre téléphone est bien configuré 🎉",
+        url: cfg.appUrl,
+        cfg
+      });
+      process.exit(res.success ? 0 : 1);
+    })().catch(err => {
+      console.error("❌ Erreur test Web Push :", err.message);
+      process.exit(1);
+    });
   } else {
     runEmailReminders({ isTest, isDryRun, force })
       .then(() => process.exit(0))

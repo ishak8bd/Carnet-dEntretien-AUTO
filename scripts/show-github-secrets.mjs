@@ -49,6 +49,16 @@ console.log("   Valeur        : Copiez l'intégralité du contenu JSON ci-dessou
 console.log(serviceAccountStr ? JSON.stringify(JSON.parse(serviceAccountStr)) : "(serviceAccountKey.json non trouvé)");
 console.log("----------------------------------------------------------------------\n");
 
+console.log("----------------------------------------------------------------------");
+console.log("4. Nom du secret : VAPID_PUBLIC_KEY");
+console.log("   Valeur        : " + (emailConfig.vapidPublicKey || 'BBkQiwciU2eY1iWtPhEZhVHffN1p82QiHSF5DLi5nefWrS6sDsAGbw7Zqy83jH-5Qn97YMd6uLHQM1wfHLFv5_0'));
+console.log("----------------------------------------------------------------------\n");
+
+console.log("----------------------------------------------------------------------");
+console.log("5. Nom du secret : VAPID_PRIVATE_KEY");
+console.log("   Valeur        : " + (emailConfig.vapidPrivateKey || ''));
+console.log("----------------------------------------------------------------------\n");
+
 console.log("Une fois ces secrets ajoutés, GitHub Actions exécutera automatiquement");
-console.log("les vérifications chaque matin à 08h00 UTC et enverra les e-mails");
+console.log("les vérifications et enverra les e-mails ET notifications Web Push");
 console.log("SANS AUCUNE INTERVENTION et même si votre ordinateur est éteint ! 🚀");

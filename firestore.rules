@@ -98,6 +98,18 @@ service cloud.firestore {
     //   - createdAt: timestamp (required, immutable) - Record creation timestamp
     //   - createdBy: string (UID, required, immutable) - Creator UID (room owner)
     //
+    // Subcollection: rooms/{roomId}/pushSubscriptions/{subId}
+    // Fields:
+    //   - endpoint: string (10-1000 chars, starts with 'https://', required) - Web Push service endpoint URL
+    //   - keys: map (required) - Crypto keys:
+    //       * p256dh: string (1-200 chars, required)
+    //       * auth: string (1-100 chars, required)
+    //   - authorUid: string (UID, required, immutable) - Subscribing member UID
+    //   - authorName: string (0-100 chars, optional) - Member name
+    //   - deviceName: string (0-100 chars, optional) - User device name or browser info
+    //   - createdAt: timestamp (required, immutable)
+    //   - updatedAt: timestamp (required)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -238,6 +250,21 @@ service cloud.firestore {
          ('phone' in data && data.phone is string && data.phone.size() >= 3)) &&
         data.createdAt is timestamp &&
         data.createdBy is string && data.createdBy.size() >= 1 && data.createdBy.size() <= 128;
+    }
+
+    function isValidPushSubscription(data) {
+      return data.keys().hasAll(['endpoint', 'keys', 'authorUid', 'createdAt', 'updatedAt']) &&
+        data.endpoint is string && data.endpoint.size() >= 10 && data.endpoint.size() <= 1000 &&
+        data.endpoint.matches('^https://.*') &&
+        data.keys is map &&
+        data.keys.keys().hasAll(['p256dh', 'auth']) &&
+        data.keys.p256dh is string && data.keys.p256dh.size() >= 1 && data.keys.p256dh.size() <= 200 &&
+        data.keys.auth is string && data.keys.auth.size() >= 1 && data.keys.auth.size() <= 100 &&
+        data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 &&
+        (!('authorName' in data) || data.authorName == null || (data.authorName is string && data.authorName.size() <= 100)) &&
+        (!('deviceName' in data) || data.deviceName == null || (data.deviceName is string && data.deviceName.size() <= 100)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
     }
 
     // ===============================================================
@@ -467,6 +494,24 @@ service cloud.firestore {
                          request.resource.data.createdAt == resource.data.createdAt;
 
         allow delete: if isApprovedMember(roomId);
+      }
+
+      // -------------------------------------------------------------
+      // Subcollection: pushSubscriptions (Web Push notification tokens)
+      // -------------------------------------------------------------
+      match /pushSubscriptions/{subId} {
+        allow read: if isApprovedMember(roomId);
+
+        allow create: if isApprovedMember(roomId) &&
+                         request.resource.data.authorUid == request.auth.uid &&
+                         isValidPushSubscription(request.resource.data);
+
+        allow update: if isApprovedMember(roomId) &&
+                         request.resource.data.authorUid == resource.data.authorUid &&
+                         request.resource.data.createdAt == resource.data.createdAt &&
+                         isValidPushSubscription(request.resource.data);
+
+        allow delete: if isRoomOwner(roomId) || (isAuthenticated() && resource.data.authorUid == request.auth.uid);
       }
     }
   }
