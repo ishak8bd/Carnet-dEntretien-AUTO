@@ -837,6 +837,15 @@ export function startRoomSynchronization(roomId) {
 
   updateSyncIndicatorBadge('online', 'En ligne (Synchronisé)');
 
+  // Synchronisation automatique de l'abonnement Web Push pour cet appareil dans la salle
+  if (typeof window !== 'undefined' && typeof window.subscribeToWebPushNotifications === 'function') {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      setTimeout(() => {
+        window.subscribeToWebPushNotifications().catch(() => {});
+      }, 1200);
+    }
+  }
+
   // 1. Véhicules
   const unsubVehicles = onSnapshot(collection(db, 'rooms', roomId, 'vehicles'), (snap) => {
     roomVehiclesMap.clear();
@@ -2134,23 +2143,37 @@ export async function registerPushSubscriptionInRoom(subscription) {
       ? `${navigator.userAgentData.platform} Browser` 
       : (navigator.userAgent.includes('Android') ? 'Android Device' : (navigator.userAgent.includes('iPhone') ? 'iPhone' : 'Web Browser'));
 
-    await setDoc(subRef, {
+    const existingSnap = await getDoc(subRef);
+    const isNew = !existingSnap.exists();
+    const payload = {
       endpoint: subscription.endpoint,
       keys: {
         p256dh: p256dh,
         auth: auth
       },
       authorUid: user.uid,
-      authorName: (profile.memberName || 'Membre').trim(),
+      authorName: (profile.myName || profile.memberName || 'Membre').trim(),
       deviceName: deviceName.slice(0, 100),
-      createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
-    }, { merge: true });
+    };
+    if (isNew) {
+      payload.createdAt = serverTimestamp();
+    } else {
+      payload.createdAt = (existingSnap.data() && existingSnap.data().createdAt) ? existingSnap.data().createdAt : serverTimestamp();
+    }
+
+    await setDoc(subRef, payload, { merge: true });
 
     console.log("📲 Abonnement Web Push synchronisé avec succès dans la salle Firestore :", subId);
+    if (typeof window.updateWebPushStatusUI === 'function') {
+      window.updateWebPushStatusUI(true, deviceName);
+    }
     return subId;
   } catch (err) {
     console.warn("Avertissement: Impossible d'enregistrer l'abonnement Web Push dans Firestore:", err.message);
+    if (typeof window.updateWebPushStatusUI === 'function') {
+      window.updateWebPushStatusUI(false, null, err.message);
+    }
     return null;
   }
 }

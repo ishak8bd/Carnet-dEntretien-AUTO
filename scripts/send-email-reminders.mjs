@@ -595,15 +595,14 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
   console.log(`======================================================`);
 
   const cfg = loadConfig();
+  const emailEnabled = Boolean(cfg.gmailUser && cfg.gmailAppPassword);
 
-  if (!cfg.gmailUser || !cfg.gmailAppPassword) {
+  if (!emailEnabled) {
     if (isDryRun) {
       console.log("ℹ️ Identifiants Gmail non configurés. Mode Simulation (--dry-run) actif.");
       cfg.gmailUser = cfg.gmailUser || 'simulation@gmail.com';
     } else {
-      console.error("❌ Identifiants Gmail non configurés.");
-      console.error("👉 Créez scripts/email-config.json ou définissez GMAIL_USER et GMAIL_APP_PASSWORD.");
-      return { success: false, error: 'missing_credentials' };
+      console.warn("ℹ️ Identifiants Gmail non configurés : l'envoi d'e-mails sera ignoré, mais les alertes Web Push (sur mobile) et Windows restent 100% actives.");
     }
   }
 
@@ -684,11 +683,10 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
   console.log(`📬 Destinataire(s) e-mail (${recipients.length}) :`, recipients.map(r => r.name ? `${r.name} <${r.email}>` : r.email).join(', '));
 
   if (recipients.length === 0) {
-    console.warn("⚠️ Aucun destinataire e-mail trouvé.");
-    return { success: false, error: 'no_recipients' };
+    console.warn("ℹ️ Aucun destinataire e-mail trouvé (les alertes Web Push restent actives).");
   }
 
-  const transporter = !isDryRun ? createEmailTransporter(cfg) : null;
+  const transporter = (!isDryRun && emailEnabled && recipients.length > 0) ? createEmailTransporter(cfg) : null;
 
   // --------------------------------------------------------------------------
   // CAS 1 : MODE TEST DIRECT (--test)
@@ -973,43 +971,49 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
   }
 
   const sendResults = [];
-  for (const r of recipients) {
-    const targetTo = r.name ? `"${r.name}" <${r.email}>` : r.email;
-    try {
-      const info = await transporter.sendMail({
-        from: `"Carnet d'Entretien" <${cfg.gmailUser}>`,
-        to: targetTo,
-        subject,
-        html,
-        text: `Carnet d'Entretien : ${alertsToSend.length} rappel(s) à consulter. Rendez-vous sur ${cfg.appUrl}`
-      });
-      console.log(`  ✅ E-mail d'alerte envoyé avec succès à ${r.email} (${r.name || 'Membre'}) ! MessageId : ${info.messageId}`);
-      sendResults.push({ email: r.email, success: true, messageId: info.messageId });
-    } catch (err) {
-      console.error(`  ❌ Échec de l'envoi d'alerte à ${r.email} :`, err.message);
-      sendResults.push({ email: r.email, success: false, error: err.message });
-    }
-    if (recipients.length > 1) {
-      await new Promise(res => setTimeout(res, 350));
+  if (transporter && recipients.length > 0) {
+    for (const r of recipients) {
+      const targetTo = r.name ? `"${r.name}" <${r.email}>` : r.email;
+      try {
+        const info = await transporter.sendMail({
+          from: `"Carnet d'Entretien" <${cfg.gmailUser}>`,
+          to: targetTo,
+          subject,
+          html,
+          text: `Carnet d'Entretien : ${alertsToSend.length} rappel(s) à consulter. Rendez-vous sur ${cfg.appUrl}`
+        });
+        console.log(`  ✅ E-mail d'alerte envoyé avec succès à ${r.email} (${r.name || 'Membre'}) ! MessageId : ${info.messageId}`);
+        sendResults.push({ email: r.email, success: true, messageId: info.messageId });
+      } catch (err) {
+        console.error(`  ❌ Échec de l'envoi d'alerte à ${r.email} :`, err.message);
+        sendResults.push({ email: r.email, success: false, error: err.message });
+      }
+      if (recipients.length > 1) {
+        await new Promise(res => setTimeout(res, 350));
+      }
     }
   }
 
   const successCount = sendResults.filter(r => r.success).length;
-  console.log(`✨ Bilan d'envoi des alertes : ${successCount}/${recipients.length} destinataire(s) ont reçu leur notification !`);
+  if (recipients.length > 0) {
+    console.log(`✨ Bilan d'envoi des e-mails : ${successCount}/${recipients.length} destinataire(s) ont reçu leur synthèse.`);
+  }
 
-  // Déclencher la notification bureau Windows et Web Push si des alertes ont été émises
-  if (successCount > 0 || isDryRun) {
+  // Déclencher la notification bureau Windows et Web Push pour toutes les alertes détectées
+  // (Totalement indépendant du résultat d'envoi d'e-mails)
+  let pushResult = { success: false, count: 0 };
+  if (alertsToSend.length > 0) {
     const notifTitle = hasUrgent 
       ? `Carnet Auto : ${urgentCount} entretien(s) URGENT(S) !` 
       : `Carnet Auto : ${alertsToSend.length} rappel(s) d'entretien`;
     const notifMsg = alertsToSend.length === 1
       ? alertsToSend[0].title.replace(/^[^a-zA-ZÀ-ÿ0-9]+/, '').trim()
-      : `${alertsToSend.length} alertes détectées (${urgentCount} urgentes). Consultez l'application ou votre boîte mail.`;
+      : `${alertsToSend.length} alertes détectées (${urgentCount} urgentes). Consultez l'application.`;
 
     triggerWindowsNotification(notifTitle, notifMsg);
 
     if (!isDryRun) {
-      await sendWebPushReminders({
+      pushResult = await sendWebPushReminders({
         pushSubscriptions,
         title: notifTitle,
         body: notifMsg,
@@ -1020,7 +1024,8 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
   }
 
   // Enregistrer l'historique et le journal de log
-  if (successCount > 0) {
+  const anyNotifSent = successCount > 0 || (pushResult && pushResult.count > 0);
+  if (anyNotifSent || isDryRun) {
     try {
       fs.writeFileSync(HISTORY_FILE, JSON.stringify({
         lastSent: now,
@@ -1029,9 +1034,9 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
         recipients: recipientList
       }, null, 2), 'utf-8');
     } catch (e) {}
-    appendLog(`SUCCÈS : ${alertsToSend.length} alertes envoyées à ${successCount}/${recipients.length} destinataires (${recipientList.join(', ')}).`);
+    appendLog(`SUCCÈS : ${alertsToSend.length} alertes traitées (E-mails: ${successCount}/${recipients.length}, Web Push: ${pushResult.count || 0}).`);
   } else {
-    appendLog(`ÉCHEC : Erreur d'envoi à tous les destinataires.`);
+    appendLog(`INFO : ${alertsToSend.length} alertes détectées, 0 livraison distante (${pushSubscriptions.length} appareil(s) push, ${recipients.length} e-mail(s)).`);
   }
 
   return { success: successCount > 0, alertsCount: alertsToSend.length, details: sendResults };

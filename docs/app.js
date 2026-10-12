@@ -630,7 +630,11 @@ function updateNotificationSettingsUI() {
       badge.className = "status-badge status-badge-green";
     }
     if (infoEl) {
-      infoEl.innerHTML = "✅ <strong>Les notifications sont actives sur cet appareil.</strong> Vous recevrez des alertes directes pour les entretiens urgents et les relevés de compteur.";
+      const roomProf = window.FamilyRoom && typeof window.FamilyRoom.getStoredRoomProfile === 'function' ? window.FamilyRoom.getStoredRoomProfile() : null;
+      const roomInfo = roomProf && roomProf.roomId 
+        ? `<div id="webPushStatusLine" style="margin-top: 6px; font-size: 0.82rem; color: var(--primary);">📲 <strong>Alertes application fermée :</strong> Synchronisation avec la salle active. Vos rappels arriveront même quand l'application n'est pas ouverte.</div>`
+        : `<div id="webPushStatusLine" style="margin-top: 6px; font-size: 0.82rem; color: var(--text-muted);">ℹ️ <em>Pour recevoir les alertes application fermée, rejoignez ou créez une salle partagée dans les Paramètres.</em></div>`;
+      infoEl.innerHTML = `✅ <strong>Les notifications sont actives sur cet appareil.</strong> Vous recevrez des alertes directes pour les entretiens urgents et les relevés de compteur.${roomInfo}`;
     }
     if (toggleBtn) {
       toggleBtn.disabled = false;
@@ -747,17 +751,23 @@ async function subscribeToWebPushNotifications() {
   if (!vapidKey) return null;
 
   try {
-    const reg = await Promise.race([
+    let reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) {
+      reg = await navigator.serviceWorker.register('./sw.js');
+    }
+
+    const readyReg = await Promise.race([
       navigator.serviceWorker.ready,
-      new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout')), 2500))
-    ]);
+      new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout (10s)')), 10000))
+    ]).catch(() => reg);
 
-    if (!reg || !reg.pushManager) return null;
+    const targetReg = readyReg || reg;
+    if (!targetReg || !targetReg.pushManager) return null;
 
-    let sub = await reg.pushManager.getSubscription();
+    let sub = await targetReg.pushManager.getSubscription();
     if (!sub) {
       const convertedVapidKey = urlBase64ToUint8Array(vapidKey);
-      sub = await reg.pushManager.subscribe({
+      sub = await targetReg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: convertedVapidKey
       });
@@ -769,9 +779,13 @@ async function subscribeToWebPushNotifications() {
     return sub;
   } catch (err) {
     console.warn("Avertissement enregistrement Web Push:", err.message);
+    if (typeof window.updateWebPushStatusUI === 'function') {
+      window.updateWebPushStatusUI(false, null, err.message);
+    }
     return null;
   }
 }
+window.subscribeToWebPushNotifications = subscribeToWebPushNotifications;
 
 /**
  * Demande la permission et active les notifications
@@ -5968,6 +5982,9 @@ window.addEventListener('DOMContentLoaded', () => {
         console.log('Service Worker enregistré:', reg.scope);
         // Forcer la vérification d'une nouvelle version auprès du serveur
         reg.update();
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          subscribeToWebPushNotifications().catch(() => {});
+        }
       })
       .catch((err) => console.warn('Erreur Service Worker:', err));
 

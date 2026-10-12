@@ -13,6 +13,7 @@
     "email:test": "node scripts/send-email-reminders.mjs --test",
     "email:dry-run": "node scripts/send-email-reminders.mjs --dry-run",
     "push:test": "node scripts/send-email-reminders.mjs --test-push",
+    "deploy:rules": "node scripts/deploy-rules.mjs",
     "sync-docs": "node scripts/sync-docs.js"
   },
   "repository": {
