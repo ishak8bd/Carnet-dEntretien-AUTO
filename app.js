@@ -519,7 +519,104 @@ function formatAlertFrequencyLabel(val, unit) {
 }
 
 /**
- * Enregistre les fréquences d'alertes personnalisées saisies librement par l'utilisateur
+ * Retourne la durée en millisecondes pour un niveau de fréquence E-mail ('red', 'orange', ou 'km')
+ */
+function getEmailAlertFrequencyMs(level) {
+  if (!appState.settings) appState.settings = {};
+  if (level === 'red') {
+    const val = Math.max(1, parseInt(appState.settings.emailAlertFreqRedValue, 10) || 24);
+    const unit = appState.settings.emailAlertFreqRedUnit || 'hours';
+    if (unit === 'hours') return val * 60 * 60 * 1000;
+    if (unit === 'days') return val * 24 * 60 * 60 * 1000;
+    return val * 60 * 1000; // minutes
+  } else if (level === 'km') {
+    const val = Math.max(1, parseInt(appState.settings.emailAlertFreqKmValue, 10) || 7);
+    const unit = appState.settings.emailAlertFreqKmUnit || 'days';
+    if (unit === 'hours') return val * 60 * 60 * 1000;
+    if (unit === 'days') return val * 24 * 60 * 60 * 1000;
+    return val * 60 * 1000; // minutes
+  } else {
+    const val = Math.max(1, parseInt(appState.settings.emailAlertFreqOrangeValue, 10) || 2);
+    const unit = appState.settings.emailAlertFreqOrangeUnit || 'days';
+    if (unit === 'hours') return val * 60 * 60 * 1000;
+    if (unit === 'days') return val * 24 * 60 * 60 * 1000;
+    return val * 60 * 1000; // minutes
+  }
+}
+
+/**
+ * Retourne la durée en minutes pour un niveau de fréquence E-mail ('red', 'orange', ou 'km')
+ */
+function getEmailAlertFrequencyMinutes(level) {
+  return Math.round(getEmailAlertFrequencyMs(level) / (60 * 1000));
+}
+
+/**
+ * Construit le payload complet synchronisé dans Firestore (intégrant cadences notifications ET e-mails distinctes)
+ */
+function buildFullAlertFrequenciesPayload() {
+  if (!appState.settings) appState.settings = {};
+  const notifRedVal = Math.max(1, parseInt(appState.settings.alertFreqRedValue, 10) || 5);
+  const notifRedUnit = appState.settings.alertFreqRedUnit || 'minutes';
+  const notifOrangeVal = Math.max(1, parseInt(appState.settings.alertFreqOrangeValue, 10) || 15);
+  const notifOrangeUnit = appState.settings.alertFreqOrangeUnit || 'minutes';
+  const notifKmVal = Math.max(1, parseInt(appState.settings.alertFreqKmValue, 10) || 12);
+  const notifKmUnit = appState.settings.alertFreqKmUnit || 'hours';
+  const notifStale = Math.max(1, parseInt(appState.settings.notifStaleKmDays, 10) || 15);
+
+  const emailRedVal = Math.max(1, parseInt(appState.settings.emailAlertFreqRedValue, 10) || 24);
+  const emailRedUnit = appState.settings.emailAlertFreqRedUnit || 'hours';
+  const emailOrangeVal = Math.max(1, parseInt(appState.settings.emailAlertFreqOrangeValue, 10) || 2);
+  const emailOrangeUnit = appState.settings.emailAlertFreqOrangeUnit || 'days';
+  const emailKmVal = Math.max(1, parseInt(appState.settings.emailAlertFreqKmValue, 10) || 7);
+  const emailKmUnit = appState.settings.emailAlertFreqKmUnit || 'days';
+  const emailStale = Math.max(1, parseInt(appState.settings.emailStaleKmDays || appState.settings.notifStaleKmDays, 10) || 15);
+
+  return {
+    // Rétrocompatibilité / Plat
+    redValue: notifRedVal,
+    redUnit: notifRedUnit,
+    redMinutes: getAlertFrequencyMinutes('red'),
+    orangeValue: notifOrangeVal,
+    orangeUnit: notifOrangeUnit,
+    orangeMinutes: getAlertFrequencyMinutes('orange'),
+    kmValue: notifKmVal,
+    kmUnit: notifKmUnit,
+    kmMinutes: getAlertFrequencyMinutes('km'),
+    staleKmDays: notifStale,
+
+    // Spécifique Notifications
+    notifications: {
+      redValue: notifRedVal,
+      redUnit: notifRedUnit,
+      redMinutes: getAlertFrequencyMinutes('red'),
+      orangeValue: notifOrangeVal,
+      orangeUnit: notifOrangeUnit,
+      orangeMinutes: getAlertFrequencyMinutes('orange'),
+      kmValue: notifKmVal,
+      kmUnit: notifKmUnit,
+      kmMinutes: getAlertFrequencyMinutes('km'),
+      staleKmDays: notifStale
+    },
+
+    // Spécifique E-mail (distinct et indépendant des notifications !)
+    email: {
+      redValue: emailRedVal,
+      redUnit: emailRedUnit,
+      redMinutes: getEmailAlertFrequencyMinutes('red'),
+      orangeValue: emailOrangeVal,
+      orangeUnit: emailOrangeUnit,
+      orangeMinutes: getEmailAlertFrequencyMinutes('orange'),
+      kmValue: emailKmVal,
+      kmUnit: emailKmUnit,
+      kmMinutes: getEmailAlertFrequencyMinutes('km'),
+      staleKmDays: emailStale
+    }
+  };
+}
+
+/**
+ * Enregistre les fréquences d'alertes personnalisées saisies librement par l'utilisateur (Notifications App)
  */
 async function saveAlertFrequenciesFromInputs(showFeedback = false) {
   if (!appState.settings) appState.settings = {};
@@ -553,18 +650,7 @@ async function saveAlertFrequenciesFromInputs(showFeedback = false) {
   saveState();
   updateNotificationSettingsUI();
 
-  const freqData = {
-    redValue: appState.settings.alertFreqRedValue,
-    redUnit: appState.settings.alertFreqRedUnit,
-    redMinutes: getAlertFrequencyMinutes('red'),
-    orangeValue: appState.settings.alertFreqOrangeValue,
-    orangeUnit: appState.settings.alertFreqOrangeUnit,
-    orangeMinutes: getAlertFrequencyMinutes('orange'),
-    kmValue: appState.settings.alertFreqKmValue,
-    kmUnit: appState.settings.alertFreqKmUnit,
-    kmMinutes: getAlertFrequencyMinutes('km'),
-    staleKmDays: appState.settings.notifStaleKmDays || 15
-  };
+  const freqData = buildFullAlertFrequenciesPayload();
 
   // Si connecté à une salle Firestore, synchroniser sur le document de salle
   let syncResult = null;
@@ -587,12 +673,115 @@ async function saveAlertFrequenciesFromInputs(showFeedback = false) {
 
   if (showFeedback) {
     if (syncResult && syncResult.error) {
-      showToast(`⚠️ Cadences enregistrées localement, mais échec synchronisation salle : ${syncResult.error}`, 'warning', 5000);
+      showToast(`⚠️ Cadences notifications enregistrées localement, mais échec synchronisation salle : ${syncResult.error}`, 'warning', 5000);
     } else {
-      showToast(`✅ Cadences enregistrées : Rouge (${redLabel}), Orange (${orangeLabel}), Compteur (${kmLabel})`, 'success', 3500);
+      showToast(`✅ Cadence notifications enregistrée : Rouge (${redLabel}), Orange (${orangeLabel}), Compteur (${kmLabel})`, 'success', 3500);
     }
   }
 }
+
+/**
+ * Enregistre les fréquences d'alertes personnalisées saisies pour les E-mails (indépendantes des notifications)
+ */
+async function saveEmailAlertFrequenciesFromInputs(showFeedback = false) {
+  if (!appState.settings) appState.settings = {};
+  const inputRedVal = document.getElementById('inputEmailAlertFreqRedValue');
+  const selectRedUnit = document.getElementById('selectEmailAlertFreqRedUnit');
+  const inputOrangeVal = document.getElementById('inputEmailAlertFreqOrangeValue');
+  const selectOrangeUnit = document.getElementById('selectEmailAlertFreqOrangeUnit');
+  const inputKmVal = document.getElementById('inputEmailAlertFreqKmValue');
+  const selectKmUnit = document.getElementById('selectEmailAlertFreqKmUnit');
+  const inputStaleDays = document.getElementById('inputEmailStaleKmDays');
+
+  if (inputRedVal && selectRedUnit) {
+    appState.settings.emailAlertFreqRedValue = Math.max(1, parseInt(inputRedVal.value, 10) || 24);
+    appState.settings.emailAlertFreqRedUnit = selectRedUnit.value || 'hours';
+  }
+  if (inputOrangeVal && selectOrangeUnit) {
+    appState.settings.emailAlertFreqOrangeValue = Math.max(1, parseInt(inputOrangeVal.value, 10) || 2);
+    appState.settings.emailAlertFreqOrangeUnit = selectOrangeUnit.value || 'days';
+  }
+  if (inputKmVal && selectKmUnit) {
+    appState.settings.emailAlertFreqKmValue = Math.max(1, parseInt(inputKmVal.value, 10) || 7);
+    appState.settings.emailAlertFreqKmUnit = selectKmUnit.value || 'days';
+  }
+  if (inputStaleDays) {
+    appState.settings.emailStaleKmDays = Math.max(1, parseInt(inputStaleDays.value, 10) || 15);
+  }
+
+  saveState();
+  updateEmailSettingsUI();
+
+  const freqData = buildFullAlertFrequenciesPayload();
+
+  let syncResult = null;
+  if (typeof window !== 'undefined' && window.FamilyRoom && typeof window.FamilyRoom.syncAlertFrequenciesToRoom === 'function') {
+    syncResult = await window.FamilyRoom.syncAlertFrequenciesToRoom(freqData);
+  }
+
+  const redLabel = formatAlertFrequencyLabel(appState.settings.emailAlertFreqRedValue, appState.settings.emailAlertFreqRedUnit);
+  const orangeLabel = formatAlertFrequencyLabel(appState.settings.emailAlertFreqOrangeValue, appState.settings.emailAlertFreqOrangeUnit);
+  const kmLabel = formatAlertFrequencyLabel(appState.settings.emailAlertFreqKmValue, appState.settings.emailAlertFreqKmUnit);
+
+  const statusEl = document.getElementById('lblEmailFreqSavedStatus');
+  if (statusEl) {
+    statusEl.textContent = `✅ Enregistré : Rouge (${redLabel}), Orange (${orangeLabel}), Compteur (${kmLabel})`;
+    statusEl.style.display = 'inline-block';
+    setTimeout(() => {
+      if (statusEl) statusEl.style.display = 'none';
+    }, 4500);
+  }
+
+  if (showFeedback) {
+    if (syncResult && syncResult.error) {
+      showToast(`⚠️ Cadences e-mails enregistrées localement, mais échec synchronisation salle : ${syncResult.error}`, 'warning', 5000);
+    } else {
+      showToast(`✅ Cadence e-mails enregistrée : Rouge (${redLabel}), Orange (${orangeLabel}), Compteur (${kmLabel})`, 'success', 3500);
+    }
+  }
+}
+
+/**
+ * Met à jour l'interface des réglages de fréquence des e-mails
+ */
+function updateEmailSettingsUI() {
+  const inputRedVal = document.getElementById('inputEmailAlertFreqRedValue');
+  const selectRedUnit = document.getElementById('selectEmailAlertFreqRedUnit');
+  const lblRed = document.getElementById('lblCurrentEmailRedFreq');
+  const inputOrangeVal = document.getElementById('inputEmailAlertFreqOrangeValue');
+  const selectOrangeUnit = document.getElementById('selectEmailAlertFreqOrangeUnit');
+  const lblOrange = document.getElementById('lblCurrentEmailOrangeFreq');
+  const inputKmVal = document.getElementById('inputEmailAlertFreqKmValue');
+  const selectKmUnit = document.getElementById('selectEmailAlertFreqKmUnit');
+  const lblKm = document.getElementById('lblCurrentEmailKmFreq');
+  const inputStaleDays = document.getElementById('inputEmailStaleKmDays');
+
+  const redVal = appState.settings?.emailAlertFreqRedValue !== undefined ? appState.settings.emailAlertFreqRedValue : 24;
+  const redUnit = appState.settings?.emailAlertFreqRedUnit || 'hours';
+  const orangeVal = appState.settings?.emailAlertFreqOrangeValue !== undefined ? appState.settings.emailAlertFreqOrangeValue : 2;
+  const orangeUnit = appState.settings?.emailAlertFreqOrangeUnit || 'days';
+  const kmVal = appState.settings?.emailAlertFreqKmValue !== undefined ? appState.settings.emailAlertFreqKmValue : 7;
+  const kmUnit = appState.settings?.emailAlertFreqKmUnit || 'days';
+  const staleKmDays = Math.max(1, parseInt(appState.settings?.emailStaleKmDays || appState.settings?.notifStaleKmDays, 10) || 15);
+
+  if (inputRedVal && document.activeElement !== inputRedVal) inputRedVal.value = String(redVal);
+  if (selectRedUnit) selectRedUnit.value = redUnit;
+  if (lblRed) lblRed.textContent = formatAlertFrequencyLabel(redVal, redUnit);
+
+  if (inputOrangeVal && document.activeElement !== inputOrangeVal) inputOrangeVal.value = String(orangeVal);
+  if (selectOrangeUnit) selectOrangeUnit.value = orangeUnit;
+  if (lblOrange) lblOrange.textContent = formatAlertFrequencyLabel(orangeVal, orangeUnit);
+
+  if (inputKmVal && document.activeElement !== inputKmVal) inputKmVal.value = String(kmVal);
+  if (selectKmUnit) selectKmUnit.value = kmUnit;
+  if (lblKm) lblKm.textContent = formatAlertFrequencyLabel(kmVal, kmUnit);
+
+  if (inputStaleDays && document.activeElement !== inputStaleDays) inputStaleDays.value = String(staleKmDays);
+}
+
+window.getEmailAlertFrequencyMinutes = getEmailAlertFrequencyMinutes;
+window.saveEmailAlertFrequenciesFromInputs = saveEmailAlertFrequenciesFromInputs;
+window.updateEmailSettingsUI = updateEmailSettingsUI;
 
 /**
  * Met à jour l'interface des paramètres de notifications
@@ -735,6 +924,9 @@ function updateNotificationSettingsUI() {
       notifBanner.classList.remove('hidden');
     }
   }
+
+  // 7. Synchronisation de l'affichage des réglages e-mails
+  updateEmailSettingsUI();
 }
 
 /**
@@ -4902,22 +5094,10 @@ function switchAlertChannel(channelKey) {
     }
   });
 
-  // Déplacement dynamique du boîtier de configuration des fréquences
-  // (entre l'onglet Notifications et l'onglet E-mail selon l'onglet actif)
-  const freqBox = document.getElementById('adminAlertFrequencyBox');
-  const containerNotif = document.getElementById('containerFreqNotifications');
-  const containerEmail = document.getElementById('containerFreqEmail');
-
-  if (freqBox && containerNotif && containerEmail) {
-    if (targetChannel === 'email') {
-      if (freqBox.parentElement !== containerEmail) {
-        containerEmail.appendChild(freqBox);
-      }
-    } else {
-      if (freqBox.parentElement !== containerNotif) {
-        containerNotif.appendChild(freqBox);
-      }
-    }
+  if (targetChannel === 'email') {
+    updateEmailSettingsUI();
+  } else if (targetChannel === 'notifications') {
+    updateNotificationSettingsUI();
   }
 
   // Mettre à jour les récapitulatifs des destinataires
@@ -6269,6 +6449,53 @@ function attachEventListeners() {
       }
       saveAlertFrequenciesFromInputs(true);
       checkAndSendPendingMaintenanceNotifications();
+    });
+  });
+
+  // Écouteurs de saisie libre des fréquences d'alertes E-mail
+  const inputEmailRed = document.getElementById('inputEmailAlertFreqRedValue');
+  const unitEmailRed = document.getElementById('selectEmailAlertFreqRedUnit');
+  const inputEmailOrange = document.getElementById('inputEmailAlertFreqOrangeValue');
+  const unitEmailOrange = document.getElementById('selectEmailAlertFreqOrangeUnit');
+  const inputEmailKm = document.getElementById('inputEmailAlertFreqKmValue');
+  const unitEmailKm = document.getElementById('selectEmailAlertFreqKmUnit');
+  const inputEmailStaleDays = document.getElementById('inputEmailStaleKmDays');
+
+  inputEmailRed?.addEventListener('input', () => saveEmailAlertFrequenciesFromInputs(false));
+  inputEmailRed?.addEventListener('change', () => saveEmailAlertFrequenciesFromInputs(true));
+  unitEmailRed?.addEventListener('change', () => saveEmailAlertFrequenciesFromInputs(true));
+
+  inputEmailOrange?.addEventListener('input', () => saveEmailAlertFrequenciesFromInputs(false));
+  inputEmailOrange?.addEventListener('change', () => saveEmailAlertFrequenciesFromInputs(true));
+  unitEmailOrange?.addEventListener('change', () => saveEmailAlertFrequenciesFromInputs(true));
+
+  inputEmailKm?.addEventListener('input', () => saveEmailAlertFrequenciesFromInputs(false));
+  inputEmailKm?.addEventListener('change', () => saveEmailAlertFrequenciesFromInputs(true));
+  unitEmailKm?.addEventListener('change', () => saveEmailAlertFrequenciesFromInputs(true));
+
+  inputEmailStaleDays?.addEventListener('input', () => saveEmailAlertFrequenciesFromInputs(false));
+  inputEmailStaleDays?.addEventListener('change', () => saveEmailAlertFrequenciesFromInputs(true));
+
+  document.getElementById('btnSaveEmailAlertFrequencies')?.addEventListener('click', () => {
+    saveEmailAlertFrequenciesFromInputs(true);
+  });
+
+  document.querySelectorAll('[data-quick-freq-email]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const type = btn.getAttribute('data-quick-freq-email');
+      const val = btn.getAttribute('data-val');
+      const unit = btn.getAttribute('data-unit');
+      if (type === 'red') {
+        if (inputEmailRed) inputEmailRed.value = val;
+        if (unitEmailRed) unitEmailRed.value = unit;
+      } else if (type === 'orange') {
+        if (inputEmailOrange) inputEmailOrange.value = val;
+        if (unitEmailOrange) unitEmailOrange.value = unit;
+      } else if (type === 'km') {
+        if (inputEmailKm) inputEmailKm.value = val;
+        if (unitEmailKm) unitEmailKm.value = unit;
+      }
+      saveEmailAlertFrequenciesFromInputs(true);
     });
   });
 

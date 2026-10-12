@@ -1003,7 +1003,7 @@ try {
   assert(channelEmail.classList.contains('hidden'), 'Canal email masqué');
   assert(channelWhatsapp.classList.contains('hidden'), 'Canal whatsapp masqué');
   const adminFreqBox = document.getElementById('adminAlertFrequencyBox');
-  assert(adminFreqBox, 'Boîtier de fréquence des alertes présent');
+  assert(adminFreqBox, 'Boîtier de fréquence des alertes (notifications) présent');
   assert(channelNotif.contains(adminFreqBox), 'Boîtier de fréquence placé dans le canal notifications');
 
   // Clic sur l'onglet E-mail
@@ -1011,7 +1011,53 @@ try {
   assert(channelNotif.classList.contains('hidden'), 'Canal notifications masqué');
   assert(!channelEmail.classList.contains('hidden'), 'Canal email visible');
   assert(channelWhatsapp.classList.contains('hidden'), 'Canal whatsapp masqué');
-  assert(channelEmail.contains(adminFreqBox), 'Boîtier de fréquence déplacé dynamiquement dans le canal e-mail');
+
+  // Boîtier dédié aux fréquences e-mail (distinct des notifications de l'appareil)
+  const adminEmailFreqBox = document.getElementById('adminEmailAlertFrequencyBox');
+  assert(adminEmailFreqBox, 'Boîtier de fréquence dédié aux e-mails présent');
+  assert(channelEmail.contains(adminEmailFreqBox), 'Boîtier de fréquence e-mail placé dans le canal e-mail');
+
+  const inputEmailRed = document.getElementById('inputEmailAlertFreqRedValue');
+  const unitEmailRed = document.getElementById('selectEmailAlertFreqRedUnit');
+  const lblEmailRed = document.getElementById('lblCurrentEmailRedFreq');
+  const inputEmailOrange = document.getElementById('inputEmailAlertFreqOrangeValue');
+  const unitEmailOrange = document.getElementById('selectEmailAlertFreqOrangeUnit');
+  const lblEmailOrange = document.getElementById('lblCurrentEmailOrangeFreq');
+  const inputEmailKm = document.getElementById('inputEmailAlertFreqKmValue');
+  const unitEmailKm = document.getElementById('selectEmailAlertFreqKmUnit');
+  const lblEmailKm = document.getElementById('lblCurrentEmailKmFreq');
+  const inputEmailStale = document.getElementById('inputEmailStaleKmDays');
+
+  assert(inputEmailRed && unitEmailRed && lblEmailRed, 'Champs de cadence e-mail rouge présents');
+  assert(inputEmailOrange && unitEmailOrange && lblEmailOrange, 'Champs de cadence e-mail orange présents');
+  assert(inputEmailKm && unitEmailKm && lblEmailKm, 'Champs de cadence e-mail compteur présents');
+  assert(inputEmailStale, 'Champ seuil jours e-mail compteur présent');
+
+  // Tester l'indépendance des cadences e-mail vs notifications
+  // Les notifications sont à 5 min / 15 min / 12 h
+  assert.strictEqual(window.getAlertFrequencyMinutes('red'), 5, 'Cadence notifications rouge est bien à 5 min');
+
+  // Configurer les e-mails à une cadence différente (ex: 2 jours / 5 jours / 3 jours / 10 jours)
+  inputEmailRed.value = '2';
+  unitEmailRed.value = 'days';
+  inputEmailOrange.value = '5';
+  unitEmailOrange.value = 'days';
+  inputEmailKm.value = '3';
+  unitEmailKm.value = 'days';
+  inputEmailStale.value = '10';
+  window.saveEmailAlertFrequenciesFromInputs();
+
+  // Vérifier que la cadence e-mail est de 2 jours (2880 min)
+  assert.strictEqual(window.appState.settings.emailAlertFreqRedValue, 2, 'Fréquence e-mail rouge = 2');
+  assert.strictEqual(window.appState.settings.emailAlertFreqRedUnit, 'days', 'Unité e-mail rouge = days');
+  assert.strictEqual(window.getEmailAlertFrequencyMinutes('red'), 2 * 24 * 60, 'Cadence e-mail rouge = 2880 min (2 jours)');
+  assert.strictEqual(window.getEmailAlertFrequencyMinutes('orange'), 5 * 24 * 60, 'Cadence e-mail orange = 5 jours');
+  assert.strictEqual(window.getEmailAlertFrequencyMinutes('km'), 3 * 24 * 60, 'Cadence e-mail compteur = 3 jours');
+  assert.strictEqual(window.appState.settings.emailStaleKmDays, 10, 'Seuil jours e-mail compteur = 10 jours');
+
+  // Vérifier que les notifications restent INCHANGÉES à 5 min (totale indépendance)
+  assert.strictEqual(window.getAlertFrequencyMinutes('red'), 5, 'Les notifications sont restées indépendantes à 5 min');
+  assert.strictEqual(window.appState.settings.alertFreqRedValue, 5, 'Fréquence notification rouge inchangée à 5');
 
   // Vérifier la liste des destinataires e-mail
   const emailList = document.getElementById('emailRecipientsSummaryList');

@@ -885,12 +885,82 @@ export function startRoomSynchronization(roomId) {
           window.appState.settings.notifStaleKmDays = Number(f.staleKmDays);
           changed = true;
         }
+
+        // Sous-objet spécifique Notifications
+        if (f.notifications && typeof f.notifications === 'object') {
+          const nf = f.notifications;
+          if (nf.redValue !== undefined && window.appState.settings.alertFreqRedValue !== nf.redValue) {
+            window.appState.settings.alertFreqRedValue = Number(nf.redValue);
+            changed = true;
+          }
+          if (nf.redUnit && window.appState.settings.alertFreqRedUnit !== nf.redUnit) {
+            window.appState.settings.alertFreqRedUnit = String(nf.redUnit);
+            changed = true;
+          }
+          if (nf.orangeValue !== undefined && window.appState.settings.alertFreqOrangeValue !== nf.orangeValue) {
+            window.appState.settings.alertFreqOrangeValue = Number(nf.orangeValue);
+            changed = true;
+          }
+          if (nf.orangeUnit && window.appState.settings.alertFreqOrangeUnit !== nf.orangeUnit) {
+            window.appState.settings.alertFreqOrangeUnit = String(nf.orangeUnit);
+            changed = true;
+          }
+          if (nf.kmValue !== undefined && window.appState.settings.alertFreqKmValue !== nf.kmValue) {
+            window.appState.settings.alertFreqKmValue = Number(nf.kmValue);
+            changed = true;
+          }
+          if (nf.kmUnit && window.appState.settings.alertFreqKmUnit !== nf.kmUnit) {
+            window.appState.settings.alertFreqKmUnit = String(nf.kmUnit);
+            changed = true;
+          }
+          if (nf.staleKmDays !== undefined && window.appState.settings.notifStaleKmDays !== nf.staleKmDays) {
+            window.appState.settings.notifStaleKmDays = Number(nf.staleKmDays);
+            changed = true;
+          }
+        }
+
+        // Sous-objet spécifique E-mails (cadence distincte et indépendante !)
+        if (f.email && typeof f.email === 'object') {
+          const ef = f.email;
+          if (ef.redValue !== undefined && window.appState.settings.emailAlertFreqRedValue !== ef.redValue) {
+            window.appState.settings.emailAlertFreqRedValue = Number(ef.redValue);
+            changed = true;
+          }
+          if (ef.redUnit && window.appState.settings.emailAlertFreqRedUnit !== ef.redUnit) {
+            window.appState.settings.emailAlertFreqRedUnit = String(ef.redUnit);
+            changed = true;
+          }
+          if (ef.orangeValue !== undefined && window.appState.settings.emailAlertFreqOrangeValue !== ef.orangeValue) {
+            window.appState.settings.emailAlertFreqOrangeValue = Number(ef.orangeValue);
+            changed = true;
+          }
+          if (ef.orangeUnit && window.appState.settings.emailAlertFreqOrangeUnit !== ef.orangeUnit) {
+            window.appState.settings.emailAlertFreqOrangeUnit = String(ef.orangeUnit);
+            changed = true;
+          }
+          if (ef.kmValue !== undefined && window.appState.settings.emailAlertFreqKmValue !== ef.kmValue) {
+            window.appState.settings.emailAlertFreqKmValue = Number(ef.kmValue);
+            changed = true;
+          }
+          if (ef.kmUnit && window.appState.settings.emailAlertFreqKmUnit !== ef.kmUnit) {
+            window.appState.settings.emailAlertFreqKmUnit = String(ef.kmUnit);
+            changed = true;
+          }
+          if (ef.staleKmDays !== undefined && window.appState.settings.emailStaleKmDays !== ef.staleKmDays) {
+            window.appState.settings.emailStaleKmDays = Number(ef.staleKmDays);
+            changed = true;
+          }
+        }
+
         if (changed) {
           if (typeof window.saveState === 'function') {
             window.saveState();
           }
           if (typeof window.updateNotificationSettingsUI === 'function') {
             window.updateNotificationSettingsUI();
+          }
+          if (typeof window.updateEmailSettingsUI === 'function') {
+            window.updateEmailSettingsUI();
           }
         }
       }

@@ -738,12 +738,12 @@
             <div class="alert-freq-box" id="adminAlertFrequencyBox">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
               <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
-                <span>⚙️ Cadence des alarmes : Notifications de l'application &amp; E-mails</span>
+                <span>⚙️ Cadence des alarmes : Notifications sur l'appareil</span>
               </div>
-              <span class="status-badge status-badge-info" style="font-size: 0.72rem;">Synchronisé en direct</span>
+              <span class="status-badge status-badge-info" style="font-size: 0.72rem;">Indépendant des e-mails</span>
             </div>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
-              Définissez librement la cadence de répétition des alertes. Cette fréquence s'applique immédiatement <strong>aux notifications sur votre téléphone/appareil</strong> ET <strong>aux e-mails d'alarme</strong>.
+              Définissez librement la cadence de répétition des alertes <strong>directement sur votre téléphone ou ordinateur</strong> (indépendamment de la fréquence des e-mails).
             </p>
 
             <!-- 1. Fréquence ROUGE -->
@@ -873,8 +873,124 @@
             </div>
           </div>
 
-          <!-- Emplacement dynamique du boîtier de cadence pour E-mail -->
-          <div id="containerFreqEmail" style="margin-top: 10px;"></div>
+          <!-- SECTION : Configuration de la Cadence d'Alertes Spécifique aux E-mails -->
+          <div class="alert-freq-box" id="adminEmailAlertFrequencyBox" style="margin-top: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+              <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                <span>⚙️ Cadence des alarmes : E-mails automatiques</span>
+              </div>
+              <span class="status-badge status-badge-info" style="font-size: 0.72rem;">Indépendant des notifications</span>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
+              Définissez une cadence d'envoi par e-mail propre, distincte de celle des notifications sur votre téléphone (ex: 24h ou 2 jours par e-mail au lieu de quelques minutes).
+            </p>
+
+            <!-- 0. Seuil Kilométrique X jours pour E-mail -->
+            <div style="background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: 8px; padding: 10px 12px; margin-top: 6px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <div>
+                <strong style="font-size: 0.82rem; color: var(--text-main);">📅 Alerte relevé si compteur inchangé depuis :</strong>
+                <div style="font-size: 0.74rem; color: var(--text-muted);">Envoi d'un rappel e-mail lorsque le kilométrage n'est pas mis à jour après ce délai.</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <input type="number" id="inputEmailStaleKmDays" class="form-input" min="1" max="365" value="15" style="width: 70px; text-align: center; font-weight: 700;" aria-label="Seuil de jours pour rappel compteur par e-mail">
+                <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-main);">jours</span>
+              </div>
+            </div>
+
+            <!-- 1. Fréquence ROUGE E-mail -->
+            <div class="alert-freq-card alert-freq-card-red">
+              <div class="alert-freq-header">
+                <label for="inputEmailAlertFreqRedValue" class="alert-freq-title" style="color: #ef4444;">
+                  <span>🔴 Phase ROUGE E-mail (Échéance dépassée ou critique)</span>
+                </label>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Actuelle : <strong id="lblCurrentEmailRedFreq">24 heures</strong></span>
+              </div>
+              <div class="alert-freq-inputs-row">
+                <span style="font-size: 0.82rem; color: var(--text-main);">Envoyer chaque :</span>
+                <input type="number" id="inputEmailAlertFreqRedValue" class="form-input alert-freq-value-input" min="1" max="999" value="24" aria-label="Nombre pour fréquence rouge e-mail">
+                <select id="selectEmailAlertFreqRedUnit" class="form-input alert-freq-unit-select" aria-label="Unité fréquence rouge e-mail">
+                  <option value="minutes">Minute(s)</option>
+                  <option value="hours" selected>Heure(s)</option>
+                  <option value="days">Jour(s)</option>
+                </select>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                  <button type="button" class="btn-chip" data-quick-freq-email="red" data-val="1" data-unit="hours">1 h</button>
+                  <button type="button" class="btn-chip" data-quick-freq-email="red" data-val="12" data-unit="hours">12 h</button>
+                  <button type="button" class="btn-chip" data-quick-freq-email="red" data-val="24" data-unit="hours">24 h</button>
+                  <button type="button" class="btn-chip" data-quick-freq-email="red" data-val="2" data-unit="days">2 jours</button>
+                </div>
+              </div>
+              <div style="font-size: 0.74rem; color: var(--text-muted);">
+                Déclenchée quand le kilométrage/date est dépassé ou qu'il reste ≤ 2 jours / 50 km.
+              </div>
+            </div>
+
+            <!-- 2. Fréquence ORANGE E-mail -->
+            <div class="alert-freq-card alert-freq-card-orange">
+              <div class="alert-freq-header">
+                <label for="inputEmailAlertFreqOrangeValue" class="alert-freq-title" style="color: #f59e0b;">
+                  <span>🟠 Phase ORANGE E-mail (Échéance proche / À prévoir)</span>
+                </label>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Actuelle : <strong id="lblCurrentEmailOrangeFreq">2 jours</strong></span>
+              </div>
+              <div class="alert-freq-inputs-row">
+                <span style="font-size: 0.82rem; color: var(--text-main);">Envoyer chaque :</span>
+                <input type="number" id="inputEmailAlertFreqOrangeValue" class="form-input alert-freq-value-input" min="1" max="999" value="2" aria-label="Nombre pour fréquence orange e-mail">
+                <select id="selectEmailAlertFreqOrangeUnit" class="form-input alert-freq-unit-select" aria-label="Unité fréquence orange e-mail">
+                  <option value="minutes">Minute(s)</option>
+                  <option value="hours">Heure(s)</option>
+                  <option value="days" selected>Jour(s)</option>
+                </select>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                  <button type="button" class="btn-chip" data-quick-freq-email="orange" data-val="12" data-unit="hours">12 h</button>
+                  <button type="button" class="btn-chip" data-quick-freq-email="orange" data-val="24" data-unit="hours">24 h</button>
+                  <button type="button" class="btn-chip" data-quick-freq-email="orange" data-val="2" data-unit="days">2 jours</button>
+                  <button type="button" class="btn-chip" data-quick-freq-email="orange" data-val="7" data-unit="days">7 jours</button>
+                </div>
+              </div>
+              <div style="font-size: 0.74rem; color: var(--text-muted);">
+                Déclenchée quand une intervention approche (≤ 15 jours ou ≤ 500 km).
+              </div>
+            </div>
+
+            <!-- 3. Fréquence KILOMÉTRAGE E-mail -->
+            <div class="alert-freq-card" style="border-left: 4px solid var(--primary); background: rgba(59, 130, 246, 0.04); border-radius: 8px; padding: 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+              <div class="alert-freq-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
+                <label for="inputEmailAlertFreqKmValue" class="alert-freq-title" style="color: var(--primary); font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; margin: 0;">
+                  <span>⏱️ Alarme ACTUALISATION DU KILOMÉTRAGE E-mail</span>
+                </label>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Actuelle : <strong id="lblCurrentEmailKmFreq">7 jours</strong></span>
+              </div>
+              <div class="alert-freq-inputs-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 0.82rem; color: var(--text-main);">Envoyer chaque :</span>
+                <input type="number" id="inputEmailAlertFreqKmValue" class="form-input alert-freq-value-input" min="1" max="999" value="7" style="width: 75px; text-align: center;" aria-label="Nombre pour fréquence compteur e-mail">
+                <select id="selectEmailAlertFreqKmUnit" class="form-input alert-freq-unit-select" style="min-width: 110px;" aria-label="Unité fréquence compteur e-mail">
+                  <option value="minutes">Minute(s)</option>
+                  <option value="hours">Heure(s)</option>
+                  <option value="days" selected>Jour(s)</option>
+                </select>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                  <button type="button" class="btn-chip" data-quick-freq-email="km" data-val="12" data-unit="hours">12 h</button>
+                  <button type="button" class="btn-chip" data-quick-freq-email="km" data-val="24" data-unit="hours">24 h</button>
+                  <button type="button" class="btn-chip" data-quick-freq-email="km" data-val="2" data-unit="days">2 jours</button>
+                  <button type="button" class="btn-chip" data-quick-freq-email="km" data-val="7" data-unit="days">7 jours</button>
+                  <button type="button" class="btn-chip" data-quick-freq-email="km" data-val="15" data-unit="days">15 jours</button>
+                </div>
+              </div>
+              <div style="font-size: 0.74rem; color: var(--text-muted);">
+                Répète l'e-mail de rappel de relevé compteur selon cette cadence tant qu'il n'est pas actualisé.
+              </div>
+            </div>
+
+            <!-- Bouton d'enregistrement explicite -->
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+              <button type="button" id="btnSaveEmailAlertFrequencies" class="btn-primary liquid-glass" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; padding: 8px 16px;">
+                <span>💾</span>
+                <span>Enregistrer la cadence des e-mails</span>
+              </button>
+              <span id="lblEmailFreqSavedStatus" style="font-size: 0.82rem; color: #10b981; font-weight: 600; display: none;">✅ Cadence e-mails enregistrée</span>
+            </div>
+          </div>
 
           <!-- Liste des destinataires e-mail actifs -->
           <div style="margin-top: 14px; border-top: 1px solid var(--border-color); padding-top: 12px;">

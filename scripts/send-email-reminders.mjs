@@ -812,8 +812,11 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
     const lastLog = vehLogs.length > 0 ? vehLogs[vehLogs.length - 1] : null;
     const currentKm = veh.currentKm || (lastLog ? lastLog.km : 0);
 
-    // 1. Rappel Relevé kilométrique si inchangé depuis plus de X jours (personnalisable par l'admin)
-    const staleKmThresholdDays = Math.max(1, Number(roomDoc?.alertFrequencies?.staleKmDays || cfg?.staleKmDays || 15));
+    // 1. Rappel Relevé kilométrique si inchangé depuis plus de X jours (personnalisable par l'admin pour les e-mails)
+    const emailFreqConfig = (roomDoc?.alertFrequencies?.email && typeof roomDoc.alertFrequencies.email === 'object')
+      ? roomDoc.alertFrequencies.email
+      : (roomDoc?.alertFrequencies || cfg?.alertFrequencies || {});
+    const staleKmThresholdDays = Math.max(1, Number(emailFreqConfig?.staleKmDays || roomDoc?.alertFrequencies?.staleKmDays || cfg?.staleKmDays || 15));
     if (lastLog && lastLog.date) {
       const lastLogDate = new Date(lastLog.date).getTime();
       const daysElapsed = Math.floor((now - lastLogDate) / (1000 * 60 * 60 * 24));
@@ -928,26 +931,27 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
   const hasUrgent = alertsToSend.some(a => a.level === 'urgent');
   const urgentCount = alertsToSend.filter(a => a.level === 'urgent').length;
 
-  // Récupération des cadences d'alertes configurées (salle Firestore, email-config.json, ou variables d'environnement)
-  let redMinutes = 60; // 1 heure par défaut
-  let orangeMinutes = 720; // 12 heures par défaut
-  let kmMinutes = 720; // 12 heures par défaut
+  // Récupération des cadences d'alertes configurées spécifiquement pour les E-mails (indépendantes des notifications)
+  let redMinutes = 1440; // 24 heures par défaut pour les e-mails
+  let orangeMinutes = 2880; // 48 heures / 2 jours par défaut pour les e-mails
+  let kmMinutes = 10080; // 7 jours par défaut pour les e-mails
   const freqSource = (roomDoc && roomDoc.alertFrequencies) ? roomDoc.alertFrequencies : cfg.alertFrequencies;
-  if (freqSource) {
-    if (freqSource.redMinutes) redMinutes = Math.max(1, Number(freqSource.redMinutes));
-    else if (freqSource.redValue) {
-      const mult = freqSource.redUnit === 'hours' ? 60 : (freqSource.redUnit === 'days' ? 1440 : 1);
-      redMinutes = Math.max(1, Number(freqSource.redValue) * mult);
+  const emailFreqSource = (freqSource && freqSource.email && typeof freqSource.email === 'object') ? freqSource.email : freqSource;
+  if (emailFreqSource) {
+    if (emailFreqSource.redMinutes) redMinutes = Math.max(1, Number(emailFreqSource.redMinutes));
+    else if (emailFreqSource.redValue) {
+      const mult = emailFreqSource.redUnit === 'hours' ? 60 : (emailFreqSource.redUnit === 'days' ? 1440 : 1);
+      redMinutes = Math.max(1, Number(emailFreqSource.redValue) * mult);
     }
-    if (freqSource.orangeMinutes) orangeMinutes = Math.max(1, Number(freqSource.orangeMinutes));
-    else if (freqSource.orangeValue) {
-      const mult = freqSource.orangeUnit === 'hours' ? 60 : (freqSource.orangeUnit === 'days' ? 1440 : 1);
-      orangeMinutes = Math.max(1, Number(freqSource.orangeValue) * mult);
+    if (emailFreqSource.orangeMinutes) orangeMinutes = Math.max(1, Number(emailFreqSource.orangeMinutes));
+    else if (emailFreqSource.orangeValue) {
+      const mult = emailFreqSource.orangeUnit === 'hours' ? 60 : (emailFreqSource.orangeUnit === 'days' ? 1440 : 1);
+      orangeMinutes = Math.max(1, Number(emailFreqSource.orangeValue) * mult);
     }
-    if (freqSource.kmMinutes) kmMinutes = Math.max(1, Number(freqSource.kmMinutes));
-    else if (freqSource.kmValue) {
-      const mult = freqSource.kmUnit === 'hours' ? 60 : (freqSource.kmUnit === 'days' ? 1440 : 1);
-      kmMinutes = Math.max(1, Number(freqSource.kmValue) * mult);
+    if (emailFreqSource.kmMinutes) kmMinutes = Math.max(1, Number(emailFreqSource.kmMinutes));
+    else if (emailFreqSource.kmValue) {
+      const mult = emailFreqSource.kmUnit === 'hours' ? 60 : (emailFreqSource.kmUnit === 'days' ? 1440 : 1);
+      kmMinutes = Math.max(1, Number(emailFreqSource.kmValue) * mult);
     }
   }
   if (process.env.EMAIL_COOLDOWN_RED_MINUTES) redMinutes = Number(process.env.EMAIL_COOLDOWN_RED_MINUTES);
@@ -959,7 +963,7 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
     kmMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
   }
 
-  const staleKmThresholdDays = Math.max(1, Number(roomDoc?.alertFrequencies?.staleKmDays || cfg?.staleKmDays || 15));
+  const staleKmThresholdDays = Math.max(1, Number(emailFreqSource?.staleKmDays || roomDoc?.alertFrequencies?.staleKmDays || cfg?.staleKmDays || 15));
   const hasOnlyMileage = alertsToSend.length > 0 && alertsToSend.every(a => a.level === 'mileage');
 
   let cooldownMinutes;
