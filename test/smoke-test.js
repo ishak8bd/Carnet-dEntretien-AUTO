@@ -842,7 +842,7 @@ try {
   assert(btnTestNotif, 'Bouton de test des notifications présent');
   assert(chkUrgent, 'Case à cocher pour les entretiens urgents présente');
   assert(chkStale, 'Case à cocher pour le rappel kilométrique présente');
-  assert(document.getElementById('chkNotifTestMode'), 'Case à cocher pour le mode test toutes les 5 min présente');
+  assert(!document.getElementById('chkNotifTestMode'), 'La case à cocher temporaire du mode test 5 min a bien été retirée');
 
   // Vérification de la saisie libre des fréquences d'alertes (Rouge et Orange)
   const inputRed = document.getElementById('inputAlertFreqRedValue');

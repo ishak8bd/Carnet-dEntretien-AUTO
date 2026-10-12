@@ -477,9 +477,6 @@ function getNotificationPermission() {
  */
 function getAlertFrequencyMs(level) {
   if (!appState.settings) appState.settings = {};
-  if (appState.settings.notifTestMode === true) {
-    return 5 * 60 * 1000;
-  }
   if (level === 'red') {
     const val = Math.max(1, parseInt(appState.settings.alertFreqRedValue, 10) || 5);
     const unit = appState.settings.alertFreqRedUnit || 'minutes';
@@ -794,7 +791,6 @@ function updateNotificationSettingsUI() {
   const testBtn = document.getElementById('btnTestNotification');
   const chkUrgent = document.getElementById('chkNotifUrgentMaint');
   const chkStale = document.getElementById('chkNotifStaleKm');
-  const chkTestMode = document.getElementById('chkNotifTestMode');
   const selThreshold = document.getElementById('selectNotifThreshold');
 
   // Champs de saisie libre des fréquences
@@ -838,9 +834,6 @@ function updateNotificationSettingsUI() {
   }
   if (chkStale && appState.settings) {
     chkStale.checked = appState.settings.notifStaleKm !== false;
-  }
-  if (chkTestMode && appState.settings) {
-    chkTestMode.checked = Boolean(appState.settings.notifTestMode === true);
   }
   if (selThreshold && appState.settings) {
     selThreshold.value = String(appState.settings.notifThresholdDays || 15);
@@ -6354,18 +6347,6 @@ function attachEventListeners() {
     if (!appState.settings) appState.settings = {};
     appState.settings.notifStaleKm = e.target.checked;
     saveState();
-    checkAndSendPendingMaintenanceNotifications();
-  });
-  document.getElementById('chkNotifTestMode')?.addEventListener('change', (e) => {
-    if (!appState.settings) appState.settings = {};
-    appState.settings.notifTestMode = e.target.checked;
-    saveState();
-    if (e.target.checked) {
-      showToast("⚡ Mode test rapide activé : alertes répétées toutes les 5 min.", "info", 4000);
-    } else {
-      showToast("✅ Cadences personnalisées actives.", "success", 3000);
-    }
-    updateNotificationSettingsUI();
     checkAndSendPendingMaintenanceNotifications();
   });
   document.getElementById('selectNotifThreshold')?.addEventListener('change', (e) => {

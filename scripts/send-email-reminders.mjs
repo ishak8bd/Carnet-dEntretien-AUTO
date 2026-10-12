@@ -616,7 +616,7 @@ function buildEmailHtml({ title, subtitle, badges = [], sections = [], appUrl })
 /**
  * Fonction principale d'évaluation des rappels et d'envoi des e-mails
  */
-export async function runEmailReminders({ isTest = false, isDryRun = false, force = false } = {}) {
+export async function runEmailReminders({ isTest = false, isDryRun = false, force = false, isTestPush = false } = {}) {
   console.log(`\n======================================================`);
   console.log(`  RAPPELS AUTOMATIQUES PAR E-MAIL - CARNET D'ENTRETIEN`);
   console.log(`  Date : ${new Date().toLocaleString('fr-FR')}`);
@@ -932,56 +932,97 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
   const urgentCount = alertsToSend.filter(a => a.level === 'urgent').length;
 
   // Récupération des cadences d'alertes configurées spécifiquement pour les E-mails (indépendantes des notifications)
-  let redMinutes = 1440; // 24 heures par défaut pour les e-mails
-  let orangeMinutes = 2880; // 48 heures / 2 jours par défaut pour les e-mails
-  let kmMinutes = 10080; // 7 jours par défaut pour les e-mails
+  let emailRedMinutes = 1440; // 24 heures par défaut pour les e-mails
+  let emailOrangeMinutes = 2880; // 48 heures / 2 jours par défaut pour les e-mails
+  let emailKmMinutes = 10080; // 7 jours par défaut pour les e-mails
   const freqSource = (roomDoc && roomDoc.alertFrequencies) ? roomDoc.alertFrequencies : cfg.alertFrequencies;
   const emailFreqSource = (freqSource && freqSource.email && typeof freqSource.email === 'object') ? freqSource.email : freqSource;
   if (emailFreqSource) {
-    if (emailFreqSource.redMinutes) redMinutes = Math.max(1, Number(emailFreqSource.redMinutes));
+    if (emailFreqSource.redMinutes) emailRedMinutes = Math.max(1, Number(emailFreqSource.redMinutes));
     else if (emailFreqSource.redValue) {
       const mult = emailFreqSource.redUnit === 'hours' ? 60 : (emailFreqSource.redUnit === 'days' ? 1440 : 1);
-      redMinutes = Math.max(1, Number(emailFreqSource.redValue) * mult);
+      emailRedMinutes = Math.max(1, Number(emailFreqSource.redValue) * mult);
     }
-    if (emailFreqSource.orangeMinutes) orangeMinutes = Math.max(1, Number(emailFreqSource.orangeMinutes));
+    if (emailFreqSource.orangeMinutes) emailOrangeMinutes = Math.max(1, Number(emailFreqSource.orangeMinutes));
     else if (emailFreqSource.orangeValue) {
       const mult = emailFreqSource.orangeUnit === 'hours' ? 60 : (emailFreqSource.orangeUnit === 'days' ? 1440 : 1);
-      orangeMinutes = Math.max(1, Number(emailFreqSource.orangeValue) * mult);
+      emailOrangeMinutes = Math.max(1, Number(emailFreqSource.orangeValue) * mult);
     }
-    if (emailFreqSource.kmMinutes) kmMinutes = Math.max(1, Number(emailFreqSource.kmMinutes));
+    if (emailFreqSource.kmMinutes) emailKmMinutes = Math.max(1, Number(emailFreqSource.kmMinutes));
     else if (emailFreqSource.kmValue) {
       const mult = emailFreqSource.kmUnit === 'hours' ? 60 : (emailFreqSource.kmUnit === 'days' ? 1440 : 1);
-      kmMinutes = Math.max(1, Number(emailFreqSource.kmValue) * mult);
+      emailKmMinutes = Math.max(1, Number(emailFreqSource.kmValue) * mult);
     }
   }
-  if (process.env.EMAIL_COOLDOWN_RED_MINUTES) redMinutes = Number(process.env.EMAIL_COOLDOWN_RED_MINUTES);
-  if (process.env.EMAIL_COOLDOWN_ORANGE_MINUTES) orangeMinutes = Number(process.env.EMAIL_COOLDOWN_ORANGE_MINUTES);
-  if (process.env.EMAIL_COOLDOWN_KM_MINUTES) kmMinutes = Number(process.env.EMAIL_COOLDOWN_KM_MINUTES);
+  if (process.env.EMAIL_COOLDOWN_RED_MINUTES) emailRedMinutes = Number(process.env.EMAIL_COOLDOWN_RED_MINUTES);
+  if (process.env.EMAIL_COOLDOWN_ORANGE_MINUTES) emailOrangeMinutes = Number(process.env.EMAIL_COOLDOWN_ORANGE_MINUTES);
+  if (process.env.EMAIL_COOLDOWN_KM_MINUTES) emailKmMinutes = Number(process.env.EMAIL_COOLDOWN_KM_MINUTES);
   if (process.env.EMAIL_COOLDOWN_MINUTES) {
-    redMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
-    orangeMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
-    kmMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
+    emailRedMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
+    emailOrangeMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
+    emailKmMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
   }
+
+  // Récupération des cadences d'alertes configurées spécifiquement pour les Notifications (Web Push / Appareil)
+  const notifFreqSource = (freqSource && freqSource.notifications && typeof freqSource.notifications === 'object') ? freqSource.notifications : freqSource;
+  let notifRedMinutes = 5; // 5 minutes par défaut
+  let notifOrangeMinutes = 15; // 15 minutes par défaut
+  let notifKmMinutes = 720; // 12 heures par défaut
+  if (notifFreqSource) {
+    if (notifFreqSource.redMinutes) notifRedMinutes = Math.max(1, Number(notifFreqSource.redMinutes));
+    else if (notifFreqSource.redValue) {
+      const mult = notifFreqSource.redUnit === 'hours' ? 60 : (notifFreqSource.redUnit === 'days' ? 1440 : 1);
+      notifRedMinutes = Math.max(1, Number(notifFreqSource.redValue) * mult);
+    }
+    if (notifFreqSource.orangeMinutes) notifOrangeMinutes = Math.max(1, Number(notifFreqSource.orangeMinutes));
+    else if (notifFreqSource.orangeValue) {
+      const mult = notifFreqSource.orangeUnit === 'hours' ? 60 : (notifFreqSource.orangeUnit === 'days' ? 1440 : 1);
+      notifOrangeMinutes = Math.max(1, Number(notifFreqSource.orangeValue) * mult);
+    }
+    if (notifFreqSource.kmMinutes) notifKmMinutes = Math.max(1, Number(notifFreqSource.kmMinutes));
+    else if (notifFreqSource.kmValue) {
+      const mult = notifFreqSource.kmUnit === 'hours' ? 60 : (notifFreqSource.kmUnit === 'days' ? 1440 : 1);
+      notifKmMinutes = Math.max(1, Number(notifFreqSource.kmValue) * mult);
+    }
+  }
+  if (process.env.PUSH_COOLDOWN_RED_MINUTES) notifRedMinutes = Number(process.env.PUSH_COOLDOWN_RED_MINUTES);
+  if (process.env.PUSH_COOLDOWN_ORANGE_MINUTES) notifOrangeMinutes = Number(process.env.PUSH_COOLDOWN_ORANGE_MINUTES);
+  if (process.env.PUSH_COOLDOWN_KM_MINUTES) notifKmMinutes = Number(process.env.PUSH_COOLDOWN_KM_MINUTES);
 
   const staleKmThresholdDays = Math.max(1, Number(emailFreqSource?.staleKmDays || roomDoc?.alertFrequencies?.staleKmDays || cfg?.staleKmDays || 15));
   const hasOnlyMileage = alertsToSend.length > 0 && alertsToSend.every(a => a.level === 'mileage');
 
-  let cooldownMinutes;
-  let phaseName;
+  let emailCooldownMinutes;
+  let emailPhaseName;
   if (hasUrgent) {
-    cooldownMinutes = redMinutes;
-    phaseName = "ROUGE";
+    emailCooldownMinutes = emailRedMinutes;
+    emailPhaseName = "ROUGE";
   } else if (hasOnlyMileage) {
-    cooldownMinutes = kmMinutes;
-    phaseName = "COMPTEUR";
+    emailCooldownMinutes = emailKmMinutes;
+    emailPhaseName = "COMPTEUR";
   } else {
-    cooldownMinutes = orangeMinutes;
-    phaseName = "ORANGE";
+    emailCooldownMinutes = emailOrangeMinutes;
+    emailPhaseName = "ORANGE";
   }
 
-  console.log(`⏱️ Cadences actives : ROUGE = ${redMinutes} min, ORANGE = ${orangeMinutes} min, COMPTEUR = ${kmMinutes} min (Seuil = ${staleKmThresholdDays} jours, Phase appliquée = ${phaseName})`);
+  let pushCooldownMinutes;
+  let pushPhaseName;
+  if (hasUrgent) {
+    pushCooldownMinutes = notifRedMinutes;
+    pushPhaseName = "ROUGE";
+  } else if (hasOnlyMileage) {
+    pushCooldownMinutes = notifKmMinutes;
+    pushPhaseName = "COMPTEUR";
+  } else {
+    pushCooldownMinutes = notifOrangeMinutes;
+    pushPhaseName = "ORANGE";
+  }
 
-  // Cooldown anti-spam : vérification de la cadence paramétrée
+  console.log(`⏱️ Cadences actives :`);
+  console.log(`   📧 E-mails       : ROUGE = ${emailRedMinutes} min, ORANGE = ${emailOrangeMinutes} min, COMPTEUR = ${emailKmMinutes} min (Phase = ${emailPhaseName})`);
+  console.log(`   📲 Notifications : ROUGE = ${notifRedMinutes} min, ORANGE = ${notifOrangeMinutes} min, COMPTEUR = ${notifKmMinutes} min (Phase = ${pushPhaseName})`);
+
+  // Lecture de l'historique d'envoi anti-spam
   let emailHistory = null;
   try {
     if (fs.existsSync(HISTORY_FILE)) {
@@ -989,26 +1030,61 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
     }
   } catch (e) {}
 
-  if (emailHistory && emailHistory.lastSent) {
-    const minutesSinceLast = (now - emailHistory.lastSent) / (1000 * 60);
-    const hoursSinceLast = minutesSinceLast / 60;
-    const isSameOrFewerAlerts = alertsToSend.length <= (emailHistory.lastAlertCount || 0);
-    const isSameOrFewerUrgents = urgentCount <= (emailHistory.lastUrgentCount || 0);
+  const lastEmailSent = emailHistory?.lastEmailSent || emailHistory?.lastSent || 0;
+  const lastPushSent = emailHistory?.lastPushSent || 0;
 
-    const waitInfo = cooldownMinutes < 60 
-      ? `${Math.round(minutesSinceLast)} min (cadence ${phaseName} = ${cooldownMinutes} min)` 
-      : `${Math.round(hoursSinceLast)}h (cadence ${phaseName} = ${Math.round(cooldownMinutes / 60)}h)`;
-
-    if (isDryRun) {
-      console.log(`ℹ️ [Dry Run] Dernier envoi : il y a ${waitInfo}. Cooldown actif : ${minutesSinceLast < cooldownMinutes ? 'OUI (prochain envoi bloqué jusqu\'au délai)' : 'NON (prêt à envoyer)'}`);
-    } else if (!isTest && !force) {
-      if (minutesSinceLast < cooldownMinutes && isSameOrFewerAlerts && isSameOrFewerUrgents) {
-        console.log(`ℹ️ Les alertes (${phaseName}) ont déjà été envoyées il y a ${waitInfo}. Prochain envoi automatique selon la cadence ${phaseName}.`);
-        console.log(`💡 Pour forcer l'envoi immédiat, utilisez le paramètre : --force`);
-        appendLog(`COOLDOWN : Ignoré (${alertsToSend.length} alertes [${phaseName}] déjà envoyées il y a ${Math.round(minutesSinceLast)} min, cadence = ${cooldownMinutes} min).`);
-        return { success: true, count: 0, skippedCooldown: true };
+  // 1. Évaluation de l'envoi d'e-mails (indépendante du Push)
+  let shouldSendEmail = false;
+  let emailSkipReason = '';
+  if ((transporter || isDryRun) && recipients.length > 0) {
+    if (isTest || force) {
+      shouldSendEmail = true;
+    } else if (!lastEmailSent) {
+      shouldSendEmail = true;
+    } else {
+      const minutesSinceLastEmail = (now - lastEmailSent) / (1000 * 60);
+      const isSameOrFewerAlerts = alertsToSend.length <= (emailHistory?.lastAlertCount || 0);
+      const isSameOrFewerUrgents = urgentCount <= (emailHistory?.lastUrgentCount || 0);
+      if (minutesSinceLastEmail < emailCooldownMinutes && isSameOrFewerAlerts && isSameOrFewerUrgents) {
+        emailSkipReason = `E-mails déjà envoyés il y a ${Math.round(minutesSinceLastEmail)} min (cadence ${emailPhaseName} = ${emailCooldownMinutes} min)`;
+        console.log(`ℹ️ [E-mail] Cooldown actif : ${emailSkipReason}.`);
+        appendLog(`COOLDOWN E-MAIL : Ignoré (${emailSkipReason}).`);
+      } else {
+        shouldSendEmail = true;
       }
     }
+  }
+
+  // 2. Évaluation de l'envoi Web Push (Notifications appareil, totalement indépendante des e-mails !)
+  let shouldSendPush = false;
+  let pushSkipReason = '';
+  if (isTestPush || isTest || force) {
+    shouldSendPush = true;
+  } else if (!lastPushSent) {
+    shouldSendPush = true;
+  } else {
+    const minutesSinceLastPush = (now - lastPushSent) / (1000 * 60);
+    const isSameOrFewerAlerts = alertsToSend.length <= (emailHistory?.lastPushAlertCount || emailHistory?.lastAlertCount || 0);
+    const isSameOrFewerUrgents = urgentCount <= (emailHistory?.lastPushUrgentCount || emailHistory?.lastUrgentCount || 0);
+    if (minutesSinceLastPush < pushCooldownMinutes && isSameOrFewerAlerts && isSameOrFewerUrgents) {
+      pushSkipReason = `Notifications déjà envoyées il y a ${Math.round(minutesSinceLastPush)} min (cadence ${pushPhaseName} = ${pushCooldownMinutes} min)`;
+      console.log(`ℹ️ [Web Push] Cooldown actif : ${pushSkipReason}.`);
+      appendLog(`COOLDOWN WEB PUSH : Ignoré (${pushSkipReason}).`);
+    } else {
+      shouldSendPush = true;
+    }
+  }
+
+  if (isDryRun) {
+    console.log(`🔍 [Dry Run] Diagnostic d'envoi :`);
+    console.log(`   • E-mails    : ${shouldSendEmail ? `PRÊT À ENVOYER (${alertsToSend.length} alertes à ${recipients.length} destinataire(s))` : `BLOQUÉ PAR COOLDOWN (${emailSkipReason})`}`);
+    console.log(`   • Web Push   : ${shouldSendPush ? `PRÊT À DÉLIVRER à ${pushSubscriptions.length} appareil(s)` : `BLOQUÉ PAR COOLDOWN (${pushSkipReason})`}`);
+    return { success: true, count: alertsToSend.length, shouldSendEmail, shouldSendPush };
+  }
+
+  if (!shouldSendEmail && !shouldSendPush) {
+    console.log(`ℹ️ Aucun envoi requis : E-mails et Notifications Web Push sont tous deux en période de cooldown.`);
+    return { success: true, count: 0, skippedCooldown: true };
   }
 
   const subjectPrefix = hasUrgent ? "🚨 URGENT :" : "⚠️ RAPPEL :";
@@ -1031,13 +1107,8 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
     appUrl: cfg.appUrl
   });
 
-  if (isDryRun) {
-    console.log(`🔍 [Dry Run] E-mail prêt (${alertsToSend.length} alertes) pour :`, recipients.map(r => r.email));
-    return { success: true, count: alertsToSend.length };
-  }
-
   const sendResults = [];
-  if (transporter && recipients.length > 0) {
+  if (shouldSendEmail && transporter && recipients.length > 0) {
     for (const r of recipients) {
       const targetTo = r.name ? `"${r.name}" <${r.email}>` : r.email;
       try {
@@ -1061,14 +1132,13 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
   }
 
   const successCount = sendResults.filter(r => r.success).length;
-  if (recipients.length > 0) {
+  if (shouldSendEmail && recipients.length > 0) {
     console.log(`✨ Bilan d'envoi des e-mails : ${successCount}/${recipients.length} destinataire(s) ont reçu leur synthèse.`);
   }
 
-  // Déclencher la notification bureau Windows et Web Push pour toutes les alertes détectées
-  // (Totalement indépendant du résultat d'envoi d'e-mails)
+  // 3. Déclencher la notification bureau Windows et Web Push si prêt
   let pushResult = { success: false, count: 0 };
-  if (alertsToSend.length > 0) {
+  if (shouldSendPush && alertsToSend.length > 0) {
     const notifTitle = hasUrgent 
       ? `Carnet Auto : ${urgentCount} entretien(s) URGENT(S) !` 
       : `Carnet Auto : ${alertsToSend.length} rappel(s) d'entretien`;
@@ -1078,34 +1148,42 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
 
     triggerWindowsNotification(notifTitle, notifMsg);
 
-    if (!isDryRun) {
-      pushResult = await sendWebPushReminders({
-        pushSubscriptions,
-        title: notifTitle,
-        body: notifMsg,
-        url: cfg.appUrl,
-        cfg
-      });
-    }
+    pushResult = await sendWebPushReminders({
+      pushSubscriptions,
+      title: notifTitle,
+      body: notifMsg,
+      url: cfg.appUrl,
+      cfg
+    });
   }
 
-  // Enregistrer l'historique et le journal de log
-  const anyNotifSent = successCount > 0 || (pushResult && pushResult.count > 0);
-  if (anyNotifSent || isDryRun) {
-    try {
-      fs.writeFileSync(HISTORY_FILE, JSON.stringify({
-        lastSent: now,
-        lastAlertCount: alertsToSend.length,
-        lastUrgentCount: urgentCount,
-        recipients: recipientList
-      }, null, 2), 'utf-8');
-    } catch (e) {}
-    appendLog(`SUCCÈS : ${alertsToSend.length} alertes traitées (E-mails: ${successCount}/${recipients.length}, Web Push: ${pushResult.count || 0}).`);
-  } else {
-    appendLog(`INFO : ${alertsToSend.length} alertes détectées, 0 livraison distante (${pushSubscriptions.length} appareil(s) push, ${recipients.length} e-mail(s)).`);
+  // 4. Enregistrer l'historique et le journal de log avec horodatages distincts
+  const updatedHistory = {
+    ...(emailHistory || {}),
+    lastAlertCount: alertsToSend.length,
+    lastUrgentCount: urgentCount,
+    recipients: recipientList
+  };
+
+  if (successCount > 0) {
+    updatedHistory.lastEmailSent = now;
+    updatedHistory.lastSent = now;
+  }
+  if (pushResult && pushResult.count > 0) {
+    updatedHistory.lastPushSent = now;
+    updatedHistory.lastPushAlertCount = alertsToSend.length;
+    updatedHistory.lastPushUrgentCount = urgentCount;
   }
 
-  return { success: successCount > 0, alertsCount: alertsToSend.length, details: sendResults };
+  try {
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify(updatedHistory, null, 2), 'utf-8');
+  } catch (e) {}
+
+  if (successCount > 0 || (pushResult && pushResult.count > 0)) {
+    appendLog(`SUCCÈS : ${alertsToSend.length} alertes traitées (E-mails envoyés: ${successCount}/${recipients.length}, Web Push délivré: ${pushResult.count || 0}/${pushSubscriptions.length}).`);
+  }
+
+  return { success: (successCount > 0 || (pushResult && pushResult.count > 0)), alertsCount: alertsToSend.length, details: sendResults, pushResult };
 }
 
 // Exécution directe en ligne de commande

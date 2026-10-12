@@ -12,13 +12,13 @@ echo.
 echo Chemin du script : "%~dp0run-reminders-silent.vbs"
 echo.
 
-schtasks /create /tn "CarnetAuto-EmailReminders" /tr "wscript.exe \"%~dp0run-reminders-silent.vbs\"" /sc minute /mo 5 /f
+schtasks /create /tn "CarnetAuto-EmailReminders" /tr "wscript.exe \"%~dp0run-reminders-silent.vbs\"" /sc minute /mo 1 /f
 
 if %ERRORLEVEL% equ 0 (
     powershell -Command "$s = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable; Set-ScheduledTask -TaskName 'CarnetAuto-EmailReminders' -Settings $s" >nul 2>&1
     echo.
-    echo ✅ SUCCÈS ! La tâche planifiée 'CarnetAuto-EmailReminders' est configurée toutes les 5 minutes.
-    echo Vos alertes seront désormais envoyées automatiquement en arrière-plan toutes les 5 minutes.
+    echo ✅ SUCCÈS ! La tâche planifiée 'CarnetAuto-EmailReminders' est configurée toutes les minutes (1 min).
+    echo Vos alertes seront désormais vérifiées automatiquement en arrière-plan chaque minute.
     echo Vous pouvez consulter l'historique des passages dans scripts\reminders.log.
 ) else (
     echo.
