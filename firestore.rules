@@ -13,6 +13,7 @@ service cloud.firestore {
     //   - createdAt: timestamp (required, immutable) - Room creation timestamp
     //   - lastActivityAt: timestamp (required) - Last activity / ping timestamp
     //   - schemaVersion: number (required) - Database schema version
+    //   - alertFrequencies: map (optional) - Reminder notification alert frequency configuration
     //
     // Subcollection: rooms/{roomId}/members/{uid}
     // Document ID: Firebase Auth UID of member
@@ -288,7 +289,7 @@ service cloud.firestore {
 
       // Update:
       // - Room owner can update room details (transfer ownerUid to an approved member, createdAt immutable)
-      // - Approved members can only update lastActivityAt
+      // - Approved members can update lastActivityAt and/or alertFrequencies
       allow update: if (
         isRoomOwner(roomId) &&
         isValidRoom(request.resource.data) &&
@@ -302,8 +303,9 @@ service cloud.firestore {
         )
       ) || (
         isApprovedMember(roomId) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActivityAt']) &&
-        request.resource.data.lastActivityAt is timestamp
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActivityAt', 'alertFrequencies']) &&
+        (!('lastActivityAt' in request.resource.data.diff(resource.data).affectedKeys()) || request.resource.data.lastActivityAt is timestamp) &&
+        (!('alertFrequencies' in request.resource.data) || request.resource.data.alertFrequencies is map)
       );
 
       // Delete: only room owner

@@ -477,6 +477,9 @@ function getNotificationPermission() {
  */
 function getAlertFrequencyMs(level) {
   if (!appState.settings) appState.settings = {};
+  if (appState.settings.notifTestMode === true) {
+    return 5 * 60 * 1000;
+  }
   if (level === 'red') {
     const val = Math.max(1, parseInt(appState.settings.alertFreqRedValue, 10) || 5);
     const unit = appState.settings.alertFreqRedUnit || 'minutes';
@@ -512,7 +515,7 @@ function formatAlertFrequencyLabel(val, unit) {
 /**
  * Enregistre les fréquences d'alertes personnalisées saisies librement par l'utilisateur
  */
-function saveAlertFrequenciesFromInputs() {
+async function saveAlertFrequenciesFromInputs(showFeedback = false) {
   if (!appState.settings) appState.settings = {};
   const inputRedVal = document.getElementById('inputAlertFreqRedValue');
   const selectRedUnit = document.getElementById('selectAlertFreqRedUnit');
@@ -528,19 +531,45 @@ function saveAlertFrequenciesFromInputs() {
     appState.settings.alertFreqOrangeUnit = selectOrangeUnit.value || 'minutes';
   }
 
+  // Désactiver le forçage test mode si l'utilisateur modifie ses cadences
+  appState.settings.notifTestMode = false;
+
   saveState();
   updateNotificationSettingsUI();
 
+  const freqData = {
+    redValue: appState.settings.alertFreqRedValue,
+    redUnit: appState.settings.alertFreqRedUnit,
+    redMinutes: getAlertFrequencyMinutes('red'),
+    orangeValue: appState.settings.alertFreqOrangeValue,
+    orangeUnit: appState.settings.alertFreqOrangeUnit,
+    orangeMinutes: getAlertFrequencyMinutes('orange')
+  };
+
   // Si connecté à une salle Firestore, synchroniser sur le document de salle
+  let syncResult = null;
   if (typeof window !== 'undefined' && window.FamilyRoom && typeof window.FamilyRoom.syncAlertFrequenciesToRoom === 'function') {
-    window.FamilyRoom.syncAlertFrequenciesToRoom({
-      redValue: appState.settings.alertFreqRedValue,
-      redUnit: appState.settings.alertFreqRedUnit,
-      redMinutes: getAlertFrequencyMinutes('red'),
-      orangeValue: appState.settings.alertFreqOrangeValue,
-      orangeUnit: appState.settings.alertFreqOrangeUnit,
-      orangeMinutes: getAlertFrequencyMinutes('orange')
-    });
+    syncResult = await window.FamilyRoom.syncAlertFrequenciesToRoom(freqData);
+  }
+
+  const redLabel = formatAlertFrequencyLabel(appState.settings.alertFreqRedValue, appState.settings.alertFreqRedUnit);
+  const orangeLabel = formatAlertFrequencyLabel(appState.settings.alertFreqOrangeValue, appState.settings.alertFreqOrangeUnit);
+
+  const statusEl = document.getElementById('lblFreqSavedStatus');
+  if (statusEl) {
+    statusEl.textContent = `✅ Cadence enregistrée : Rouge (${redLabel}), Orange (${orangeLabel})`;
+    statusEl.style.display = 'inline-block';
+    setTimeout(() => {
+      if (statusEl) statusEl.style.display = 'none';
+    }, 4500);
+  }
+
+  if (showFeedback) {
+    if (syncResult && syncResult.error) {
+      showToast(`⚠️ Cadence enregistrée localement, mais échec synchronisation salle : ${syncResult.error}`, 'warning', 5000);
+    } else {
+      showToast(`✅ Cadence d'alertes enregistrée : Rouge (${redLabel}), Orange (${orangeLabel})`, 'success', 3500);
+    }
   }
 }
 
@@ -586,7 +615,7 @@ function updateNotificationSettingsUI() {
     chkStale.checked = appState.settings.notifStaleKm !== false;
   }
   if (chkTestMode && appState.settings) {
-    chkTestMode.checked = appState.settings.notifTestMode !== false;
+    chkTestMode.checked = Boolean(appState.settings.notifTestMode === true);
   }
   if (selThreshold && appState.settings) {
     selThreshold.value = String(appState.settings.notifThresholdDays || 15);
@@ -5834,6 +5863,12 @@ function attachEventListeners() {
     if (!appState.settings) appState.settings = {};
     appState.settings.notifTestMode = e.target.checked;
     saveState();
+    if (e.target.checked) {
+      showToast("⚡ Mode test rapide activé : alertes répétées toutes les 5 min.", "info", 4000);
+    } else {
+      showToast("✅ Cadences personnalisées actives.", "success", 3000);
+    }
+    updateNotificationSettingsUI();
     checkAndSendPendingMaintenanceNotifications();
   });
   document.getElementById('selectNotifThreshold')?.addEventListener('change', (e) => {
@@ -5849,23 +5884,29 @@ function attachEventListeners() {
   const inputOrange = document.getElementById('inputAlertFreqOrangeValue');
   const unitOrange = document.getElementById('selectAlertFreqOrangeUnit');
 
-  inputRed?.addEventListener('input', saveAlertFrequenciesFromInputs);
+  inputRed?.addEventListener('input', () => saveAlertFrequenciesFromInputs(false));
   inputRed?.addEventListener('change', () => {
-    saveAlertFrequenciesFromInputs();
+    saveAlertFrequenciesFromInputs(true);
     checkAndSendPendingMaintenanceNotifications();
   });
   unitRed?.addEventListener('change', () => {
-    saveAlertFrequenciesFromInputs();
+    saveAlertFrequenciesFromInputs(true);
     checkAndSendPendingMaintenanceNotifications();
   });
 
-  inputOrange?.addEventListener('input', saveAlertFrequenciesFromInputs);
+  inputOrange?.addEventListener('input', () => saveAlertFrequenciesFromInputs(false));
   inputOrange?.addEventListener('change', () => {
-    saveAlertFrequenciesFromInputs();
+    saveAlertFrequenciesFromInputs(true);
     checkAndSendPendingMaintenanceNotifications();
   });
   unitOrange?.addEventListener('change', () => {
-    saveAlertFrequenciesFromInputs();
+    saveAlertFrequenciesFromInputs(true);
+    checkAndSendPendingMaintenanceNotifications();
+  });
+
+  // Bouton d'enregistrement explicite
+  document.getElementById('btnSaveAlertFrequencies')?.addEventListener('click', () => {
+    saveAlertFrequenciesFromInputs(true);
     checkAndSendPendingMaintenanceNotifications();
   });
 
@@ -5882,7 +5923,7 @@ function attachEventListeners() {
         if (inputOrange) inputOrange.value = val;
         if (unitOrange) unitOrange.value = unit;
       }
-      saveAlertFrequenciesFromInputs();
+      saveAlertFrequenciesFromInputs(true);
       checkAndSendPendingMaintenanceNotifications();
     });
   });

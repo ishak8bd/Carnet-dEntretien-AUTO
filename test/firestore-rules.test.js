@@ -328,7 +328,7 @@ describe('Family Room Car Maintenance Tracker - Firestore Security Rules', () =>
       }));
     });
 
-    it('allows approved member to update only lastActivityAt on room document', async () => {
+    it('allows approved member to update lastActivityAt and alertFrequencies on room document', async () => {
       if (!testEnv) return;
       await seedRoomFixtures();
       const approvedDb = testEnv.authenticatedContext('user_approved').firestore();
@@ -336,6 +336,22 @@ describe('Family Room Car Maintenance Tracker - Firestore Security Rules', () =>
       // Allowed: updating lastActivityAt
       await assertSucceeds(patchDoc(approvedDb, 'rooms/room_1', {
         lastActivityAt: new Date(),
+      }));
+
+      // Allowed: updating alertFrequencies (map)
+      await assertSucceeds(patchDoc(approvedDb, 'rooms/room_1', {
+        alertFrequencies: { redMinutes: 60, orangeMinutes: 1440 },
+      }));
+
+      // Allowed: updating both alertFrequencies and lastActivityAt
+      await assertSucceeds(patchDoc(approvedDb, 'rooms/room_1', {
+        alertFrequencies: { redMinutes: 120, orangeMinutes: 2880 },
+        lastActivityAt: new Date(),
+      }));
+
+      // Denied: alertFrequencies is not a map
+      await assertFails(patchDoc(approvedDb, 'rooms/room_1', {
+        alertFrequencies: 'invalid-string',
       }));
 
       // Denied: updating room name or ownerUid

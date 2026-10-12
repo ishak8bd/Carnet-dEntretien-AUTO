@@ -307,10 +307,38 @@ async function fetchRoomDocument(auth, cfg) {
       const snap = await adminDb.collection('rooms').doc(cfg.roomId).get();
       return snap.exists ? snap.data() : null;
     } catch (e) {
-      console.warn("Erreur lecture document room:", e.message);
+      console.warn("Erreur lecture document room (Admin):", e.message);
     }
   }
-  return null;
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/rooms/${cfg.roomId}`;
+    const headers = {};
+    if (auth && auth.idToken) headers['Authorization'] = `Bearer ${auth.idToken}`;
+    const res = await fetch(url, { headers });
+    if (!res.ok) return null;
+    const docData = await res.json();
+    const fields = docData.fields || {};
+    const out = {};
+    for (const [k, v] of Object.entries(fields)) {
+      if ('stringValue' in v) out[k] = v.stringValue;
+      else if ('integerValue' in v) out[k] = parseInt(v.integerValue, 10);
+      else if ('doubleValue' in v) out[k] = parseFloat(v.doubleValue);
+      else if ('booleanValue' in v) out[k] = v.booleanValue;
+      else if ('mapValue' in v) {
+        out[k] = {};
+        for (const [mk, mv] of Object.entries(v.mapValue.fields || {})) {
+          if ('stringValue' in mv) out[k][mk] = mv.stringValue;
+          else if ('integerValue' in mv) out[k][mk] = parseInt(mv.integerValue, 10);
+          else if ('doubleValue' in mv) out[k][mk] = parseFloat(mv.doubleValue);
+          else if ('booleanValue' in mv) out[k][mk] = mv.booleanValue;
+        }
+      }
+    }
+    return out;
+  } catch (err) {
+    console.warn("Erreur lecture document room (REST):", err.message);
+    return null;
+  }
 }
 
 /**
@@ -899,44 +927,58 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
   const hasUrgent = alertsToSend.some(a => a.level === 'urgent');
   const urgentCount = alertsToSend.filter(a => a.level === 'urgent').length;
 
-  // Cooldown anti-spam : en mode test, le délai est de 4 minutes pour permettre un envoi toutes les 5 minutes
-  if (!isTest && !isDryRun && !force) {
-    let emailHistory = null;
-    try {
-      if (fs.existsSync(HISTORY_FILE)) {
-        emailHistory = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf-8'));
-      }
-    } catch (e) {}
+  // Récupération des cadences d'alertes configurées (salle Firestore, email-config.json, ou variables d'environnement)
+  let redMinutes = 60; // 1 heure par défaut
+  let orangeMinutes = 720; // 12 heures par défaut
+  const freqSource = (roomDoc && roomDoc.alertFrequencies) ? roomDoc.alertFrequencies : cfg.alertFrequencies;
+  if (freqSource) {
+    if (freqSource.redMinutes) redMinutes = Math.max(1, Number(freqSource.redMinutes));
+    else if (freqSource.redValue) {
+      const mult = freqSource.redUnit === 'hours' ? 60 : (freqSource.redUnit === 'days' ? 1440 : 1);
+      redMinutes = Math.max(1, Number(freqSource.redValue) * mult);
+    }
+    if (freqSource.orangeMinutes) orangeMinutes = Math.max(1, Number(freqSource.orangeMinutes));
+    else if (freqSource.orangeValue) {
+      const mult = freqSource.orangeUnit === 'hours' ? 60 : (freqSource.orangeUnit === 'days' ? 1440 : 1);
+      orangeMinutes = Math.max(1, Number(freqSource.orangeValue) * mult);
+    }
+  }
+  if (process.env.EMAIL_COOLDOWN_RED_MINUTES) redMinutes = Number(process.env.EMAIL_COOLDOWN_RED_MINUTES);
+  if (process.env.EMAIL_COOLDOWN_ORANGE_MINUTES) orangeMinutes = Number(process.env.EMAIL_COOLDOWN_ORANGE_MINUTES);
+  if (process.env.EMAIL_COOLDOWN_MINUTES) {
+    redMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
+    orangeMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
+  }
 
-    if (emailHistory && emailHistory.lastSent) {
-      const minutesSinceLast = (now - emailHistory.lastSent) / (1000 * 60);
-      const hoursSinceLast = minutesSinceLast / 60;
-      const isSameOrFewerAlerts = alertsToSend.length <= (emailHistory.lastAlertCount || 0);
-      const isSameOrFewerUrgents = urgentCount <= (emailHistory.lastUrgentCount || 0);
+  // Si le lot contient des alertes ROUGES (urgentes), utiliser la cadence Rouge
+  // S'il ne contient QUE des alertes ORANGES, utiliser la cadence Orange
+  const cooldownMinutes = hasUrgent ? redMinutes : orangeMinutes;
+  const phaseName = hasUrgent ? "ROUGE" : "ORANGE";
 
-      // Récupération des cadences d'alertes configurées par l'administrateur
-      let redMinutes = 5;
-      let orangeMinutes = 15;
-      if (roomDoc && roomDoc.alertFrequencies) {
-        if (roomDoc.alertFrequencies.redMinutes) redMinutes = Math.max(1, Number(roomDoc.alertFrequencies.redMinutes));
-        if (roomDoc.alertFrequencies.orangeMinutes) orangeMinutes = Math.max(1, Number(roomDoc.alertFrequencies.orangeMinutes));
-      }
-      if (process.env.EMAIL_COOLDOWN_RED_MINUTES) redMinutes = Number(process.env.EMAIL_COOLDOWN_RED_MINUTES);
-      if (process.env.EMAIL_COOLDOWN_ORANGE_MINUTES) orangeMinutes = Number(process.env.EMAIL_COOLDOWN_ORANGE_MINUTES);
-      if (process.env.EMAIL_COOLDOWN_MINUTES) {
-        redMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
-        orangeMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
-      }
+  console.log(`⏱️ Cadences d'alertes actives : ROUGE = ${redMinutes} min, ORANGE = ${orangeMinutes} min (Phase appliquée = ${phaseName})`);
 
-      // Si le lot contient des alertes ROUGES (urgentes), utiliser la cadence Rouge
-      // S'il ne contient QUE des alertes ORANGES, utiliser la cadence Orange
-      const cooldownMinutes = hasUrgent ? redMinutes : orangeMinutes;
-      const phaseName = hasUrgent ? "ROUGE" : "ORANGE";
+  // Cooldown anti-spam : vérification de la cadence paramétrée
+  let emailHistory = null;
+  try {
+    if (fs.existsSync(HISTORY_FILE)) {
+      emailHistory = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf-8'));
+    }
+  } catch (e) {}
 
+  if (emailHistory && emailHistory.lastSent) {
+    const minutesSinceLast = (now - emailHistory.lastSent) / (1000 * 60);
+    const hoursSinceLast = minutesSinceLast / 60;
+    const isSameOrFewerAlerts = alertsToSend.length <= (emailHistory.lastAlertCount || 0);
+    const isSameOrFewerUrgents = urgentCount <= (emailHistory.lastUrgentCount || 0);
+
+    const waitInfo = cooldownMinutes < 60 
+      ? `${Math.round(minutesSinceLast)} min (cadence ${phaseName} = ${cooldownMinutes} min)` 
+      : `${Math.round(hoursSinceLast)}h (cadence ${phaseName} = ${Math.round(cooldownMinutes / 60)}h)`;
+
+    if (isDryRun) {
+      console.log(`ℹ️ [Dry Run] Dernier envoi : il y a ${waitInfo}. Cooldown actif : ${minutesSinceLast < cooldownMinutes ? 'OUI (prochain envoi bloqué jusqu\'au délai)' : 'NON (prêt à envoyer)'}`);
+    } else if (!isTest && !force) {
       if (minutesSinceLast < cooldownMinutes && isSameOrFewerAlerts && isSameOrFewerUrgents) {
-        const waitInfo = cooldownMinutes < 60 
-          ? `${Math.round(minutesSinceLast)} min (cadence ${phaseName} = ${cooldownMinutes} min)` 
-          : `${Math.round(hoursSinceLast)}h (cadence ${phaseName} = ${Math.round(cooldownMinutes / 60)}h)`;
         console.log(`ℹ️ Les alertes (${phaseName}) ont déjà été envoyées il y a ${waitInfo}. Prochain envoi automatique selon la cadence ${phaseName}.`);
         console.log(`💡 Pour forcer l'envoi immédiat, utilisez le paramètre : --force`);
         appendLog(`COOLDOWN : Ignoré (${alertsToSend.length} alertes [${phaseName}] déjà envoyées il y a ${Math.round(minutesSinceLast)} min, cadence = ${cooldownMinutes} min).`);

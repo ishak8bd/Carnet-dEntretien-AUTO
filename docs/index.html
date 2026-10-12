@@ -648,20 +648,20 @@
             <span>Rappeler le relevé kilométrique si inchangé depuis 15 jours</span>
           </label>
           <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--primary); font-weight: 600; cursor: pointer; background: rgba(59, 130, 246, 0.08); padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.2);">
-            <input type="checkbox" id="chkNotifTestMode" checked style="accent-color: var(--primary); width: 18px; height: 18px;">
-            <span>⚡ Mode Test Actif : Répéter les alertes toutes les 5 minutes (au lieu de 24h)</span>
+            <input type="checkbox" id="chkNotifTestMode" style="accent-color: var(--primary); width: 18px; height: 18px;">
+            <span>⚡ Mode Test Rapide : Répéter temporairement les alertes toutes les 5 minutes</span>
           </label>
 
           <!-- SECTION : Configuration Administrateur des Fréquences d'Alertes Libres -->
           <div class="alert-freq-box" id="adminAlertFrequencyBox">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
               <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
-                <span>⚙️ Fréquence personnalisée des alertes (Saisie libre Admin)</span>
+                <span>⚙️ Cadence des alarmes : Notifications de l'application &amp; E-mails</span>
               </div>
-              <span class="status-badge status-badge-info" style="font-size: 0.72rem;">Saisie libre</span>
+              <span class="status-badge status-badge-info" style="font-size: 0.72rem;">Synchronisé en direct</span>
             </div>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
-              Saisissez librement le rythme auquel le système réémet les rappels pour chaque niveau tant que l'intervention n'est pas effectuée.
+              Définissez librement la cadence de répétition des alertes. Cette fréquence s'applique immédiatement <strong>aux notifications sur votre téléphone/appareil</strong> ET <strong>aux e-mails d'alarme</strong>.
             </p>
 
             <!-- 1. Fréquence ROUGE -->
@@ -718,6 +718,15 @@
               <div style="font-size: 0.74rem; color: var(--text-muted);">
                 Déclenchée quand il reste ≤ 15 jours ou ≤ 500 km (ou relevé de compteur > 15 jours).
               </div>
+            </div>
+
+            <!-- Bouton d'enregistrement explicite -->
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+              <button type="button" id="btnSaveAlertFrequencies" class="btn-primary liquid-glass" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; padding: 8px 16px;">
+                <span>💾</span>
+                <span>Enregistrer la cadence</span>
+              </button>
+              <span id="lblFreqSavedStatus" style="font-size: 0.82rem; color: #10b981; font-weight: 600; display: none;">✅ Cadence enregistrée et synchronisée</span>
             </div>
           </div>
         </div>

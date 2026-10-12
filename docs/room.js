@@ -171,15 +171,17 @@ export async function pingRoomActivity(roomId) {
  */
 export async function syncAlertFrequenciesToRoom(freqData) {
   const profile = getStoredRoomProfile();
-  if (!profile || !profile.roomId) return;
+  if (!profile || !profile.roomId) return { success: false, error: 'no_room' };
   try {
     const roomRef = doc(db, 'rooms', profile.roomId);
     await updateDoc(roomRef, {
       alertFrequencies: freqData,
       lastActivityAt: serverTimestamp()
     });
+    return { success: true };
   } catch (err) {
-    // Échec discret si non propriétaire
+    console.warn("Avertissement synchronisation fréquences salle:", err);
+    return { success: false, error: err.message };
   }
 }
 
@@ -845,6 +847,45 @@ export function startRoomSynchronization(roomId) {
       }, 1200);
     }
   }
+
+  // 0. Document racine de la salle (synchronisation temps réel des fréquences d'alertes & réglages partagés)
+  const unsubRoomDoc = onSnapshot(doc(db, 'rooms', roomId), (snap) => {
+    if (!snap.exists()) return;
+    const roomData = snap.data();
+    if (roomData && roomData.alertFrequencies && typeof roomData.alertFrequencies === 'object') {
+      const f = roomData.alertFrequencies;
+      if (typeof window !== 'undefined' && window.appState) {
+        if (!window.appState.settings) window.appState.settings = {};
+        let changed = false;
+        if (f.redValue !== undefined && window.appState.settings.alertFreqRedValue !== f.redValue) {
+          window.appState.settings.alertFreqRedValue = Number(f.redValue);
+          changed = true;
+        }
+        if (f.redUnit && window.appState.settings.alertFreqRedUnit !== f.redUnit) {
+          window.appState.settings.alertFreqRedUnit = String(f.redUnit);
+          changed = true;
+        }
+        if (f.orangeValue !== undefined && window.appState.settings.alertFreqOrangeValue !== f.orangeValue) {
+          window.appState.settings.alertFreqOrangeValue = Number(f.orangeValue);
+          changed = true;
+        }
+        if (f.orangeUnit && window.appState.settings.alertFreqOrangeUnit !== f.orangeUnit) {
+          window.appState.settings.alertFreqOrangeUnit = String(f.orangeUnit);
+          changed = true;
+        }
+        if (changed) {
+          if (typeof window.saveState === 'function') {
+            window.saveState();
+          }
+          if (typeof window.updateNotificationSettingsUI === 'function') {
+            window.updateNotificationSettingsUI();
+          }
+        }
+      }
+    }
+    checkPendingWrites(snap);
+  }, onSyncError);
+  roomDataUnsubscribers.push(unsubRoomDoc);
 
   // 1. Véhicules
   const unsubVehicles = onSnapshot(collection(db, 'rooms', roomId, 'vehicles'), (snap) => {
