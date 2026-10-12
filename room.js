@@ -965,6 +965,9 @@ export function startRoomSynchronization(roomId) {
       renderOwnerPendingBanner(pendingList, roomId);
     }
     renderSettingsRoomSection();
+    if (typeof window.renderAlertChannelSummaries === 'function') {
+      window.renderAlertChannelSummaries();
+    }
     checkPendingWrites(snap);
   }, onSyncError);
   roomDataUnsubscribers.push(unsubMembers);
@@ -975,6 +978,9 @@ export function startRoomSynchronization(roomId) {
     snap.forEach(d => roomContactsMap.set(d.id, { id: d.id, ...d.data() }));
     if (typeof window.renderExternalContactsList === 'function') {
       window.renderExternalContactsList();
+    }
+    if (typeof window.renderAlertChannelSummaries === 'function') {
+      window.renderAlertChannelSummaries();
     }
     checkPendingWrites(snap);
   }, onSyncError);
@@ -2231,6 +2237,10 @@ export async function registerPushSubscriptionInRoom(subscription) {
   }
 }
 
+export function getRoomMembers() {
+  return roomMembersList ? [...roomMembersList] : [];
+}
+
 // Attacher à window pour faciliter l'interopérabilité
 window.FamilyRoom = {
   createFamilyRoom,
@@ -2279,7 +2289,8 @@ window.FamilyRoom = {
   saveExternalContact,
   deleteExternalContact,
   syncAlertFrequenciesToRoom,
-  registerPushSubscriptionInRoom
+  registerPushSubscriptionInRoom,
+  getRoomMembers
 };
 
 if (document.readyState === 'loading') {

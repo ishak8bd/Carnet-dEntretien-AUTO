@@ -495,13 +495,13 @@
 
       <!-- Barre d'onglets thématiques pour organiser les paramètres -->
       <div class="settings-nav-bar" role="tablist" aria-label="Catégories des paramètres">
-        <button type="button" class="settings-tab-btn active" data-settings-tab="alerts" role="tab" aria-selected="true" aria-controls="panelSettings_alerts">
-          <span class="settings-tab-icon">🔔</span>
-          <span class="settings-tab-text">Alertes &amp; Fréquences</span>
-        </button>
-        <button type="button" class="settings-tab-btn" data-settings-tab="room" role="tab" aria-selected="false" aria-controls="panelSettings_room">
+        <button type="button" class="settings-tab-btn active" data-settings-tab="room" role="tab" aria-selected="true" aria-controls="panelSettings_room">
           <span class="settings-tab-icon">👥</span>
           <span class="settings-tab-text">Salle Partagée</span>
+        </button>
+        <button type="button" class="settings-tab-btn" data-settings-tab="alerts" role="tab" aria-selected="false" aria-controls="panelSettings_alerts">
+          <span class="settings-tab-icon">🔔</span>
+          <span class="settings-tab-text">Alertes &amp; Fréquences</span>
         </button>
         <button type="button" class="settings-tab-btn" data-settings-tab="appearance" role="tab" aria-selected="false" aria-controls="panelSettings_appearance">
           <span class="settings-tab-icon">🎨</span>
@@ -517,10 +517,33 @@
         </button>
       </div>
 
-      <!-- ONGLET 2 : SALLE PARTAGÉE (MULTI-UTILISATEURS & SYNCHRONISATION) -->
-      <div id="panelSettings_room" class="settings-tab-panel hidden" role="tabpanel" aria-label="Salle Partagée">
+      <!-- ONGLET 1 : SALLE PARTAGÉE (MULTI-UTILISATEURS & SYNCHRONISATION - ACTIF PAR DÉFAUT) -->
+      <div id="panelSettings_room" class="settings-tab-panel" role="tabpanel" aria-label="Salle Partagée">
         <!-- SECTION MULTI-UTILISATEURS & SYNCHRONISATION MULTI-APPAREILS -->
         <div id="settingsRoomContainer"></div>
+
+        <!-- CARTE : Destinataires supplémentaires des alertes (Sans adhésion) -->
+        <section class="card settings-card" id="settingsContactsCard" style="margin-top: 15px;">
+          <div class="card-header">
+            <div class="card-title">
+              <span>📢 Destinataires supplémentaires des alertes</span>
+            </div>
+            <button type="button" id="btnAddExternalContact" class="btn-sm btn-primary" style="display: inline-flex; align-items: center; gap: 4px;">
+              <span>➕</span>
+              <span>Ajouter</span>
+            </button>
+          </div>
+          <p class="card-subtitle">
+            Envoyez des alertes et rappels d'échéances par e-mail ou WhatsApp à d'autres destinataires (famille, amis, mécanicien) sans qu'ils aient besoin d'installer l'application ni d'adhérer au partage.
+          </p>
+
+          <!-- Liste des destinataires supplémentaires -->
+          <div id="settingsContactsContainer">
+            <div id="settingsContactsList" class="contacts-list" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+              <!-- Rendu dynamiquement en JS -->
+            </div>
+          </div>
+        </section>
       </div>
 
       <!-- ONGLET 3 : THÈME & APPARENCE DE L'APPLICATION -->
@@ -632,10 +655,29 @@
       </section>
       </div> <!-- /panelSettings_appearance -->
 
-      <!-- ONGLET 1 : ALERTES & FRÉQUENCES (ACTIF PAR DÉFAUT) -->
-      <div id="panelSettings_alerts" class="settings-tab-panel" role="tabpanel" aria-label="Alertes et Fréquences">
-        <!-- CARTE : Notifications directes sur l'appareil (Web Push & Alertes PWA) -->
-        <section class="card settings-card" id="settingsNotificationsCard">
+      <!-- ONGLET 2 : ALERTES & FRÉQUENCES -->
+      <div id="panelSettings_alerts" class="settings-tab-panel hidden" role="tabpanel" aria-label="Alertes et Fréquences">
+
+        <!-- Sous-navigation des canaux d'alertes : Notifications, Email, WhatsApp -->
+        <div class="alerts-subnav-bar" role="tablist" aria-label="Canaux d'alertes">
+          <button type="button" class="alerts-subtab-btn active" data-alert-channel="notifications" role="tab" aria-selected="true" aria-controls="channelAlertNotifications">
+            <span class="alerts-subtab-icon">🔔</span>
+            <span class="alerts-subtab-text">Notifications</span>
+          </button>
+          <button type="button" class="alerts-subtab-btn" data-alert-channel="email" role="tab" aria-selected="false" aria-controls="channelAlertEmail">
+            <span class="alerts-subtab-icon">📧</span>
+            <span class="alerts-subtab-text">E-mail</span>
+          </button>
+          <button type="button" class="alerts-subtab-btn" data-alert-channel="whatsapp" role="tab" aria-selected="false" aria-controls="channelAlertWhatsapp">
+            <span class="alerts-subtab-icon">💬</span>
+            <span class="alerts-subtab-text">WhatsApp</span>
+          </button>
+        </div>
+
+        <!-- SOUS-PANNEAU 1 : NOTIFICATIONS APPAREIL -->
+        <div id="channelAlertNotifications" class="alert-channel-panel" role="tabpanel" aria-label="Notifications Appareil">
+          <!-- CARTE : Notifications directes sur l'appareil (Web Push & Alertes PWA) -->
+          <section class="card settings-card" id="settingsNotificationsCard">
         <div class="card-header">
           <div class="card-title">
             <span>🔔 Notifications sur cet appareil</span>
@@ -690,8 +732,10 @@
             <span>⚡ Mode Test Rapide : Répéter temporairement les alertes toutes les 5 minutes</span>
           </label>
 
-          <!-- SECTION : Configuration Administrateur des Fréquences d'Alertes Libres -->
-          <div class="alert-freq-box" id="adminAlertFrequencyBox">
+          <!-- Emplacement du boîtier de cadence pour Notifications -->
+          <div id="containerFreqNotifications">
+            <!-- SECTION : Configuration Administrateur des Fréquences d'Alertes Libres -->
+            <div class="alert-freq-box" id="adminAlertFrequencyBox">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
               <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
                 <span>⚙️ Cadence des alarmes : Notifications de l'application &amp; E-mails</span>
@@ -796,31 +840,93 @@
               <span id="lblFreqSavedStatus" style="font-size: 0.82rem; color: #10b981; font-weight: 600; display: none;">✅ Cadence enregistrée et synchronisée</span>
             </div>
           </div>
+          </div> <!-- /containerFreqNotifications -->
         </div>
       </section>
+      </div> <!-- /channelAlertNotifications -->
 
-      <!-- CARTE : Destinataires supplémentaires des alertes (Sans adhésion) -->
-      <section class="card settings-card" id="settingsContactsCard">
-        <div class="card-header">
-          <div class="card-title">
-            <span>📢 Destinataires supplémentaires des alertes</span>
+      <!-- SOUS-PANNEAU 2 : E-MAIL -->
+      <div id="channelAlertEmail" class="alert-channel-panel hidden" role="tabpanel" aria-label="Alertes par E-mail">
+        <section class="card settings-card">
+          <div class="card-header">
+            <div class="card-title">
+              <span>📧 Rappels &amp; Alarmes par E-mail</span>
+            </div>
+            <span class="status-badge status-badge-green">Automatique</span>
           </div>
-          <button type="button" id="btnAddExternalContact" class="btn-sm btn-primary" style="display: inline-flex; align-items: center; gap: 4px;">
-            <span>➕</span>
-            <span>Ajouter</span>
-          </button>
-        </div>
-        <p class="card-subtitle">
-          Envoyez des alertes et rappels d'échéances par e-mail ou WhatsApp à d'autres destinataires (famille, amis, mécanicien) sans qu'ils aient besoin d'installer l'application ni d'adhérer au partage.
-        </p>
+          <p class="card-subtitle">
+            Recevez des e-mails automatiques contenant la synthèse des interventions à effectuer et les alertes kilométriques selon la cadence choisie.
+          </p>
 
-        <!-- Liste des destinataires supplémentaires -->
-        <div id="settingsContactsContainer">
-          <div id="settingsContactsList" class="contacts-list" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
-            <!-- Rendu dynamiquement en JS -->
+          <div style="display: flex; flex-direction: column; gap: 8px; background: var(--bg-card-subtle); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 0.84rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+              <span style="color: var(--text-muted);">Expéditeur automatique :</span>
+              <strong style="color: var(--text-main);">truly.isaak@gmail.com</strong>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+              <span style="color: var(--text-muted);">Planification Windows Task Scheduler :</span>
+              <span class="status-badge status-badge-green" style="font-size: 0.72rem;">En arrière-plan</span>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+              <span style="color: var(--text-muted);">Gestion des destinataires e-mail :</span>
+              <span style="color: var(--primary); font-weight: 600;">👥 Gérés dans l'onglet Salle Partagée</span>
+            </div>
           </div>
-        </div>
-      </section>
+
+          <!-- Emplacement dynamique du boîtier de cadence pour E-mail -->
+          <div id="containerFreqEmail" style="margin-top: 10px;"></div>
+
+          <!-- Liste des destinataires e-mail actifs -->
+          <div style="margin-top: 14px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+            <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">
+              📬 Destinataires e-mail recevant les alertes :
+            </div>
+            <div id="emailRecipientsSummaryList" style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="font-size: 0.82rem; color: var(--text-muted); font-style: italic;">Chargement des destinataires...</div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- SOUS-PANNEAU 3 : WHATSAPP -->
+      <div id="channelAlertWhatsapp" class="alert-channel-panel hidden" role="tabpanel" aria-label="Alertes WhatsApp">
+        <section class="card settings-card">
+          <div class="card-header">
+            <div class="card-title">
+              <span>💬 Alertes &amp; Rappels WhatsApp</span>
+            </div>
+            <span class="status-badge status-badge-green">Actif</span>
+          </div>
+          <p class="card-subtitle">
+            Envoyez ou recevez des alertes d'entretien directement sur WhatsApp sans besoin d'installer l'application.
+          </p>
+
+          <div style="background: rgba(37, 211, 102, 0.08); border: 1px solid rgba(37, 211, 102, 0.25); border-radius: var(--radius-sm); padding: 12px; font-size: 0.84rem; color: var(--text-main); line-height: 1.5;">
+            <div style="font-weight: 700; color: #16a34a; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+              <span>📱 Format international requis</span>
+            </div>
+            Pour recevoir des alertes WhatsApp, chaque contact ou membre doit avoir son numéro enregistré avec l'indicatif international (ex: <code>213555123456</code> pour l'Algérie, ou <code>33612345678</code> pour la France), sans espaces ni tirets.
+          </div>
+
+          <!-- Liste des destinataires WhatsApp actifs -->
+          <div style="margin-top: 14px;">
+            <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">
+              📱 Numéros WhatsApp configurés :
+            </div>
+            <div id="whatsappRecipientsSummaryList" style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="font-size: 0.82rem; color: var(--text-muted); font-style: italic;">Chargement des contacts...</div>
+            </div>
+          </div>
+
+          <!-- Action rapide : Ouvrir WhatsApp pour tester -->
+          <div style="margin-top: 14px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+            <button type="button" id="btnTestWhatsappShare" class="btn-primary liquid-glass" style="background: linear-gradient(135deg, #16a34a, #15803d); width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+              <span>💬</span>
+              <span>Tester l'envoi d'un message d'alerte sur WhatsApp</span>
+            </button>
+          </div>
+        </section>
+      </div>
       </div> <!-- /panelSettings_alerts -->
 
       <!-- ONGLET 4 : INTERVALLES PAR DÉFAUT -->

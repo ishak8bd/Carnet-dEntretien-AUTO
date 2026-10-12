@@ -4820,17 +4820,17 @@ function initSettingsTabs() {
     };
   });
 
-  const savedTab = localStorage.getItem('carnet_settings_active_tab') || 'alerts';
+  const savedTab = localStorage.getItem('carnet_settings_active_tab') || 'room';
   switchSettingsTab(savedTab);
 }
 
 /**
  * Bascule vers un sous-onglet spécifique dans l'écran des Paramètres
- * ('alerts', 'room', 'appearance', 'intervals', 'system')
+ * ('room', 'alerts', 'appearance', 'intervals', 'system')
  */
 function switchSettingsTab(tabKey) {
-  const validTabs = ['alerts', 'room', 'appearance', 'intervals', 'system'];
-  const targetKey = validTabs.includes(tabKey) ? tabKey : 'alerts';
+  const validTabs = ['room', 'alerts', 'appearance', 'intervals', 'system'];
+  const targetKey = validTabs.includes(tabKey) ? tabKey : 'room';
 
   const tabBtns = document.querySelectorAll('.settings-tab-btn');
   tabBtns.forEach(btn => {
@@ -4854,12 +4854,223 @@ function switchSettingsTab(tabKey) {
   } catch (e) {}
 }
 
+/**
+ * Initialise les sous-onglets dans la section Alertes & Fréquences (Notifications, E-mail, WhatsApp)
+ */
+function initAlertChannelTabs() {
+  const channelBtns = document.querySelectorAll('.alerts-subtab-btn');
+  if (!channelBtns || channelBtns.length === 0) return;
+
+  channelBtns.forEach(btn => {
+    btn.onclick = () => {
+      const channelKey = btn.getAttribute('data-alert-channel');
+      if (channelKey) switchAlertChannel(channelKey);
+    };
+  });
+
+  const savedChannel = localStorage.getItem('carnet_alerts_active_channel') || 'notifications';
+  switchAlertChannel(savedChannel);
+}
+
+/**
+ * Bascule entre les 3 canaux d'alerte : notifications, email, whatsapp
+ */
+function switchAlertChannel(channelKey) {
+  const validChannels = ['notifications', 'email', 'whatsapp'];
+  const targetChannel = validChannels.includes(channelKey) ? channelKey : 'notifications';
+
+  const channelBtns = document.querySelectorAll('.alerts-subtab-btn');
+  channelBtns.forEach(btn => {
+    const isTarget = btn.getAttribute('data-alert-channel') === targetChannel;
+    btn.classList.toggle('active', isTarget);
+    btn.setAttribute('aria-selected', isTarget ? 'true' : 'false');
+  });
+
+  const panels = {
+    notifications: document.getElementById('channelAlertNotifications'),
+    email: document.getElementById('channelAlertEmail'),
+    whatsapp: document.getElementById('channelAlertWhatsapp')
+  };
+
+  Object.entries(panels).forEach(([key, panel]) => {
+    if (panel) {
+      if (key === targetChannel) {
+        panel.classList.remove('hidden');
+      } else {
+        panel.classList.add('hidden');
+      }
+    }
+  });
+
+  // Déplacement dynamique du boîtier de configuration des fréquences
+  // (entre l'onglet Notifications et l'onglet E-mail selon l'onglet actif)
+  const freqBox = document.getElementById('adminAlertFrequencyBox');
+  const containerNotif = document.getElementById('containerFreqNotifications');
+  const containerEmail = document.getElementById('containerFreqEmail');
+
+  if (freqBox && containerNotif && containerEmail) {
+    if (targetChannel === 'email') {
+      if (freqBox.parentElement !== containerEmail) {
+        containerEmail.appendChild(freqBox);
+      }
+    } else {
+      if (freqBox.parentElement !== containerNotif) {
+        containerNotif.appendChild(freqBox);
+      }
+    }
+  }
+
+  // Mettre à jour les récapitulatifs des destinataires
+  renderAlertChannelSummaries();
+
+  try {
+    localStorage.setItem('carnet_alerts_active_channel', targetChannel);
+  } catch (e) {}
+}
+
+/**
+ * Rendu des listes récapitulatives de destinataires dans les sous-onglets E-mail et WhatsApp
+ */
+function renderAlertChannelSummaries() {
+  const emailListEl = document.getElementById('emailRecipientsSummaryList');
+  const whatsappListEl = document.getElementById('whatsappRecipientsSummaryList');
+
+  // Récupérer les membres du partage et les contacts externes
+  const isRoom = Boolean(window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive());
+  let members = [];
+  if (isRoom && window.FamilyRoom) {
+    if (typeof window.FamilyRoom.getRoomMembers === 'function') {
+      members = window.FamilyRoom.getRoomMembers() || [];
+    }
+    if (members.length === 0 && typeof window.FamilyRoom.getStoredRoomProfile === 'function') {
+      const prof = window.FamilyRoom.getStoredRoomProfile();
+      if (prof) {
+        members = [{ name: prof.myName, email: prof.myEmail, phone: prof.myPhone, role: prof.role }];
+      }
+    }
+  }
+
+  let contacts = [];
+  if (isRoom && typeof window.FamilyRoom.getExternalContacts === 'function') {
+    contacts = window.FamilyRoom.getExternalContacts() || [];
+  } else if (appState.settings && Array.isArray(appState.settings.contacts)) {
+    contacts = appState.settings.contacts;
+  }
+
+  // 1. Liste E-mail
+  if (emailListEl) {
+    const emailRecipients = [];
+    members.forEach(m => {
+      if (m.email && m.email.trim()) {
+        emailRecipients.push({
+          name: m.name,
+          email: m.email.trim(),
+          source: m.role === 'owner' ? '👑 Gestionnaire' : '👤 Membre du partage'
+        });
+      }
+    });
+    contacts.forEach(c => {
+      if (c.email && c.email.trim()) {
+        emailRecipients.push({
+          name: c.name,
+          email: c.email.trim(),
+          source: '📢 Destinataire externe'
+        });
+      }
+    });
+
+    if (emailRecipients.length === 0) {
+      emailListEl.innerHTML = `
+        <div style="font-size: 0.82rem; color: var(--text-muted); font-style: italic; padding: 6px 0;">
+          Aucun destinataire e-mail configuré pour le moment.<br>
+          <span style="font-size: 0.78rem;">Ajoutez-en dans l'onglet <strong>👥 Salle Partagée</strong>.</span>
+        </div>
+      `;
+    } else {
+      emailListEl.innerHTML = emailRecipients.map(r => `
+        <div class="room-member-row" style="padding: 6px 10px; margin-bottom: 4px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 4px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-weight: 600; font-size: 0.84rem; color: var(--text-main);">📧 ${escapeHtml(r.name)}</span>
+              <span class="room-member-badge badge-user" style="font-size: 0.68rem;">${r.source}</span>
+            </div>
+            <strong style="font-size: 0.82rem; color: var(--primary);">${escapeHtml(r.email)}</strong>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  // 2. Liste WhatsApp
+  if (whatsappListEl) {
+    const phoneRecipients = [];
+    members.forEach(m => {
+      if (m.phone && m.phone.trim()) {
+        phoneRecipients.push({
+          name: m.name,
+          phone: m.phone.trim(),
+          source: m.role === 'owner' ? '👑 Gestionnaire' : '👤 Membre du partage'
+        });
+      }
+    });
+    contacts.forEach(c => {
+      if (c.phone && c.phone.trim()) {
+        phoneRecipients.push({
+          name: c.name,
+          phone: c.phone.trim(),
+          source: '📢 Destinataire externe'
+        });
+      }
+    });
+
+    if (phoneRecipients.length === 0) {
+      whatsappListEl.innerHTML = `
+        <div style="font-size: 0.82rem; color: var(--text-muted); font-style: italic; padding: 6px 0;">
+          Aucun numéro WhatsApp configuré.<br>
+          <span style="font-size: 0.78rem;">Ajoutez des numéros avec indicatif international dans l'onglet <strong>👥 Salle Partagée</strong>.</span>
+        </div>
+      `;
+    } else {
+      const vehicle = getActiveVehicle();
+      const vehName = vehicle ? `${vehicle.name} (${vehicle.brand} ${vehicle.model})` : 'Votre véhicule';
+      const defaultMsg = `🚨 *Alerte Entretien Véhicule*\nVéhicule : ${vehName}\nPensez à vérifier vos entretiens et actualiser votre compteur sur le Carnet d'Entretien.`;
+
+      whatsappListEl.innerHTML = phoneRecipients.map(r => {
+        const cleanDigits = r.phone.replace(/[^0-9]/g, '');
+        const waLink = `https://wa.me/${cleanDigits}?text=${encodeURIComponent(defaultMsg)}`;
+        return `
+          <div class="room-member-row" style="padding: 6px 10px; margin-bottom: 4px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 6px;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-weight: 600; font-size: 0.84rem; color: var(--text-main);">📱 ${escapeHtml(r.name)}</span>
+                <span class="room-member-badge badge-user" style="font-size: 0.68rem;">${r.source}</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <strong style="font-size: 0.82rem; color: #16a34a;">${escapeHtml(r.phone)}</strong>
+                <a href="${waLink}" target="_blank" rel="noopener" class="btn-xs btn-secondary" style="padding: 2px 8px; font-size: 0.74rem; text-decoration: none; display: inline-flex; align-items: center; gap: 3px;">
+                  💬 Ouvrir
+                </a>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+}
+
 window.switchSettingsTab = switchSettingsTab;
+window.initSettingsTabs = initSettingsTabs;
+window.switchAlertChannel = switchAlertChannel;
+window.initAlertChannelTabs = initAlertChannelTabs;
+window.renderAlertChannelSummaries = renderAlertChannelSummaries;
 
 /** Rendu complet de l'écran des Paramètres */
 function renderSettingsScreen() {
   // 0. Organisation des sous-onglets
   initSettingsTabs();
+  initAlertChannelTabs();
+  renderAlertChannelSummaries();
 
   const lastBackupEl = document.getElementById('lastBackupDateDisplay');
   const backupBadge = document.getElementById('backupStatusBadge');
@@ -5033,6 +5244,9 @@ function renderExternalContactsList() {
         <span style="font-size: 0.78rem;">${canManage ? "Cliquez sur <strong>➕ Ajouter</strong> pour renseigner une adresse e-mail ou un numéro WhatsApp." : "Seuls les membres approuvés du partage peuvent ajouter des destinataires."}</span>
       </div>
     `;
+    if (typeof renderAlertChannelSummaries === 'function') {
+      renderAlertChannelSummaries();
+    }
     return;
   }
 
@@ -5075,6 +5289,10 @@ function renderExternalContactsList() {
 
     container.appendChild(row);
   });
+
+  if (typeof renderAlertChannelSummaries === 'function') {
+    renderAlertChannelSummaries();
+  }
 }
 
 /** Ouvre la modale d'ajout ou modification de contact */
@@ -6066,6 +6284,20 @@ function attachEventListeners() {
 
   // Initialisation des sous-onglets de la page Paramètres
   initSettingsTabs();
+  initAlertChannelTabs();
+
+  // Bouton de test WhatsApp
+  document.getElementById('btnTestWhatsappShare')?.addEventListener('click', () => {
+    const vehicle = getActiveVehicle();
+    const vehName = vehicle ? `${vehicle.name} (${vehicle.brand} ${vehicle.model})` : 'Votre véhicule';
+    const km = vehicle && vehicle.currentKm ? `${formatKm(vehicle.currentKm)}` : '';
+    const msg = `🚨 *Alerte Entretien Carnet Automobile*\nVéhicule : ${vehName}${km ? ` (${km})` : ''}\nPensez à vérifier vos prochaines échéances d'entretien et actualiser votre compteur.`;
+    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+    if (typeof showToast === 'function') {
+      showToast("Ouverture de WhatsApp...", "info", 3000);
+    }
+  });
 }
 
 // ============================================================================

@@ -959,12 +959,19 @@ try {
 
   assert(panelAlerts && panelRoom && panelAppearance && panelIntervals && panelSystem, 'Tous les 5 panneaux de paramètres sont présents');
 
-  // Test du clic sur chaque onglet
-  settingsTabRoom.click();
-  assert(!panelRoom.classList.contains('hidden'), 'Panneau Salle affiché après clic');
-  assert(panelAlerts.classList.contains('hidden'), 'Panneau Alertes masqué');
-  assert.strictEqual(window.localStorage.getItem('carnet_settings_active_tab'), 'room', 'Onglet room persisté');
+  // Vérifier que la carte des destinataires supplémentaires est bien dans le panneau Salle Partagée
+  const contactsCard = document.getElementById('settingsContactsCard');
+  assert(contactsCard, 'Carte des destinataires supplémentaires présente');
+  assert(panelRoom.contains(contactsCard), 'La carte des destinataires supplémentaires doit se trouver dans le panneau Salle Partagée');
 
+  // Vérifier que Salle Partagée est le sous-onglet actif par défaut
+  window.localStorage.removeItem('carnet_settings_active_tab');
+  window.initSettingsTabs();
+  assert(!panelRoom.classList.contains('hidden'), 'Salle partagée affichée par défaut');
+  assert(panelAlerts.classList.contains('hidden'), 'Panneau alertes masqué par défaut');
+  assert.strictEqual(window.localStorage.getItem('carnet_settings_active_tab'), 'room', 'Onglet room persisté par défaut');
+
+  // Test du clic sur chaque onglet
   settingsTabAppearance.click();
   assert(!panelAppearance.classList.contains('hidden'), 'Panneau Apparence affiché après clic');
   assert(panelRoom.classList.contains('hidden'), 'Panneau Salle masqué');
@@ -975,10 +982,59 @@ try {
   settingsTabSystem.click();
   assert(!panelSystem.classList.contains('hidden'), 'Panneau Système affiché après clic');
 
-  // Retour à Alertes
+  // Retour à Alertes et test des 3 sous-onglets (Notifications, E-mail, WhatsApp)
   settingsTabAlerts.click();
   assert(!panelAlerts.classList.contains('hidden'), 'Panneau Alertes réaffiché');
   assert(panelSystem.classList.contains('hidden'), 'Panneau Système masqué');
+
+  const subtabNotif = document.querySelector('.alerts-subtab-btn[data-alert-channel="notifications"]');
+  const subtabEmail = document.querySelector('.alerts-subtab-btn[data-alert-channel="email"]');
+  const subtabWhatsapp = document.querySelector('.alerts-subtab-btn[data-alert-channel="whatsapp"]');
+  assert(subtabNotif && subtabEmail && subtabWhatsapp, 'Les 3 sous-onglets (notifications, email, whatsapp) sont présents');
+
+  const channelNotif = document.getElementById('channelAlertNotifications');
+  const channelEmail = document.getElementById('channelAlertEmail');
+  const channelWhatsapp = document.getElementById('channelAlertWhatsapp');
+  assert(channelNotif && channelEmail && channelWhatsapp, 'Les 3 panneaux de canaux d\'alerte sont présents');
+
+  // Par défaut : notifications visible
+  subtabNotif.click();
+  assert(!channelNotif.classList.contains('hidden'), 'Canal notifications visible');
+  assert(channelEmail.classList.contains('hidden'), 'Canal email masqué');
+  assert(channelWhatsapp.classList.contains('hidden'), 'Canal whatsapp masqué');
+  const adminFreqBox = document.getElementById('adminAlertFrequencyBox');
+  assert(adminFreqBox, 'Boîtier de fréquence des alertes présent');
+  assert(channelNotif.contains(adminFreqBox), 'Boîtier de fréquence placé dans le canal notifications');
+
+  // Clic sur l'onglet E-mail
+  subtabEmail.click();
+  assert(channelNotif.classList.contains('hidden'), 'Canal notifications masqué');
+  assert(!channelEmail.classList.contains('hidden'), 'Canal email visible');
+  assert(channelWhatsapp.classList.contains('hidden'), 'Canal whatsapp masqué');
+  assert(channelEmail.contains(adminFreqBox), 'Boîtier de fréquence déplacé dynamiquement dans le canal e-mail');
+
+  // Vérifier la liste des destinataires e-mail
+  const emailList = document.getElementById('emailRecipientsSummaryList');
+  assert(emailList, 'Liste des destinataires e-mail présente');
+  assert(emailList.textContent.includes('sam@example.com') || emailList.textContent.includes('papy@famille.dz'), 'Les adresses e-mails configurées sont résumées');
+
+  // Clic sur l'onglet WhatsApp
+  subtabWhatsapp.click();
+  assert(channelEmail.classList.contains('hidden'), 'Canal email masqué');
+  assert(!channelWhatsapp.classList.contains('hidden'), 'Canal whatsapp visible');
+
+  // Vérifier la liste des destinataires WhatsApp
+  const waList = document.getElementById('whatsappRecipientsSummaryList');
+  assert(waList, 'Liste des destinataires whatsapp présente');
+  assert(waList.textContent.includes('213555123456') || waList.textContent.includes('213555987654'), 'Les numéros WhatsApp configurés sont résumés');
+
+  // Vérifier le bouton de test WhatsApp
+  const btnTestWa = document.getElementById('btnTestWhatsappShare');
+  assert(btnTestWa, 'Bouton de test de partage WhatsApp présent');
+
+  // Retour sur Salle Partagée
+  settingsTabRoom.click();
+  assert(!panelRoom.classList.contains('hidden'), 'Retour final sur le panneau Salle Partagée validé');
 
   console.log('✅ TOUS LES TESTS DU SMOKE TEST (25/25) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
