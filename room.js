@@ -873,6 +873,18 @@ export function startRoomSynchronization(roomId) {
           window.appState.settings.alertFreqOrangeUnit = String(f.orangeUnit);
           changed = true;
         }
+        if (f.kmValue !== undefined && window.appState.settings.alertFreqKmValue !== f.kmValue) {
+          window.appState.settings.alertFreqKmValue = Number(f.kmValue);
+          changed = true;
+        }
+        if (f.kmUnit && window.appState.settings.alertFreqKmUnit !== f.kmUnit) {
+          window.appState.settings.alertFreqKmUnit = String(f.kmUnit);
+          changed = true;
+        }
+        if (f.staleKmDays !== undefined && window.appState.settings.notifStaleKmDays !== f.staleKmDays) {
+          window.appState.settings.notifStaleKmDays = Number(f.staleKmDays);
+          changed = true;
+        }
         if (changed) {
           if (typeof window.saveState === 'function') {
             window.saveState();

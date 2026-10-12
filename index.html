@@ -643,10 +643,16 @@
             <input type="checkbox" id="chkNotifUrgentMaint" checked style="accent-color: var(--primary); width: 18px; height: 18px;">
             <span>Alerter directement dès qu'une échéance approche ou devient urgente</span>
           </label>
-          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-main); cursor: pointer;">
-            <input type="checkbox" id="chkNotifStaleKm" checked style="accent-color: var(--primary); width: 18px; height: 18px;">
-            <span>Rappeler le relevé kilométrique si inchangé depuis 15 jours</span>
-          </label>
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 4px 0;">
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-main); cursor: pointer; flex: 1; min-width: 250px;">
+              <input type="checkbox" id="chkNotifStaleKm" checked style="accent-color: var(--primary); width: 18px; height: 18px;">
+              <span>Rappeler le relevé kilométrique si inchangé depuis plus de :</span>
+            </label>
+            <div style="display: inline-flex; align-items: center; gap: 6px;">
+              <input type="number" id="inputNotifStaleKmDays" class="form-input" min="1" max="365" value="15" style="width: 70px; padding: 5px 8px; font-size: 0.85rem; text-align: center;" aria-label="Nombre de jours X avant rappel kilométrique">
+              <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted);">jour(s)</span>
+            </div>
+          </div>
           <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--primary); font-weight: 600; cursor: pointer; background: rgba(59, 130, 246, 0.08); padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.2);">
             <input type="checkbox" id="chkNotifTestMode" style="accent-color: var(--primary); width: 18px; height: 18px;">
             <span>⚡ Mode Test Rapide : Répéter temporairement les alertes toutes les 5 minutes</span>
@@ -716,7 +722,36 @@
                 </div>
               </div>
               <div style="font-size: 0.74rem; color: var(--text-muted);">
-                Déclenchée quand il reste ≤ 15 jours ou ≤ 500 km (ou relevé de compteur > 15 jours).
+                Déclenchée quand une intervention approche (≤ 15 jours ou ≤ 500 km).
+              </div>
+            </div>
+
+            <!-- 3. Fréquence KILOMÉTRAGE -->
+            <div class="alert-freq-card" style="border-left: 4px solid var(--primary); background: rgba(59, 130, 246, 0.04); border-radius: 8px; padding: 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+              <div class="alert-freq-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
+                <label for="inputAlertFreqKmValue" class="alert-freq-title" style="color: var(--primary); font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; margin: 0;">
+                  <span>⏱️ Alarme ACTUALISATION DU KILOMÉTRAGE (Compteur inchangé)</span>
+                </label>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Actuelle : <strong id="lblCurrentKmFreq">12 heures</strong></span>
+              </div>
+              <div class="alert-freq-inputs-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 0.82rem; color: var(--text-main);">Répéter chaque :</span>
+                <input type="number" id="inputAlertFreqKmValue" class="form-input alert-freq-value-input" min="1" max="999" value="12" style="width: 75px; text-align: center;" aria-label="Nombre pour fréquence mise à jour compteur">
+                <select id="selectAlertFreqKmUnit" class="form-input alert-freq-unit-select" style="min-width: 110px;" aria-label="Unité fréquence compteur">
+                  <option value="minutes">Minute(s)</option>
+                  <option value="hours" selected>Heure(s)</option>
+                  <option value="days">Jour(s)</option>
+                </select>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                  <button type="button" class="btn-chip" data-quick-freq="km" data-val="15" data-unit="minutes">15 min (Test)</button>
+                  <button type="button" class="btn-chip" data-quick-freq="km" data-val="12" data-unit="hours">12 h</button>
+                  <button type="button" class="btn-chip" data-quick-freq="km" data-val="1" data-unit="days">24 h</button>
+                  <button type="button" class="btn-chip" data-quick-freq="km" data-val="2" data-unit="days">2 jours</button>
+                  <button type="button" class="btn-chip" data-quick-freq="km" data-val="7" data-unit="days">7 jours</button>
+                </div>
+              </div>
+              <div style="font-size: 0.74rem; color: var(--text-muted);">
+                Déclenchée lorsque le dernier relevé date de plus de <span id="lblStaleKmDaysBadge" style="font-weight: 700; color: var(--text-main);">15</span> jours. Répète l'alarme selon cette cadence tant que le compteur n'est pas actualisé.
               </div>
             </div>
 

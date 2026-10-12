@@ -473,7 +473,7 @@ function getNotificationPermission() {
 }
 
 /**
- * Retourne la durée en millisecondes pour un niveau de fréquence ('red' ou 'orange')
+ * Retourne la durée en millisecondes pour un niveau de fréquence ('red', 'orange', ou 'km')
  */
 function getAlertFrequencyMs(level) {
   if (!appState.settings) appState.settings = {};
@@ -483,6 +483,12 @@ function getAlertFrequencyMs(level) {
   if (level === 'red') {
     const val = Math.max(1, parseInt(appState.settings.alertFreqRedValue, 10) || 5);
     const unit = appState.settings.alertFreqRedUnit || 'minutes';
+    if (unit === 'hours') return val * 60 * 60 * 1000;
+    if (unit === 'days') return val * 24 * 60 * 60 * 1000;
+    return val * 60 * 1000; // minutes
+  } else if (level === 'km') {
+    const val = Math.max(1, parseInt(appState.settings.alertFreqKmValue, 10) || 12);
+    const unit = appState.settings.alertFreqKmUnit || 'hours';
     if (unit === 'hours') return val * 60 * 60 * 1000;
     if (unit === 'days') return val * 24 * 60 * 60 * 1000;
     return val * 60 * 1000; // minutes
@@ -496,7 +502,7 @@ function getAlertFrequencyMs(level) {
 }
 
 /**
- * Retourne la durée en minutes pour un niveau de fréquence ('red' ou 'orange')
+ * Retourne la durée en minutes pour un niveau de fréquence ('red', 'orange', ou 'km')
  */
 function getAlertFrequencyMinutes(level) {
   return Math.round(getAlertFrequencyMs(level) / (60 * 1000));
@@ -521,6 +527,9 @@ async function saveAlertFrequenciesFromInputs(showFeedback = false) {
   const selectRedUnit = document.getElementById('selectAlertFreqRedUnit');
   const inputOrangeVal = document.getElementById('inputAlertFreqOrangeValue');
   const selectOrangeUnit = document.getElementById('selectAlertFreqOrangeUnit');
+  const inputKmVal = document.getElementById('inputAlertFreqKmValue');
+  const selectKmUnit = document.getElementById('selectAlertFreqKmUnit');
+  const inputStaleDays = document.getElementById('inputNotifStaleKmDays');
 
   if (inputRedVal && selectRedUnit) {
     appState.settings.alertFreqRedValue = Math.max(1, parseInt(inputRedVal.value, 10) || 5);
@@ -529,6 +538,13 @@ async function saveAlertFrequenciesFromInputs(showFeedback = false) {
   if (inputOrangeVal && selectOrangeUnit) {
     appState.settings.alertFreqOrangeValue = Math.max(1, parseInt(inputOrangeVal.value, 10) || 15);
     appState.settings.alertFreqOrangeUnit = selectOrangeUnit.value || 'minutes';
+  }
+  if (inputKmVal && selectKmUnit) {
+    appState.settings.alertFreqKmValue = Math.max(1, parseInt(inputKmVal.value, 10) || 12);
+    appState.settings.alertFreqKmUnit = selectKmUnit.value || 'hours';
+  }
+  if (inputStaleDays) {
+    appState.settings.notifStaleKmDays = Math.max(1, parseInt(inputStaleDays.value, 10) || 15);
   }
 
   // Désactiver le forçage test mode si l'utilisateur modifie ses cadences
@@ -543,7 +559,11 @@ async function saveAlertFrequenciesFromInputs(showFeedback = false) {
     redMinutes: getAlertFrequencyMinutes('red'),
     orangeValue: appState.settings.alertFreqOrangeValue,
     orangeUnit: appState.settings.alertFreqOrangeUnit,
-    orangeMinutes: getAlertFrequencyMinutes('orange')
+    orangeMinutes: getAlertFrequencyMinutes('orange'),
+    kmValue: appState.settings.alertFreqKmValue,
+    kmUnit: appState.settings.alertFreqKmUnit,
+    kmMinutes: getAlertFrequencyMinutes('km'),
+    staleKmDays: appState.settings.notifStaleKmDays || 15
   };
 
   // Si connecté à une salle Firestore, synchroniser sur le document de salle
@@ -554,10 +574,11 @@ async function saveAlertFrequenciesFromInputs(showFeedback = false) {
 
   const redLabel = formatAlertFrequencyLabel(appState.settings.alertFreqRedValue, appState.settings.alertFreqRedUnit);
   const orangeLabel = formatAlertFrequencyLabel(appState.settings.alertFreqOrangeValue, appState.settings.alertFreqOrangeUnit);
+  const kmLabel = formatAlertFrequencyLabel(appState.settings.alertFreqKmValue, appState.settings.alertFreqKmUnit);
 
   const statusEl = document.getElementById('lblFreqSavedStatus');
   if (statusEl) {
-    statusEl.textContent = `✅ Cadence enregistrée : Rouge (${redLabel}), Orange (${orangeLabel})`;
+    statusEl.textContent = `✅ Enregistré : Rouge (${redLabel}), Orange (${orangeLabel}), Compteur (${kmLabel}, >${appState.settings.notifStaleKmDays || 15}j)`;
     statusEl.style.display = 'inline-block';
     setTimeout(() => {
       if (statusEl) statusEl.style.display = 'none';
@@ -566,9 +587,9 @@ async function saveAlertFrequenciesFromInputs(showFeedback = false) {
 
   if (showFeedback) {
     if (syncResult && syncResult.error) {
-      showToast(`⚠️ Cadence enregistrée localement, mais échec synchronisation salle : ${syncResult.error}`, 'warning', 5000);
+      showToast(`⚠️ Cadences enregistrées localement, mais échec synchronisation salle : ${syncResult.error}`, 'warning', 5000);
     } else {
-      showToast(`✅ Cadence d'alertes enregistrée : Rouge (${redLabel}), Orange (${orangeLabel})`, 'success', 3500);
+      showToast(`✅ Cadences enregistrées : Rouge (${redLabel}), Orange (${orangeLabel}), Compteur (${kmLabel})`, 'success', 3500);
     }
   }
 }
@@ -594,11 +615,19 @@ function updateNotificationSettingsUI() {
   const inputOrangeVal = document.getElementById('inputAlertFreqOrangeValue');
   const selectOrangeUnit = document.getElementById('selectAlertFreqOrangeUnit');
   const lblOrange = document.getElementById('lblCurrentOrangeFreq');
+  const inputKmVal = document.getElementById('inputAlertFreqKmValue');
+  const selectKmUnit = document.getElementById('selectAlertFreqKmUnit');
+  const lblKm = document.getElementById('lblCurrentKmFreq');
+  const inputStaleDays = document.getElementById('inputNotifStaleKmDays');
+  const lblStaleKmDaysBadge = document.getElementById('lblStaleKmDaysBadge');
 
   const redVal = appState.settings?.alertFreqRedValue !== undefined ? appState.settings.alertFreqRedValue : 5;
   const redUnit = appState.settings?.alertFreqRedUnit || 'minutes';
   const orangeVal = appState.settings?.alertFreqOrangeValue !== undefined ? appState.settings.alertFreqOrangeValue : 15;
   const orangeUnit = appState.settings?.alertFreqOrangeUnit || 'minutes';
+  const kmVal = appState.settings?.alertFreqKmValue !== undefined ? appState.settings.alertFreqKmValue : 12;
+  const kmUnit = appState.settings?.alertFreqKmUnit || 'hours';
+  const staleKmDays = Math.max(1, parseInt(appState.settings?.notifStaleKmDays, 10) || 15);
 
   if (inputRedVal && document.activeElement !== inputRedVal) inputRedVal.value = String(redVal);
   if (selectRedUnit) selectRedUnit.value = redUnit;
@@ -607,6 +636,13 @@ function updateNotificationSettingsUI() {
   if (inputOrangeVal && document.activeElement !== inputOrangeVal) inputOrangeVal.value = String(orangeVal);
   if (selectOrangeUnit) selectOrangeUnit.value = orangeUnit;
   if (lblOrange) lblOrange.textContent = formatAlertFrequencyLabel(orangeVal, orangeUnit);
+
+  if (inputKmVal && document.activeElement !== inputKmVal) inputKmVal.value = String(kmVal);
+  if (selectKmUnit) selectKmUnit.value = kmUnit;
+  if (lblKm) lblKm.textContent = formatAlertFrequencyLabel(kmVal, kmUnit);
+
+  if (inputStaleDays && document.activeElement !== inputStaleDays) inputStaleDays.value = String(staleKmDays);
+  if (lblStaleKmDaysBadge) lblStaleKmDaysBadge.textContent = String(staleKmDays);
 
   if (chkUrgent && appState.settings) {
     chkUrgent.checked = appState.settings.notifUrgentMaint !== false;
@@ -1004,20 +1040,21 @@ async function checkAndSendPendingMaintenanceNotifications() {
       }
     }
 
-    // 2. Rappel de relevé kilométrique si ancien (> 15 jours, phase ORANGE)
+    // 2. Rappel de relevé kilométrique si ancien (> X jours, cadence personnalisée compteur)
     if (appState.settings.notifStaleKm !== false) {
+      const staleThresholdDays = Math.max(1, parseInt(appState.settings.notifStaleKmDays, 10) || 15);
       const lastUpdateDate = vehicle.updatedAt || (vehicle.kmLog && vehicle.kmLog.length > 0 ? vehicle.kmLog[vehicle.kmLog.length - 1].date : null);
       if (lastUpdateDate) {
         const daysElapsed = getDaysElapsed(lastUpdateDate);
-        if (daysElapsed >= 15) {
+        if (daysElapsed >= staleThresholdDays) {
           const kmKey = `carnet_notif_km_${vehicle.id}`;
           let kmState = null;
           try {
             kmState = JSON.parse(localStorage.getItem(kmKey) || 'null');
           } catch (e) {}
 
-          const orangeRepeatMs = getAlertFrequencyMs('orange');
-          if (!kmState || (now - (kmState.sentAt || 0) > orangeRepeatMs)) {
+          const kmRepeatMs = getAlertFrequencyMs('km');
+          if (!kmState || (now - (kmState.sentAt || 0) >= kmRepeatMs)) {
             try {
               localStorage.setItem(kmKey, JSON.stringify({ sentAt: now }));
             } catch (e) {}
@@ -1112,6 +1149,15 @@ function loadState() {
       }
       if (parsed.settings.notifThresholdDays === undefined) {
         parsed.settings.notifThresholdDays = 15;
+      }
+      if (parsed.settings.notifStaleKmDays === undefined) {
+        parsed.settings.notifStaleKmDays = 15;
+      }
+      if (parsed.settings.alertFreqKmValue === undefined) {
+        parsed.settings.alertFreqKmValue = 12;
+      }
+      if (parsed.settings.alertFreqKmUnit === undefined) {
+        parsed.settings.alertFreqKmUnit = 'hours';
       }
     }
 
@@ -5878,11 +5924,14 @@ function attachEventListeners() {
     checkAndSendPendingMaintenanceNotifications();
   });
 
-  // Écouteurs de saisie libre des fréquences d'alertes
+  // Écouteurs de saisie libre des fréquences d'alertes et seuil kilométrique
   const inputRed = document.getElementById('inputAlertFreqRedValue');
   const unitRed = document.getElementById('selectAlertFreqRedUnit');
   const inputOrange = document.getElementById('inputAlertFreqOrangeValue');
   const unitOrange = document.getElementById('selectAlertFreqOrangeUnit');
+  const inputKm = document.getElementById('inputAlertFreqKmValue');
+  const unitKm = document.getElementById('selectAlertFreqKmUnit');
+  const inputStaleDays = document.getElementById('inputNotifStaleKmDays');
 
   inputRed?.addEventListener('input', () => saveAlertFrequenciesFromInputs(false));
   inputRed?.addEventListener('change', () => {
@@ -5900,6 +5949,27 @@ function attachEventListeners() {
     checkAndSendPendingMaintenanceNotifications();
   });
   unitOrange?.addEventListener('change', () => {
+    saveAlertFrequenciesFromInputs(true);
+    checkAndSendPendingMaintenanceNotifications();
+  });
+
+  inputKm?.addEventListener('input', () => saveAlertFrequenciesFromInputs(false));
+  inputKm?.addEventListener('change', () => {
+    saveAlertFrequenciesFromInputs(true);
+    checkAndSendPendingMaintenanceNotifications();
+  });
+  unitKm?.addEventListener('change', () => {
+    saveAlertFrequenciesFromInputs(true);
+    checkAndSendPendingMaintenanceNotifications();
+  });
+
+  inputStaleDays?.addEventListener('input', () => {
+    const val = Math.max(1, parseInt(inputStaleDays.value, 10) || 15);
+    const badge = document.getElementById('lblStaleKmDaysBadge');
+    if (badge) badge.textContent = String(val);
+    saveAlertFrequenciesFromInputs(false);
+  });
+  inputStaleDays?.addEventListener('change', () => {
     saveAlertFrequenciesFromInputs(true);
     checkAndSendPendingMaintenanceNotifications();
   });
@@ -5922,6 +5992,9 @@ function attachEventListeners() {
       } else if (type === 'orange') {
         if (inputOrange) inputOrange.value = val;
         if (unitOrange) unitOrange.value = unit;
+      } else if (type === 'km') {
+        if (inputKm) inputKm.value = val;
+        if (unitKm) unitKm.value = unit;
       }
       saveAlertFrequenciesFromInputs(true);
       checkAndSendPendingMaintenanceNotifications();

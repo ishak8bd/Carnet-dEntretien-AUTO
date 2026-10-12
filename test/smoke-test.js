@@ -859,11 +859,25 @@ try {
   assert(unitOrange, 'Sélecteur unité fréquence orange présent');
   assert(lblOrange, 'Label fréquence orange présent');
 
+  // Vérification de la saisie libre du seuil X jours et de la fréquence alarme compteur
+  const inputStaleKmDays = document.getElementById('inputNotifStaleKmDays');
+  const inputKm = document.getElementById('inputAlertFreqKmValue');
+  const unitKm = document.getElementById('selectAlertFreqKmUnit');
+  const lblKm = document.getElementById('lblCurrentKmFreq');
+
+  assert(inputStaleKmDays, 'Champ de saisie libre du seuil kilométrique X jours présent');
+  assert(inputKm, 'Champ de saisie libre fréquence alarme compteur présent');
+  assert(unitKm, 'Sélecteur unité fréquence alarme compteur présent');
+  assert(lblKm, 'Label fréquence alarme compteur présent');
+
   // Test de modification libre des fréquences
   inputRed.value = '10';
   unitRed.value = 'minutes';
   inputOrange.value = '3';
   unitOrange.value = 'days';
+  inputKm.value = '2';
+  unitKm.value = 'days';
+  inputStaleKmDays.value = '7';
   window.saveAlertFrequenciesFromInputs();
 
   assert.strictEqual(window.appState.settings.alertFreqRedValue, 10, 'Fréquence rouge mise à jour à 10');
@@ -872,14 +886,22 @@ try {
   assert.strictEqual(window.appState.settings.alertFreqOrangeValue, 3, 'Fréquence orange mise à jour à 3');
   assert.strictEqual(window.appState.settings.alertFreqOrangeUnit, 'days', 'Unité orange mise à jour à days');
   assert.strictEqual(window.getAlertFrequencyMinutes('orange'), 3 * 24 * 60, 'Cadence orange = 3 jours');
+  assert.strictEqual(window.appState.settings.alertFreqKmValue, 2, 'Fréquence compteur mise à jour à 2');
+  assert.strictEqual(window.appState.settings.alertFreqKmUnit, 'days', 'Unité compteur mise à jour à days');
+  assert.strictEqual(window.getAlertFrequencyMinutes('km'), 2 * 24 * 60, 'Cadence compteur = 2 jours');
+  assert.strictEqual(window.appState.settings.notifStaleKmDays, 7, 'Seuil X jours kilométrique mis à jour à 7');
   assert(lblRed.textContent.includes('10 minute'), 'Label rouge reflète 10 minutes');
   assert(lblOrange.textContent.includes('3 jour'), 'Label orange reflète 3 jours');
+  assert(lblKm.textContent.includes('2 jour'), 'Label compteur reflète 2 jours');
 
-  // Remettre en mode test 5 min / 15 min
+  // Remettre en mode normal 5 min / 15 min / 12 h / 15 j
   inputRed.value = '5';
   unitRed.value = 'minutes';
   inputOrange.value = '15';
   unitOrange.value = 'minutes';
+  inputKm.value = '12';
+  unitKm.value = 'hours';
+  inputStaleKmDays.value = '15';
   window.saveAlertFrequenciesFromInputs();
 
   // Vérification de la bannière d'activation sur le tableau de bord

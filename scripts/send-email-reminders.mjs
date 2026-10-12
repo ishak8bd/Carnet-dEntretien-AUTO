@@ -812,19 +812,20 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
     const lastLog = vehLogs.length > 0 ? vehLogs[vehLogs.length - 1] : null;
     const currentKm = veh.currentKm || (lastLog ? lastLog.km : 0);
 
-    // 1. Rappel Relevé kilométrique tous les 15 jours
+    // 1. Rappel Relevé kilométrique si inchangé depuis plus de X jours (personnalisable par l'admin)
+    const staleKmThresholdDays = Math.max(1, Number(roomDoc?.alertFrequencies?.staleKmDays || cfg?.staleKmDays || 15));
     if (lastLog && lastLog.date) {
       const lastLogDate = new Date(lastLog.date).getTime();
       const daysElapsed = Math.floor((now - lastLogDate) / (1000 * 60 * 60 * 24));
 
-      if (daysElapsed >= 15) {
+      if (daysElapsed >= staleKmThresholdDays) {
         alertsToSend.push({
           type: 'mileage',
           vehicle: vehName,
           title: `📅 Relevé de compteur à mettre à jour (${vehName})`,
           level: 'mileage',
           content: `
-            Votre dernier relevé kilométrique date d'il y a <strong>${daysElapsed} jours</strong> (le ${lastLog.date}).<br><br>
+            Votre dernier relevé kilométrique date d'il y a <strong>${daysElapsed} jours</strong> (le ${lastLog.date}) alors que votre seuil d'alerte est fixé à <strong>${staleKmThresholdDays} jours</strong>.<br><br>
             • Dernier kilométrage enregistré : <strong>${currentKm.toLocaleString('fr-FR')} km</strong><br><br>
             Pensez à relever votre compteur et à l'actualiser dans l'application pour maintenir la précision de vos prédictions d'entretien !
           `
@@ -930,6 +931,7 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
   // Récupération des cadences d'alertes configurées (salle Firestore, email-config.json, ou variables d'environnement)
   let redMinutes = 60; // 1 heure par défaut
   let orangeMinutes = 720; // 12 heures par défaut
+  let kmMinutes = 720; // 12 heures par défaut
   const freqSource = (roomDoc && roomDoc.alertFrequencies) ? roomDoc.alertFrequencies : cfg.alertFrequencies;
   if (freqSource) {
     if (freqSource.redMinutes) redMinutes = Math.max(1, Number(freqSource.redMinutes));
@@ -942,20 +944,38 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
       const mult = freqSource.orangeUnit === 'hours' ? 60 : (freqSource.orangeUnit === 'days' ? 1440 : 1);
       orangeMinutes = Math.max(1, Number(freqSource.orangeValue) * mult);
     }
+    if (freqSource.kmMinutes) kmMinutes = Math.max(1, Number(freqSource.kmMinutes));
+    else if (freqSource.kmValue) {
+      const mult = freqSource.kmUnit === 'hours' ? 60 : (freqSource.kmUnit === 'days' ? 1440 : 1);
+      kmMinutes = Math.max(1, Number(freqSource.kmValue) * mult);
+    }
   }
   if (process.env.EMAIL_COOLDOWN_RED_MINUTES) redMinutes = Number(process.env.EMAIL_COOLDOWN_RED_MINUTES);
   if (process.env.EMAIL_COOLDOWN_ORANGE_MINUTES) orangeMinutes = Number(process.env.EMAIL_COOLDOWN_ORANGE_MINUTES);
+  if (process.env.EMAIL_COOLDOWN_KM_MINUTES) kmMinutes = Number(process.env.EMAIL_COOLDOWN_KM_MINUTES);
   if (process.env.EMAIL_COOLDOWN_MINUTES) {
     redMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
     orangeMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
+    kmMinutes = Number(process.env.EMAIL_COOLDOWN_MINUTES);
   }
 
-  // Si le lot contient des alertes ROUGES (urgentes), utiliser la cadence Rouge
-  // S'il ne contient QUE des alertes ORANGES, utiliser la cadence Orange
-  const cooldownMinutes = hasUrgent ? redMinutes : orangeMinutes;
-  const phaseName = hasUrgent ? "ROUGE" : "ORANGE";
+  const staleKmThresholdDays = Math.max(1, Number(roomDoc?.alertFrequencies?.staleKmDays || cfg?.staleKmDays || 15));
+  const hasOnlyMileage = alertsToSend.length > 0 && alertsToSend.every(a => a.level === 'mileage');
 
-  console.log(`⏱️ Cadences d'alertes actives : ROUGE = ${redMinutes} min, ORANGE = ${orangeMinutes} min (Phase appliquée = ${phaseName})`);
+  let cooldownMinutes;
+  let phaseName;
+  if (hasUrgent) {
+    cooldownMinutes = redMinutes;
+    phaseName = "ROUGE";
+  } else if (hasOnlyMileage) {
+    cooldownMinutes = kmMinutes;
+    phaseName = "COMPTEUR";
+  } else {
+    cooldownMinutes = orangeMinutes;
+    phaseName = "ORANGE";
+  }
+
+  console.log(`⏱️ Cadences actives : ROUGE = ${redMinutes} min, ORANGE = ${orangeMinutes} min, COMPTEUR = ${kmMinutes} min (Seuil = ${staleKmThresholdDays} jours, Phase appliquée = ${phaseName})`);
 
   // Cooldown anti-spam : vérification de la cadence paramétrée
   let emailHistory = null;
