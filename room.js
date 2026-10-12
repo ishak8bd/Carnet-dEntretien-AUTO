@@ -973,7 +973,8 @@ export function assembleRoomState() {
       updateFrequency: v.updateFrequency || 'weekly',
       isDemo: Boolean(v.isDemo),
       kmLog: logs,
-      maintenanceItems: items
+      maintenanceItems: items,
+      updatedAt: v.updatedAt || null
     };
 
     if (typeof window.ensureVehicleMaintenanceDefaults === 'function') {

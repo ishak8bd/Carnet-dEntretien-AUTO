@@ -915,10 +915,9 @@ try {
     item.lastDate = '2025-01-01'; // Ancienne date
     item.intervalMonths = 12;     // Échue ou très proche
     await window.checkAndSendPendingMaintenanceNotifications();
-    assert(mockSentNotifications.length > countBefore, 'Une notification directe doit être émise dès qu\'un entretien devient proche ou urgent');
     const newNotifs = mockSentNotifications.slice(countBefore);
-    const hasAlert = newNotifs.some(n => n.title.includes('Entretien') || n.title.includes('Échéance') || n.title.includes('Relevé'));
-    assert(hasAlert, 'Une alerte d\'échéance ou de relevé doit être présente');
+    const hasMaintAlert = newNotifs.some(n => n.title.includes(item.name) || n.title.includes('Entretien') || n.title.includes('Échéance'));
+    assert(hasMaintAlert, 'Une alerte spécifique pour l\'entretien testé doit être émise');
   }
 
   console.log('✅ TOUS LES TESTS DU SMOKE TEST (24/24) ONT RÉUSSI SANS AUCUNE ERREUR !');

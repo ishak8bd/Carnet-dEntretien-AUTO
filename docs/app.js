@@ -819,12 +819,12 @@ async function checkAndSendPendingMaintenanceNotifications() {
         if (!it) continue;
         if (it.lastDate === null && it.lastKm === null) continue; // À renseigner
 
-        const pred = engine[it.id];
-        if (!pred) continue;
+        const due = calculateItemDueStatus(vehicle, it, engine);
+        if (!due || due.status === 'grey') continue;
 
-        const daysRemaining = pred.estimatedDaysRemaining;
-        const kmRemaining = pred.remainingKm;
-        const isOverdue = Boolean(pred.isOverdue);
+        const daysRemaining = due.remainingDays;
+        const kmRemaining = due.remainingKm;
+        const isOverdue = due.status === 'red' || (daysRemaining !== null && daysRemaining <= 0) || (kmRemaining !== null && kmRemaining <= 0);
 
         let stage = null;
         let title = '';
@@ -844,7 +844,7 @@ async function checkAndSendPendingMaintenanceNotifications() {
           const info = [timeInfo, kmInfo].filter(Boolean).join(' ou ');
           title = `⚠️ Échéance imminente : ${it.name} (${vehName})`;
           body = `Échéance prévue ${info}. Prévoyez votre rendez-vous garage ou vos pièces !`;
-        } else if ((daysRemaining !== null && daysRemaining <= thresholdDays) || (kmRemaining !== null && kmRemaining <= thresholdKm)) {
+        } else if (due.status === 'orange' || (daysRemaining !== null && daysRemaining <= thresholdDays) || (kmRemaining !== null && kmRemaining <= thresholdKm)) {
           stage = 'close';
           const timeInfo = daysRemaining !== null ? `dans environ ${daysRemaining} jour(s)` : '';
           const kmInfo = kmRemaining !== null ? `reste ${kmRemaining.toLocaleString('fr-FR')} km` : '';
@@ -865,16 +865,16 @@ async function checkAndSendPendingMaintenanceNotifications() {
           const orangeRepeatMs = getAlertFrequencyMs('orange');
 
           let shouldSend = false;
-          if (!state || !state.stage) {
+          if (!state || !state.stage || !state.sentAt) {
             shouldSend = true;
           } else if (stage === 'urgent') {
             // Phase ROUGE : re-notifier si on passe au stade urgent ou si l'urgence dure depuis plus de la cadence Rouge
-            if (state.stage !== 'urgent' || (now - (state.sentAt || 0) > redRepeatMs)) {
+            if (state.stage !== 'urgent' || (now - state.sentAt >= redRepeatMs)) {
               shouldSend = true;
             }
           } else if (stage === 'imminent' || stage === 'close') {
-            // Phase ORANGE : re-notifier selon la cadence Orange
-            if (!state.stage || (now - (state.sentAt || 0) > orangeRepeatMs)) {
+            // Phase ORANGE : re-notifier selon la cadence Orange ou si passage d'étape
+            if (state.stage !== stage || (now - state.sentAt >= orangeRepeatMs)) {
               shouldSend = true;
             }
           }
