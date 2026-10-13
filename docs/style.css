@@ -179,7 +179,7 @@ body {
   width: 100%;
   max-width: 680px;
   margin: 0 auto;
-  padding-top: max(135px, calc(env(safe-area-inset-top, 0px) + 80px));
+  padding-top: max(105px, calc(env(safe-area-inset-top, 0px) + 58px));
   padding-right: max(14px, env(safe-area-inset-right, 0px));
   padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   padding-left: max(14px, env(safe-area-inset-left, 0px));
@@ -191,7 +191,7 @@ body {
 
 @media (min-width: 641px) {
   .app-container {
-    padding-top: 32px;
+    padding-top: 24px;
   }
 }
 
@@ -209,8 +209,8 @@ body {
   flex-direction: column;
   align-items: stretch;
   gap: 12px;
-  padding: 16px 18px;
-  min-height: 114px;
+  padding: 13px 18px 15px 18px;
+  min-height: 108px;
   width: 100%;
   box-sizing: border-box;
   border-radius: 24px;
@@ -2339,7 +2339,7 @@ html[data-color-mode="light"] .nav-tab.active .nav-tab-icon {
 
 @media (max-width: 640px) {
   .app-container {
-    padding-top: max(135px, calc(env(safe-area-inset-top, 0px) + 80px));
+    padding-top: max(105px, calc(env(safe-area-inset-top, 0px) + 58px));
     padding-right: max(12px, env(safe-area-inset-right, 0px));
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
     padding-left: max(12px, env(safe-area-inset-left, 0px));
@@ -3304,9 +3304,9 @@ html[data-color-mode="light"] .liquid-toggle-thumb,
 /* Responsive header actions sur tous les mobiles (<= 640px) */
 @media (max-width: 640px) {
   .app-header {
-    padding: 14px 16px !important;
+    padding: 11px 16px 13px 16px !important;
     gap: 12px !important;
-    min-height: 108px !important;
+    min-height: 104px !important;
     border-radius: 22px !important;
   }
   .brand {
