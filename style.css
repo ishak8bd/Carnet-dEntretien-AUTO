@@ -179,7 +179,7 @@ body {
   width: 100%;
   max-width: 680px;
   margin: 0 auto;
-  padding-top: max(100px, calc(env(safe-area-inset-top, 0px) + 56px));
+  padding-top: max(135px, calc(env(safe-area-inset-top, 0px) + 80px));
   padding-right: max(14px, env(safe-area-inset-right, 0px));
   padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   padding-left: max(14px, env(safe-area-inset-left, 0px));
@@ -191,7 +191,7 @@ body {
 
 @media (min-width: 641px) {
   .app-container {
-    padding-top: 28px;
+    padding-top: 32px;
   }
 }
 
@@ -2259,7 +2259,10 @@ body {
 
 @media (max-width: 640px) {
   .app-container {
-    padding: 12px 12px calc(92px + env(safe-area-inset-bottom, 0px)) 12px;
+    padding-top: max(135px, calc(env(safe-area-inset-top, 0px) + 80px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
     gap: 14px;
   }
 
