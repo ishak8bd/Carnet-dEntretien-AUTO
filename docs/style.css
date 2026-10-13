@@ -179,7 +179,7 @@ body {
   width: 100%;
   max-width: 680px;
   margin: 0 auto;
-  padding-top: max(72px, calc(env(safe-area-inset-top, 0px) + 48px));
+  padding-top: max(100px, calc(env(safe-area-inset-top, 0px) + 56px));
   padding-right: max(14px, env(safe-area-inset-right, 0px));
   padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   padding-left: max(14px, env(safe-area-inset-left, 0px));
@@ -191,7 +191,7 @@ body {
 
 @media (min-width: 641px) {
   .app-container {
-    padding-top: 24px;
+    padding-top: 28px;
   }
 }
 
@@ -203,17 +203,20 @@ body {
   animation: fadeIn 0.2s ease;
 }
 
-/* Entête / Navigation sans collision */
+/* Entête / Navigation sans collision (Strictement sous la Dynamic Island) */
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 6px 8px 8px 8px;
-  min-height: 52px;
+  gap: 8px;
+  padding: 8px 12px;
+  min-height: 54px;
   width: 100%;
   box-sizing: border-box;
   flex-wrap: nowrap;
+  border-radius: 18px;
+  margin-top: 4px;
+  overflow: hidden;
 }
 
 .brand {
@@ -226,10 +229,10 @@ body {
 }
 
 .brand-icon {
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
-  min-height: 48px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -262,10 +265,13 @@ body {
   min-width: 0;
   flex: 1 1 auto;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .brand-text h1 {
-  font-size: clamp(0.92rem, 3.8vw, 1.15rem);
+  font-size: clamp(0.92rem, 3.6vw, 1.12rem);
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-main);
@@ -277,7 +283,7 @@ body {
 }
 
 .brand-text span {
-  font-size: clamp(0.66rem, 2.4vw, 0.75rem);
+  font-size: clamp(0.66rem, 2.2vw, 0.74rem);
   color: var(--text-muted);
   display: block;
   font-weight: 500;
@@ -294,6 +300,7 @@ body {
   gap: 6px;
   flex-shrink: 0;
   margin-left: auto;
+  white-space: nowrap;
 }
 
 /* Sélecteur de véhicule */
@@ -3047,10 +3054,15 @@ body {
   transform: rotate(20deg);
 }
 
-/* Responsive compact header actions sur tous les mobiles (<= 600px) pour éliminer tout chevauchement */
-@media (max-width: 600px) {
+/* Responsive compact header actions sur tous les mobiles (<= 640px) pour éliminer tout chevauchement */
+@media (max-width: 640px) {
+  .app-header {
+    padding: 8px 10px;
+    gap: 8px;
+  }
   .header-right-actions {
     gap: 6px;
+    flex-shrink: 0;
   }
   .theme-quick-switch-btn #headerThemeText {
     display: none !important;
@@ -3064,23 +3076,46 @@ body {
     justify-content: center !important;
     border-radius: var(--radius-full) !important;
     font-size: 1.05rem !important;
+    flex-shrink: 0 !important;
   }
+  .theme-mode-switch-btn {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    flex-shrink: 0 !important;
+  }
+  /* Pastille de synchronisation compacte sur mobile pour ne jamais chevaucher le titre */
   .room-sync-badge {
-    padding: 4px 6px;
-    font-size: 0.7rem;
+    padding: 0 !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    justify-content: center !important;
+    border-radius: var(--radius-full) !important;
+    flex-shrink: 0 !important;
+  }
+  .room-sync-badge #roomSyncText {
+    display: none !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .brand {
+    gap: 8px;
+  }
+  .brand-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
   }
 }
 
 @media (max-width: 360px) {
   .brand-text span {
     display: none;
-  }
-  .room-sync-badge #roomSyncText {
-    display: none;
-  }
-  .room-sync-badge {
-    padding: 6px;
-    border-radius: var(--radius-full);
   }
 }
 
@@ -3096,13 +3131,13 @@ body.theme-blue {
 }
 
 body.theme-blue .app-header {
-  padding: 6px 10px 8px 10px !important;
-  border-radius: 0 0 18px 18px !important;
-  border-bottom: 1.5px solid rgba(59, 130, 246, 0.25) !important;
-  background: rgba(10, 20, 44, 0.45) !important;
+  padding: 8px 12px !important;
+  border-radius: 18px !important;
+  border: 1.5px solid rgba(59, 130, 246, 0.25) !important;
+  background: rgba(10, 20, 44, 0.5) !important;
   backdrop-filter: blur(14px) !important;
   -webkit-backdrop-filter: blur(14px) !important;
-  margin-bottom: 12px !important;
+  margin-bottom: 8px !important;
 }
 
 html[data-color-mode="light"] body.theme-blue .app-header {
@@ -3249,11 +3284,11 @@ body.theme-glass .app-header {
   background: linear-gradient(180deg, rgba(18, 27, 46, 0.8) 0%, rgba(10, 15, 27, 0.7) 100%) !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border-bottom: 1.5px solid rgba(255, 255, 255, 0.14) !important;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.08) !important;
-  padding: 6px 10px 8px 10px !important;
-  border-radius: 0 0 18px 18px !important;
-  margin-bottom: 12px !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  padding: 8px 12px !important;
+  border-radius: 18px !important;
+  margin-bottom: 8px !important;
 }
 
 body.theme-glass .brand-icon {
@@ -3725,14 +3760,14 @@ body.theme-steel .app-container {
 /* En-tête de l'application en acier brossé avec rivets & biseaux */
 body.theme-steel .app-header {
   background: linear-gradient(180deg, #222c3d 0%, #171f2c 60%, #121824 100%) !important;
-  border-bottom: 2px solid rgba(148, 163, 184, 0.35) !important;
+  border: 1.5px solid rgba(148, 163, 184, 0.35) !important;
   box-shadow: 
     inset 0 1.5px 0.5px rgba(255, 255, 255, 0.5),
     inset 0 -1.5px 1px rgba(0, 0, 0, 0.8),
     0 10px 28px rgba(0, 0, 0, 0.7) !important;
-  padding: 6px 10px 8px 10px !important;
-  border-radius: 0 0 18px 18px !important;
-  margin-bottom: 12px !important;
+  padding: 8px 12px !important;
+  border-radius: 18px !important;
+  margin-bottom: 8px !important;
 }
 
 body.theme-steel .brand-icon {
@@ -4343,8 +4378,9 @@ body.theme-bubble {
 }
 
 .theme-bubble .app-header {
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  padding-bottom: 12px;
+  border-radius: var(--radius-lg);
+  padding: 8px 12px;
+  margin-bottom: 8px;
 }
 
 .theme-bubble .bottom-nav {
@@ -4780,10 +4816,10 @@ body.theme-liquid .app-header {
     var(--liquid-glass-shadow),
     inset 0 1px 0 var(--liquid-glass-edge),
     inset 0 -1px 0 var(--liquid-glass-edge-dim) !important;
-  border-bottom: 1px solid var(--liquid-sep) !important;
-  padding: 6px 10px 8px 10px !important;
-  border-radius: 0 0 20px 20px !important;
-  margin-bottom: 12px !important;
+  border: 1px solid var(--liquid-sep) !important;
+  padding: 8px 12px !important;
+  border-radius: 22px !important;
+  margin-bottom: 8px !important;
 }
 
 body.theme-liquid .app-header .brand-icon {
