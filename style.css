@@ -4562,35 +4562,41 @@ html[data-color-mode="light"] body.theme-bubble .theme-mode-switch-btn {
   filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.5));
 }
 
-/* ==========================================================================
    Apple iOS 26 "Liquid Glass" Design System (.theme-liquid)
-   - Core Principles (liquid-glass-mobile-web skill):
-     1. Content is the hero, glass is the functional layer (bars, controls, sheets).
-     2. No glass on glass. Content cards stay solid (#ffffff light / #1c1c1e dark).
-     3. Rich ambient backdrop: chromatic orbs pass under glass during scroll.
-     4. Concentric shapes & capsules: border-radius 999px for bars and buttons.
-     5. Specular highlight: inset 0 1px 0 top reflection + soft sheen pseudo-layer.
-     6. Physical spring motion: cubic-bezier(.34, 1.56, .64, 1) press feedback.
-     7. Accessibility fallbacks: reduced-transparency, reduced-motion, more-contrast.
+   - Rendu fidèle aux références visuelles :
+     1. Verre liquide dépoli ultra-réfractif (blur 28px saturate 200%).
+     2. Liseré spéculaire lenticulaire supérieur (inset 0 1.5px 1px blanc éclatant) + caustiques.
+     3. Dock capsule flottant avec boutons lentilles convexes 3D (Home, Alertes, etc.).
+     4. Bouton actif en goutte de verre liquide sphérique magnifiée (Analytics / icône active).
+     5. Toggles Day/Night avec bain liquide lumineux (bleu saphir nuit / or ambré soleil).
+     6. Cartes translucides sur fond d'ambiance chromatique vibrante.
    ========================================================================== */
 
 :root.theme-liquid,
 body.theme-liquid {
   color-scheme: light dark;
   --liquid-accent: #0A84FF;
-  --liquid-bg: #F2F2F7;
-  --liquid-card: #ffffff;
-  --liquid-label: #000000;
-  --liquid-label-2: rgba(60, 60, 67, 0.6);
-  --liquid-label-3: rgba(60, 60, 67, 0.3);
-  --liquid-sep: rgba(60, 60, 67, 0.18);
-  --liquid-glass-fill: rgba(255, 255, 255, 0.45);
-  --liquid-glass-fill-strong: rgba(255, 255, 255, 0.78);
-  --liquid-glass-edge: rgba(255, 255, 255, 0.78);
+  --liquid-accent-glow: rgba(10, 132, 255, 0.45);
+  
+  /* Mode Sombre Liquid Glass (Par défaut : Images 3, 4, 5) */
+  --liquid-bg: #090716;
+  --liquid-card: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%);
+  --liquid-card-solid: rgba(20, 16, 38, 0.7);
+  --liquid-label: #ffffff;
+  --liquid-label-2: rgba(255, 255, 255, 0.75);
+  --liquid-label-3: rgba(255, 255, 255, 0.45);
+  --liquid-sep: rgba(255, 255, 255, 0.22);
+  --liquid-glass-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.05) 100%);
+  --liquid-glass-fill-strong: rgba(22, 16, 42, 0.88);
+  --liquid-glass-edge: rgba(255, 255, 255, 0.75);
   --liquid-glass-edge-dim: rgba(255, 255, 255, 0.18);
-  --liquid-glass-shadow: 0 12px 36px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
-  --liquid-blur: 22px;
-  --liquid-sat: 180%;
+  --liquid-glass-shadow: 
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -1px 1.5px 0 rgba(255, 255, 255, 0.15),
+    0 16px 40px -8px rgba(0, 0, 0, 0.45),
+    0 4px 12px -2px rgba(0, 0, 0, 0.25);
+  --liquid-blur: 28px;
+  --liquid-sat: 200%;
   --liquid-spring: cubic-bezier(.34, 1.56, .64, 1);
   --liquid-smooth: cubic-bezier(.22, .9, .3, 1);
   --liquid-font: -apple-system, "SF Pro Text", "SF Pro Display", system-ui, "Inter", sans-serif;
@@ -4598,32 +4604,14 @@ body.theme-liquid {
   /* Harmonisation avec le moteur principal */
   --primary: var(--liquid-accent);
   --primary-hover: #0070df;
-  --primary-light: rgba(10, 132, 255, 0.12);
+  --primary-light: rgba(10, 132, 255, 0.18);
   --bg-main: var(--liquid-bg);
   --bg-card: var(--liquid-card);
-  --bg-input: rgba(120, 120, 128, 0.08);
+  --bg-input: rgba(255, 255, 255, 0.08);
   --text-main: var(--liquid-label);
   --text-muted: var(--liquid-label-2);
   --border-color: var(--liquid-sep);
   --font-family: var(--liquid-font);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root.theme-liquid:not([data-color-mode="light"]),
-  body.theme-liquid:not([data-color-mode="light"]) {
-    --liquid-bg: #000000;
-    --liquid-card: #1c1c1e;
-    --liquid-label: #ffffff;
-    --liquid-label-2: rgba(235, 235, 245, 0.6);
-    --liquid-label-3: rgba(235, 235, 245, 0.3);
-    --liquid-sep: rgba(84, 84, 88, 0.45);
-    --liquid-glass-fill: rgba(40, 40, 46, 0.48);
-    --liquid-glass-fill-strong: rgba(44, 44, 50, 0.82);
-    --liquid-glass-edge: rgba(255, 255, 255, 0.28);
-    --liquid-glass-edge-dim: rgba(255, 255, 255, 0.06);
-    --liquid-glass-shadow: 0 14px 40px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
-    --bg-input: rgba(120, 120, 128, 0.18);
-  }
 }
 
 /* Forçage explicite Mode Sombre pour Apple Liquid Glass */
@@ -4631,78 +4619,80 @@ body.theme-liquid {
 html[data-color-mode="dark"].theme-liquid,
 html[data-color-mode="dark"] body.theme-liquid,
 body.theme-liquid[data-color-mode="dark"] {
-  --liquid-bg: #000000;
-  --liquid-card: #1c1c1e;
+  --liquid-bg: #090716;
+  --liquid-card: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%);
+  --liquid-card-solid: rgba(20, 16, 38, 0.7);
   --liquid-label: #ffffff;
-  --liquid-label-2: rgba(235, 235, 245, 0.6);
-  --liquid-label-3: rgba(235, 235, 245, 0.3);
-  --liquid-sep: rgba(84, 84, 88, 0.45);
-  --liquid-glass-fill: rgba(40, 40, 46, 0.48);
-  --liquid-glass-fill-strong: rgba(44, 44, 50, 0.82);
-  --liquid-glass-edge: rgba(255, 255, 255, 0.28);
-  --liquid-glass-edge-dim: rgba(255, 255, 255, 0.06);
-  --liquid-glass-shadow: 0 14px 40px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
-  --bg-input: rgba(120, 120, 128, 0.18);
+  --liquid-label-2: rgba(255, 255, 255, 0.75);
+  --liquid-label-3: rgba(255, 255, 255, 0.45);
+  --liquid-sep: rgba(255, 255, 255, 0.22);
+  --liquid-glass-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.05) 100%);
+  --liquid-glass-fill-strong: rgba(22, 16, 42, 0.88);
+  --liquid-glass-edge: rgba(255, 255, 255, 0.75);
+  --liquid-glass-edge-dim: rgba(255, 255, 255, 0.18);
+  --liquid-glass-shadow: 
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -1px 1.5px 0 rgba(255, 255, 255, 0.15),
+    0 16px 40px -8px rgba(0, 0, 0, 0.45),
+    0 4px 12px -2px rgba(0, 0, 0, 0.25);
+  --bg-input: rgba(255, 255, 255, 0.08);
 }
 
-/* Forçage explicite Mode Clair pour Apple Liquid Glass */
+/* Forçage explicite Mode Clair pour Apple Liquid Glass (Images 1 & 2) */
 :root[data-color-mode="light"].theme-liquid,
 html[data-color-mode="light"].theme-liquid,
 html[data-color-mode="light"] body.theme-liquid,
 body.theme-liquid[data-color-mode="light"] {
-  --liquid-bg: #F2F2F7;
-  --liquid-card: #ffffff;
-  --liquid-label: #000000;
-  --liquid-label-2: rgba(60, 60, 67, 0.6);
-  --liquid-label-3: rgba(60, 60, 67, 0.3);
-  --liquid-sep: rgba(60, 60, 67, 0.18);
-  --liquid-glass-fill: rgba(255, 255, 255, 0.45);
-  --liquid-glass-fill-strong: rgba(255, 255, 255, 0.78);
-  --liquid-glass-edge: rgba(255, 255, 255, 0.78);
-  --liquid-glass-edge-dim: rgba(255, 255, 255, 0.18);
-  --liquid-glass-shadow: 0 12px 36px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
-  --bg-input: rgba(120, 120, 128, 0.08);
+  --liquid-bg: #edf1f7;
+  --liquid-card: linear-gradient(135deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.52) 100%);
+  --liquid-card-solid: rgba(255, 255, 255, 0.92);
+  --liquid-label: #0f172a;
+  --liquid-label-2: rgba(51, 65, 85, 0.75);
+  --liquid-label-3: rgba(51, 65, 85, 0.45);
+  --liquid-sep: rgba(255, 255, 255, 0.75);
+  --liquid-glass-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.48) 100%);
+  --liquid-glass-fill-strong: rgba(255, 255, 255, 0.95);
+  --liquid-glass-edge: #ffffff;
+  --liquid-glass-edge-dim: rgba(255, 255, 255, 0.45);
+  --liquid-glass-shadow: 
+    inset 0 1.5px 1.5px 0 #ffffff,
+    inset 0 -1px 1px 0 rgba(255, 255, 255, 0.4),
+    0 14px 35px -6px rgba(15, 23, 42, 0.09),
+    0 2px 8px 0 rgba(15, 23, 42, 0.04);
+  --bg-input: rgba(255, 255, 255, 0.65);
 }
 
-/* 1. Backdrop optique & Ambiance chromatique */
+/* 1. Backdrop optique & Ambiance chromatique vibrante (Images 3, 4, 5) */
 body.theme-liquid {
   background-color: var(--liquid-bg) !important;
-  background-image:
-    radial-gradient(60% 40% at 15% 8%, rgba(255, 159, 107, 0.25), transparent 70%),
-    radial-gradient(55% 40% at 90% 25%, rgba(94, 139, 255, 0.3), transparent 70%),
-    radial-gradient(60% 45% at 30% 85%, rgba(107, 227, 180, 0.22), transparent 70%) !important;
   background-attachment: fixed !important;
   color: var(--liquid-label) !important;
   font-family: var(--liquid-font) !important;
   -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-color-scheme: dark) {
-  body.theme-liquid:not([data-color-mode="light"]) {
-    background-image:
-      radial-gradient(60% 40% at 15% 8%, rgba(255, 120, 80, 0.18), transparent 70%),
-      radial-gradient(55% 40% at 90% 25%, rgba(10, 132, 255, 0.25), transparent 70%),
-      radial-gradient(60% 45% at 30% 85%, rgba(48, 209, 88, 0.16), transparent 70%) !important;
-  }
-}
-
+body.theme-liquid,
 html[data-color-mode="dark"] body.theme-liquid,
 body.theme-liquid[data-color-mode="dark"] {
   background-image:
-    radial-gradient(60% 40% at 15% 8%, rgba(255, 120, 80, 0.18), transparent 70%),
-    radial-gradient(55% 40% at 90% 25%, rgba(10, 132, 255, 0.25), transparent 70%),
-    radial-gradient(60% 45% at 30% 85%, rgba(48, 209, 88, 0.16), transparent 70%) !important;
+    radial-gradient(55% 45% at 15% 12%, rgba(124, 58, 237, 0.4) 0%, transparent 65%),
+    radial-gradient(50% 40% at 85% 20%, rgba(14, 165, 233, 0.35) 0%, transparent 65%),
+    radial-gradient(60% 50% at 50% 50%, rgba(59, 130, 246, 0.25) 0%, transparent 65%),
+    radial-gradient(55% 45% at 20% 80%, rgba(192, 38, 211, 0.32) 0%, transparent 65%),
+    radial-gradient(50% 40% at 85% 85%, rgba(6, 182, 212, 0.28) 0%, transparent 65%) !important;
 }
 
 html[data-color-mode="light"] body.theme-liquid,
 body.theme-liquid[data-color-mode="light"] {
   background-image:
-    radial-gradient(60% 40% at 15% 8%, rgba(255, 159, 107, 0.25), transparent 70%),
-    radial-gradient(55% 40% at 90% 25%, rgba(94, 139, 255, 0.3), transparent 70%),
-    radial-gradient(60% 45% at 30% 85%, rgba(107, 227, 180, 0.22), transparent 70%) !important;
+    radial-gradient(55% 45% at 15% 12%, rgba(251, 191, 36, 0.28) 0%, transparent 65%),
+    radial-gradient(50% 40% at 85% 20%, rgba(56, 189, 248, 0.28) 0%, transparent 65%),
+    radial-gradient(60% 50% at 50% 50%, rgba(129, 140, 248, 0.18) 0%, transparent 65%),
+    radial-gradient(55% 45% at 20% 80%, rgba(244, 114, 182, 0.2) 0%, transparent 65%),
+    radial-gradient(50% 40% at 85% 85%, rgba(45, 212, 191, 0.2) 0%, transparent 65%) !important;
 }
 
-/* 2. Cartes de contenu : SOLIDES (Règle 1 du skill : le contenu reste pur, le verre est au-dessus) */
+/* 2. Cartes de contenu : Verre liquide translucide à liseré spéculaire (Images 3, 5) */
 body.theme-liquid .card,
 body.theme-liquid .odometer-card,
 body.theme-liquid .stat-card,
@@ -4714,35 +4704,23 @@ body.theme-liquid .vehicle-card,
 body.theme-liquid .backup-info-box,
 body.theme-liquid .pwa-status-box,
 body.theme-liquid .table-container,
-body.theme-liquid .chart-container {
+body.theme-liquid .chart-container,
+body.theme-liquid .vehicle-selector-bar {
   background: var(--liquid-card) !important;
+  -webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-sat)) !important;
+  backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-sat)) !important;
   border: 1px solid var(--liquid-sep) !important;
-  border-radius: 22px !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+  border-radius: 24px !important;
+  box-shadow: var(--liquid-glass-shadow) !important;
   color: var(--liquid-label) !important;
-}
-
-@media (prefers-color-scheme: dark) {
-  body.theme-liquid .card,
-  body.theme-liquid .odometer-card,
-  body.theme-liquid .stat-card,
-  body.theme-liquid .settings-card,
-  body.theme-liquid .maint-item-card,
-  body.theme-liquid .history-item-card,
-  body.theme-liquid .km-log-item,
-  body.theme-liquid .vehicle-card,
-  body.theme-liquid .backup-info-box,
-  body.theme-liquid .pwa-status-box,
-  body.theme-liquid .table-container,
-  body.theme-liquid .chart-container {
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35) !important;
-  }
+  transition: transform 0.3s var(--liquid-spring), box-shadow 0.3s ease !important;
 }
 
 body.theme-liquid .card-title,
 body.theme-liquid .stat-title,
 body.theme-liquid .odometer-title {
   color: var(--liquid-label) !important;
+  font-weight: 700 !important;
 }
 
 body.theme-liquid .card-subtitle,
@@ -4752,73 +4730,85 @@ body.theme-liquid .text-muted {
   color: var(--liquid-label-2) !important;
 }
 
-/* 3. Floating Capsule Tab Bar (iOS 26 Liquid Capsule) */
+/* 3. Dock Navigation Capsule Flottant (Images 3 & 4) */
 body.theme-liquid .bottom-nav {
   position: fixed !important;
   z-index: 99 !important;
   inset-inline: 16px !important;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
-  height: 64px !important;
-  padding: 6px 8px !important;
+  height: 68px !important;
+  padding: 6px 10px !important;
   display: flex !important;
-  gap: 4px !important;
+  align-items: center !important;
+  justify-content: space-around !important;
+  gap: 6px !important;
   border-radius: 999px !important;
   background: var(--liquid-glass-fill) !important;
   -webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-sat)) !important;
   backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-sat)) !important;
   box-shadow:
-    var(--liquid-glass-shadow),
-    inset 0 1px 0 var(--liquid-glass-edge),
-    inset 0 -1px 0 var(--liquid-glass-edge-dim),
-    inset 1px 0 0 var(--liquid-glass-edge-dim),
-    inset -1px 0 0 var(--liquid-glass-edge-dim) !important;
-  border: none !important;
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.85),
+    inset 0 -1.5px 2px rgba(255, 255, 255, 0.2),
+    0 20px 50px -8px rgba(0, 0, 0, 0.55),
+    0 6px 18px rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid var(--liquid-sep) !important;
   isolation: isolate;
-}
-
-body.theme-liquid .bottom-nav::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0) 70%, rgba(255, 255, 255, 0.12));
-  mix-blend-mode: soft-light;
-  z-index: -1;
 }
 
 body.theme-liquid .nav-item {
   flex: 1;
+  height: 52px !important;
   border-radius: 999px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
   color: var(--liquid-label-2) !important;
   font-weight: 600 !important;
-  transition: all 0.3s var(--liquid-spring) !important;
+  transition: transform 0.35s var(--liquid-spring), background 0.25s ease, box-shadow 0.25s ease !important;
+  border: none !important;
 }
 
 body.theme-liquid .nav-item:active {
-  transform: scale(0.92);
+  transform: scale(0.92) !important;
 }
 
+/* 3D Convex Droplet Lens pour l'onglet actif (Images 3 & 4) */
 body.theme-liquid .nav-item.active {
-  background: rgba(120, 120, 128, 0.22) !important;
-  color: var(--liquid-accent) !important;
-  box-shadow: inset 0 1px 0 var(--liquid-glass-edge-dim), 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.25) 100%) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 2px 2px rgba(255, 255, 255, 0.95),
+    inset 0 -2px 3px rgba(255, 255, 255, 0.35),
+    0 8px 25px rgba(10, 132, 255, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  transform: scale(1.08) translateY(-2px) !important;
+}
+
+html[data-color-mode="light"] body.theme-liquid .nav-item.active {
+  background: linear-gradient(135deg, #ffffff 0%, rgba(240, 246, 255, 0.9) 100%) !important;
+  color: #0070df !important;
+  box-shadow:
+    inset 0 1.5px 1.5px #ffffff,
+    inset 0 -1.5px 2px rgba(10, 132, 255, 0.2),
+    0 6px 18px rgba(10, 132, 255, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
 }
 
 body.theme-liquid .nav-item.active .nav-icon {
-  color: var(--liquid-accent) !important;
-  filter: drop-shadow(0 2px 6px rgba(10, 132, 255, 0.4));
+  color: inherit !important;
+  filter: drop-shadow(0 2px 6px rgba(10, 132, 255, 0.6)) !important;
 }
 
-/* 4. En-tête Liquid Glass flottant */
+/* 4. En-tête Liquid Glass flottant (Images 3, 5) */
 body.theme-liquid .app-header {
   background: var(--liquid-glass-fill) !important;
   -webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-sat)) !important;
   backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-sat)) !important;
   box-shadow:
-    var(--liquid-glass-shadow),
-    inset 0 1px 0 var(--liquid-glass-edge),
-    inset 0 -1px 0 var(--liquid-glass-edge-dim) !important;
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.8),
+    inset 0 -1px 1.5px rgba(255, 255, 255, 0.2),
+    0 16px 40px rgba(0, 0, 0, 0.25) !important;
   border: 1px solid var(--liquid-sep) !important;
   padding: 8px 12px !important;
   border-radius: 22px !important;
@@ -4826,82 +4816,171 @@ body.theme-liquid .app-header {
 }
 
 body.theme-liquid .app-header .brand-icon {
-  border-radius: 999px !important;
-  box-shadow: inset 0 1px 0 var(--liquid-glass-edge) !important;
+  border-radius: 14px !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.45) !important;
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.85),
+    0 6px 18px rgba(10, 132, 255, 0.35) !important;
 }
 
-/* 5. Boutons Capsules & Contrôles physiques (Ressorts) */
+/* 5. Boutons Capsules & Contrôles physiques (Images 1, 2, 5) */
 body.theme-liquid .btn-primary {
-  background: var(--liquid-accent) !important;
+  background: linear-gradient(135deg, #0a84ff 0%, #0066d6 100%) !important;
   color: #ffffff !important;
-  border: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
   border-radius: 999px !important;
   font-weight: 600 !important;
-  box-shadow: 0 4px 16px rgba(10, 132, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
-  transition: transform 0.35s var(--liquid-spring), background 0.2s !important;
+  box-shadow:
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.75),
+    inset 0 -2px 2px rgba(0, 0, 0, 0.25),
+    0 10px 28px rgba(10, 132, 255, 0.45) !important;
+  transition: transform 0.35s var(--liquid-spring), box-shadow 0.25s ease !important;
+}
+
+body.theme-liquid .btn-primary:hover {
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow:
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.9),
+    0 14px 34px rgba(10, 132, 255, 0.55) !important;
 }
 
 body.theme-liquid .btn-primary:active {
-  transform: scale(0.96) !important;
-}
-
-body.theme-liquid .btn-secondary,
-body.theme-liquid .theme-quick-switch-btn,
-body.theme-liquid .theme-mode-switch-btn {
-  border-radius: 999px !important;
-  background: var(--liquid-glass-fill) !important;
-  -webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-sat)) !important;
-  backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-sat)) !important;
-  box-shadow: inset 0 1px 0 var(--liquid-glass-edge), inset 0 -1px 0 var(--liquid-glass-edge-dim) !important;
-  border: 1px solid var(--liquid-sep) !important;
-  color: var(--liquid-label) !important;
-  transition: transform 0.35s var(--liquid-spring) !important;
-}
-
-body.theme-liquid .btn-secondary:active,
-body.theme-liquid .theme-quick-switch-btn:active,
-body.theme-liquid .theme-mode-switch-btn:active {
   transform: scale(0.95) !important;
 }
 
-/* 6. Feuilles modales (Bottom Sheet) */
-body.theme-liquid .modal-content {
-  border-radius: 32px !important;
-  background: var(--liquid-card) !important;
-  border: 1px solid var(--liquid-sep) !important;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), inset 0 1px 0 var(--liquid-glass-edge) !important;
+body.theme-liquid .btn-secondary,
+body.theme-liquid .theme-quick-switch-btn {
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.06) 100%) !important;
+  -webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-sat)) !important;
+  backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-sat)) !important;
+  box-shadow:
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.8),
+    inset 0 -1.5px 1.5px rgba(255, 255, 255, 0.2),
+    0 8px 24px rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: var(--liquid-label) !important;
+  transition: transform 0.35s var(--liquid-spring), box-shadow 0.25s ease !important;
 }
 
-/* 7. Sélecteur de thème dans les paramètres */
+body.theme-liquid .btn-secondary:active,
+body.theme-liquid .theme-quick-switch-btn:active {
+  transform: scale(0.95) !important;
+}
+
+/* Bouton Bascule Mode Sombre / Mode Clair en Lentille Liquide (Images 1 & 2) */
+html[data-color-mode="dark"] body.theme-liquid .theme-mode-switch-btn,
+body.theme-liquid[data-color-mode="dark"] .theme-mode-switch-btn {
+  border-radius: 999px !important;
+  background: radial-gradient(circle at 60% 40%, rgba(37, 99, 235, 0.9) 0%, rgba(14, 165, 233, 0.55) 60%, rgba(255, 255, 255, 0.15) 100%) !important;
+  box-shadow:
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.9),
+    inset 0 -1.5px 2px rgba(255, 255, 255, 0.25),
+    0 0 18px rgba(14, 165, 233, 0.55),
+    0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.5) !important;
+  color: #ffffff !important;
+  transition: transform 0.35s var(--liquid-spring) !important;
+}
+
+html[data-color-mode="light"] body.theme-liquid .theme-mode-switch-btn,
+body.theme-liquid[data-color-mode="light"] .theme-mode-switch-btn {
+  border-radius: 999px !important;
+  background: radial-gradient(circle at 45% 45%, rgba(251, 191, 36, 0.95) 0%, rgba(245, 158, 11, 0.6) 65%, rgba(255, 255, 255, 0.45) 100%) !important;
+  box-shadow:
+    inset 0 1.5px 1.5px #ffffff,
+    inset 0 -1.5px 2px rgba(245, 158, 11, 0.35),
+    0 0 18px rgba(245, 158, 11, 0.5),
+    0 4px 12px rgba(15, 23, 42, 0.1) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.85) !important;
+  color: #78350f !important;
+  transition: transform 0.35s var(--liquid-spring) !important;
+}
+
+/* 6. Formulaires & Saisies en Puits de Verre */
+body.theme-liquid .form-input,
+body.theme-liquid .form-select,
+body.theme-liquid .input-km {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  color: var(--liquid-label) !important;
+  border-radius: 16px !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  box-shadow: inset 0 1.5px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+html[data-color-mode="light"] body.theme-liquid .form-input,
+html[data-color-mode="light"] body.theme-liquid .form-select,
+html[data-color-mode="light"] body.theme-liquid .input-km {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border-color: rgba(255, 255, 255, 0.8) !important;
+  color: #0f172a !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+}
+
+body.theme-liquid .form-input:focus,
+body.theme-liquid .form-select:focus,
+body.theme-liquid .input-km:focus {
+  border-color: rgba(10, 132, 255, 0.8) !important;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.25), inset 0 1.5px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 7. Feuilles modales (Bottom Sheet) */
+body.theme-liquid .modal-content {
+  border-radius: 32px !important;
+  background: linear-gradient(180deg, rgba(28, 20, 52, 0.88) 0%, rgba(14, 10, 28, 0.94) 100%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(200%) !important;
+  backdrop-filter: blur(36px) saturate(200%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow:
+    inset 0 2px 1.5px rgba(255, 255, 255, 0.75),
+    0 25px 70px rgba(0, 0, 0, 0.6) !important;
+  color: #ffffff !important;
+}
+
+html[data-color-mode="light"] body.theme-liquid .modal-content {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(245, 248, 255, 0.95) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow:
+    inset 0 2px 1.5px #ffffff,
+    0 25px 70px rgba(15, 23, 42, 0.15) !important;
+  color: #0f172a !important;
+}
+
+/* 8. Sélecteur de thème dans les paramètres */
 .status-badge-liquid {
-  background: rgba(10, 132, 255, 0.15) !important;
+  background: rgba(10, 132, 255, 0.18) !important;
   color: #0A84FF !important;
-  border: 1px solid rgba(10, 132, 255, 0.35) !important;
+  border: 1px solid rgba(10, 132, 255, 0.4) !important;
+  border-radius: 999px !important;
 }
 
 .logo-picker-preview-liquid {
-  background: linear-gradient(135deg, rgba(10, 132, 255, 0.2), rgba(255, 255, 255, 0.1)) !important;
-  border: 1px solid rgba(10, 132, 255, 0.3) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.3), rgba(14, 165, 233, 0.3)) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7) !important;
 }
 
 .logo-picker-card[data-logo="liquid"].active {
   border-color: #0A84FF !important;
-  box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.35), 0 8px 24px rgba(10, 132, 255, 0.2) !important;
+  box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.5), 0 8px 24px rgba(10, 132, 255, 0.3) !important;
 }
 
 .logo-picker-card[data-logo="liquid"] .logo-picker-check {
   background: #0A84FF !important;
 }
 
-/* 8. Accessibilité & Replis sans dégradation (Checklist du skill) */
+/* 9. Accessibilité & Replis sans dégradation */
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   body.theme-liquid .bottom-nav,
   body.theme-liquid .app-header,
   body.theme-liquid .btn-secondary,
   body.theme-liquid .theme-quick-switch-btn,
-  body.theme-liquid .theme-mode-switch-btn {
+  body.theme-liquid .theme-mode-switch-btn,
+  body.theme-liquid .card {
     background: var(--liquid-glass-fill-strong) !important;
   }
 }
@@ -4911,7 +4990,8 @@ body.theme-liquid .modal-content {
   body.theme-liquid .app-header,
   body.theme-liquid .btn-secondary,
   body.theme-liquid .theme-quick-switch-btn,
-  body.theme-liquid .theme-mode-switch-btn {
+  body.theme-liquid .theme-mode-switch-btn,
+  body.theme-liquid .card {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
     background: var(--liquid-glass-fill-strong) !important;
