@@ -3304,9 +3304,9 @@ html[data-color-mode="light"] .liquid-toggle-thumb,
 /* Responsive header actions sur tous les mobiles (<= 640px) */
 @media (max-width: 640px) {
   .app-header {
-    padding: 8px 16px 13px 16px !important;
+    padding: 11px 16px 13px 16px !important;
     gap: 12px !important;
-    min-height: 100px !important;
+    min-height: 104px !important;
     border-radius: 22px !important;
   }
   .brand {
