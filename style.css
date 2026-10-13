@@ -3081,21 +3081,34 @@ html[data-color-mode="light"] .nav-tab.active .nav-tab-icon {
   border: 1px solid rgba(37, 99, 235, 0.3);
 }
 
-/* Bouton de bascule rapide de thème dans l'en-tête */
+/* Bouton de bascule rapide de thème dans l'en-tête (Format compact) */
 .theme-quick-switch-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
+  gap: 5px;
+  padding: 3px 9px;
+  height: 26px;
+  min-height: 26px;
   border-radius: var(--radius-full);
   border: 1px solid var(--border-color);
   background: var(--bg-card-subtle);
   color: var(--text-main);
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
+}
+
+.theme-quick-switch-btn #headerThemeIcon {
+  font-size: 0.76rem;
+  line-height: 1;
+}
+
+.theme-quick-switch-btn #headerThemeText {
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1;
 }
 
 .theme-quick-switch-btn:hover {
@@ -3109,10 +3122,10 @@ html[data-color-mode="light"] .nav-tab.active .nav-tab-icon {
   position: relative !important;
   display: inline-flex !important;
   align-items: center !important;
-  width: 78px !important;
-  height: 34px !important;
-  min-width: 78px !important;
-  min-height: 34px !important;
+  width: 64px !important;
+  height: 26px !important;
+  min-width: 64px !important;
+  min-height: 26px !important;
   padding: 0 !important;
   border-radius: 999px !important;
   cursor: pointer !important;
@@ -3120,9 +3133,9 @@ html[data-color-mode="light"] .nav-tab.active .nav-tab-icon {
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   box-shadow:
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.75),
-    inset 0 -1.5px 1.5px rgba(255, 255, 255, 0.15),
-    0 4px 14px rgba(0, 0, 0, 0.25) !important;
+    inset 0 1px 1px rgba(255, 255, 255, 0.75),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.25) !important;
   overflow: hidden !important;
   user-select: none !important;
   -webkit-tap-highlight-color: transparent !important;
@@ -3133,9 +3146,9 @@ html[data-color-mode="light"] .nav-tab.active .nav-tab-icon {
 .liquid-glass-toggle:hover {
   transform: scale(1.03) !important;
   box-shadow:
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.9),
-    inset 0 -1.5px 1.5px rgba(255, 255, 255, 0.2),
-    0 6px 18px rgba(0, 0, 0, 0.35) !important;
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.35) !important;
 }
 
 .liquid-glass-toggle:active {
@@ -3152,7 +3165,7 @@ html[data-color-mode="light"] .nav-tab.active .nav-tab-icon {
 }
 
 .liquid-toggle-text {
-  font-size: 0.72rem !important;
+  font-size: 0.60rem !important;
   font-weight: 700 !important;
   letter-spacing: 0.02em !important;
   line-height: 1 !important;
@@ -3164,10 +3177,10 @@ html[data-color-mode="light"] .nav-tab.active .nav-tab-icon {
 
 .liquid-toggle-thumb {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 26px;
-  height: 26px;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -3177,11 +3190,11 @@ html[data-color-mode="light"] .nav-tab.active .nav-tab-icon {
 }
 
 .liquid-toggle-icon {
-  font-size: 0.85rem;
+  font-size: 0.68rem;
   line-height: 1;
   display: inline-block;
   user-select: none;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
   transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -3202,7 +3215,7 @@ html[data-color-mode="dark"] .liquid-glass-toggle,
 
 html[data-color-mode="dark"] .liquid-toggle-text,
 :root[data-color-mode="dark"] .liquid-toggle-text {
-  margin-left: 11px;
+  margin-left: 7px;
   margin-right: auto;
   color: #f1f5f9 !important;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
@@ -3210,7 +3223,7 @@ html[data-color-mode="dark"] .liquid-toggle-text,
 
 html[data-color-mode="dark"] .liquid-toggle-thumb,
 :root[data-color-mode="dark"] .liquid-toggle-thumb {
-  transform: translateX(44px) !important;
+  transform: translateX(40px) !important;
   background: radial-gradient(circle at 35% 35%, #60a5fa 0%, #2563eb 50%, #1d4ed8 85%, #0f172a 100%) !important;
   border: 1.5px solid rgba(255, 255, 255, 0.85) !important;
   box-shadow:
@@ -3234,7 +3247,7 @@ html[data-color-mode="light"] .liquid-glass-toggle,
 html[data-color-mode="light"] .liquid-toggle-text,
 :root[data-color-mode="light"] .liquid-toggle-text {
   margin-left: auto;
-  margin-right: 11px;
+  margin-right: 7px;
   color: #0f172a !important;
   font-weight: 700 !important;
   text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);
@@ -3317,34 +3330,37 @@ html[data-color-mode="light"] .liquid-toggle-thumb,
     flex-shrink: 0;
   }
   .theme-quick-switch-btn {
-    padding: 5px 12px !important;
-    height: 34px !important;
+    padding: 3px 8px !important;
+    height: 25px !important;
     min-width: unset !important;
-    min-height: 34px !important;
+    min-height: 25px !important;
     justify-content: center !important;
     border-radius: var(--radius-full) !important;
-    font-size: 0.8rem !important;
+    font-size: 0.70rem !important;
     flex-shrink: 0 !important;
     display: inline-flex !important;
     align-items: center !important;
-    gap: 6px !important;
+    gap: 4px !important;
+  }
+  .theme-quick-switch-btn #headerThemeIcon {
+    font-size: 0.72rem !important;
   }
   .theme-quick-switch-btn #headerThemeText {
     display: inline-block !important;
-    font-size: 0.76rem !important;
+    font-size: 0.65rem !important;
   }
   .theme-mode-switch-btn:not(.liquid-glass-toggle) {
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
-    min-height: 36px !important;
+    width: 25px !important;
+    height: 25px !important;
+    min-width: 25px !important;
+    min-height: 25px !important;
     flex-shrink: 0 !important;
   }
   .liquid-glass-toggle {
-    width: 78px !important;
-    height: 34px !important;
-    min-width: 78px !important;
-    min-height: 34px !important;
+    width: 62px !important;
+    height: 25px !important;
+    min-width: 62px !important;
+    min-height: 25px !important;
     flex-shrink: 0 !important;
   }
   /* Pastille de synchronisation discrète sur mobile */
@@ -3377,7 +3393,7 @@ html[data-color-mode="light"] .liquid-toggle-thumb,
     font-size: 1.22rem !important;
   }
   .theme-quick-switch-btn {
-    padding: 4px 10px !important;
+    padding: 2px 7px !important;
   }
 }
 
@@ -3396,35 +3412,36 @@ html[data-color-mode="light"] .liquid-toggle-thumb,
     font-size: 0.72rem !important;
   }
   .theme-quick-switch-btn #headerThemeText {
-    max-width: 80px;
+    max-width: 65px;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-size: 0.62rem !important;
   }
   .liquid-glass-toggle {
-    width: 72px !important;
-    height: 32px !important;
-    min-width: 72px !important;
-    min-height: 32px !important;
+    width: 56px !important;
+    height: 24px !important;
+    min-width: 56px !important;
+    min-height: 24px !important;
   }
   .liquid-toggle-thumb {
-    width: 24px !important;
-    height: 24px !important;
-    top: 2.5px !important;
-    left: 2.5px !important;
+    width: 18px !important;
+    height: 18px !important;
+    top: 2px !important;
+    left: 2px !important;
   }
   html[data-color-mode="dark"] .liquid-toggle-thumb,
   :root[data-color-mode="dark"] .liquid-toggle-thumb {
-    transform: translateX(41px) !important;
+    transform: translateX(34px) !important;
   }
   html[data-color-mode="dark"] .liquid-toggle-text,
   :root[data-color-mode="dark"] .liquid-toggle-text {
-    margin-left: 8px !important;
-    font-size: 0.68rem !important;
+    margin-left: 6px !important;
+    font-size: 0.58rem !important;
   }
   html[data-color-mode="light"] .liquid-toggle-text,
   :root[data-color-mode="light"] .liquid-toggle-text {
-    margin-right: 8px !important;
-    font-size: 0.68rem !important;
+    margin-right: 6px !important;
+    font-size: 0.58rem !important;
   }
 }
 
