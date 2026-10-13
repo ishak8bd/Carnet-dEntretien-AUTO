@@ -268,41 +268,40 @@ function applyAppLogo(theme, notify = false) {
   if (logoImg) {
     if (chosen === 'steel') {
       logoImg.src = 'icons/logo-steel.png';
-      logoImg.alt = "Logo Carnet d'Entretien Acier Mécanique & Digital";
+      logoImg.alt = "Logo Carnet d'Entretien Steel";
     } else if (chosen === 'glass') {
       logoImg.src = 'icons/logo-glass.png';
-      logoImg.alt = "Logo Carnet d'Entretien Cyber Glassmorphism";
+      logoImg.alt = "Logo Carnet d'Entretien Space";
     } else if (chosen === 'bubble') {
       logoImg.src = 'icons/logo-bubble.png';
-      logoImg.alt = "Logo Carnet d'Entretien Carbone & Bulle";
+      logoImg.alt = "Logo Carnet d'Entretien Solid";
     } else if (chosen === 'liquid') {
       logoImg.src = 'icons/logo-liquid.png';
-      logoImg.alt = "Logo Carnet d'Entretien Apple Liquid Glass iOS 26";
+      logoImg.alt = "Logo Carnet d'Entretien Glass";
     } else {
       logoImg.src = 'icons/logo-blue.png';
-      logoImg.alt = "Logo Carnet d'Entretien Bleu & Or";
+      logoImg.alt = "Logo Carnet d'Entretien Blue";
     }
   }
 
-  // 1b. Mettre à jour le bouton de bascule rapide de thème dans l'en-tête
+  // 1b. Mettre à jour le bouton de bascule rapide de thème dans l'en-tête (sans émojis)
   const headerIcon = document.getElementById('headerThemeIcon');
   const headerText = document.getElementById('headerThemeText');
-  if (headerIcon && headerText) {
+  if (headerIcon) {
+    headerIcon.textContent = '';
+    headerIcon.style.display = 'none';
+  }
+  if (headerText) {
     if (chosen === 'steel') {
-      headerIcon.textContent = '⚙️';
-      headerText.textContent = 'Acier & 3D';
+      headerText.textContent = 'Steel';
     } else if (chosen === 'glass') {
-      headerIcon.textContent = '💎';
-      headerText.textContent = 'Cyber Glass';
+      headerText.textContent = 'Space';
     } else if (chosen === 'bubble') {
-      headerIcon.textContent = '🫧';
-      headerText.textContent = 'Bulle & Verre';
+      headerText.textContent = 'Solid';
     } else if (chosen === 'liquid') {
-      headerIcon.textContent = '💧';
-      headerText.textContent = 'Liquid Glass';
+      headerText.textContent = 'Glass';
     } else {
-      headerIcon.textContent = '👑';
-      headerText.textContent = 'Bleu & Or';
+      headerText.textContent = 'Blue';
     }
   }
 
@@ -383,33 +382,33 @@ function applyAppLogo(theme, notify = false) {
 
   if (activeBadge) {
     if (chosen === 'steel') {
-      activeBadge.textContent = 'Acier Mécanique & Digital';
+      activeBadge.textContent = 'Steel';
       activeBadge.className = 'status-badge status-badge-steel';
     } else if (chosen === 'glass') {
-      activeBadge.textContent = 'Cyber Glassmorphism';
+      activeBadge.textContent = 'Space';
       activeBadge.className = 'status-badge status-badge-glass';
     } else if (chosen === 'bubble') {
-      activeBadge.textContent = 'Carbone & Bulle';
+      activeBadge.textContent = 'Solid';
       activeBadge.className = 'status-badge status-badge-bubble';
     } else if (chosen === 'liquid') {
-      activeBadge.textContent = 'Apple iOS 26 Liquid Glass';
+      activeBadge.textContent = 'Glass';
       activeBadge.className = 'status-badge status-badge-liquid';
     } else {
-      activeBadge.textContent = 'Bleu & Or';
+      activeBadge.textContent = 'Blue';
       activeBadge.className = 'status-badge status-badge-blue';
     }
   }
 
   if (notify && typeof showToast === 'function') {
-    let msg = '👑 Thème Prestige Bleu & Or activé pour toute l\'application !';
+    let msg = 'Thème Blue activé pour toute l\'application !';
     if (chosen === 'steel') {
-      msg = '⚙️ Thème Acier Mécanique & Digital activé pour toute l\'application !';
+      msg = 'Thème Steel activé pour toute l\'application !';
     } else if (chosen === 'glass') {
-      msg = '✨ Thème Cyber Glassmorphism activé pour toute l\'application !';
+      msg = 'Thème Space activé pour toute l\'application !';
     } else if (chosen === 'bubble') {
-      msg = '🫧 Thème Carbone & Bulle activé pour toute l\'application !';
+      msg = 'Thème Solid activé pour toute l\'application !';
     } else if (chosen === 'liquid') {
-      msg = '💧 Thème Apple iOS 26 Liquid Glass activé pour toute l\'application !';
+      msg = 'Thème Glass activé pour toute l\'application !';
     }
     showToast(msg, 'success');
   }

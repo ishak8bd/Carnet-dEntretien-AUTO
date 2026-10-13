@@ -3101,6 +3101,7 @@ html[data-color-mode="light"] .nav-tab.active .nav-tab-icon {
 }
 
 .theme-quick-switch-btn #headerThemeIcon {
+  display: none !important;
   font-size: 0.76rem;
   line-height: 1;
 }
@@ -3343,6 +3344,7 @@ html[data-color-mode="light"] .liquid-toggle-thumb,
     gap: 4px !important;
   }
   .theme-quick-switch-btn #headerThemeIcon {
+    display: none !important;
     font-size: 0.72rem !important;
   }
   .theme-quick-switch-btn #headerThemeText {

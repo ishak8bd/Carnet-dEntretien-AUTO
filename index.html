@@ -15,7 +15,7 @@
   <link id="dynamicFavicon" rel="icon" type="image/png" href="icons/icon-blue-192.png">
   <link id="dynamicAppleIcon" rel="apple-touch-icon" href="icons/icon-blue-192.png">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=42">
+  <link rel="stylesheet" href="style.css?v=43">
   <script>
     // Pré-application immédiate du logo, thème et mode sombre/clair pour éviter tout flash (FOUC)
     (function() {
@@ -88,8 +88,8 @@
           <span id="headerColorModeIcon" class="sr-only" aria-hidden="true">☀️</span>
         </button>
         <button id="btnHeaderThemeSwitch" class="theme-quick-switch-btn" type="button" title="Changer le style visuel de l'application">
-          <span id="headerThemeIcon">👑</span>
-          <span id="headerThemeText">Bleu &amp; Or</span>
+          <span id="headerThemeIcon" style="display: none;"></span>
+          <span id="headerThemeText">Blue</span>
         </button>
         <div id="roomSyncBadge" class="room-sync-badge hidden">
           <span class="sync-dot sync-green"></span>
@@ -578,84 +578,84 @@
           <div class="card-title">
             <span>🎨 Thème &amp; Apparence globale de l'application</span>
           </div>
-          <span id="activeLogoBadge" class="status-badge status-badge-blue">Bleu &amp; Or</span>
+          <span id="activeLogoBadge" class="status-badge status-badge-blue">Blue</span>
         </div>
         <p class="card-subtitle">
           Personnalisez le design complet de votre carnet d'entretien. Le thème sélectionné transforme l'intégralité de l'application : arrière-plan, cartes en verre dépoli, reflets titane brossé, jauges, boutons, typographie et icône.
         </p>
 
         <div class="logo-picker-grid">
-          <!-- Option 1 : Bleu & Or (Par défaut) -->
-          <div class="logo-picker-card active" id="logoOptionBlue" data-logo="blue" role="button" tabindex="0" aria-label="Choisir le thème Bleu et Or">
+          <!-- Option 1 : Blue (Par défaut) -->
+          <div class="logo-picker-card active" id="logoOptionBlue" data-logo="blue" role="button" tabindex="0" aria-label="Choisir le thème Blue">
             <div class="logo-picker-preview">
-              <img src="icons/logo-blue.png" alt="Aperçu Thème Bleu et Or">
+              <img src="icons/logo-blue.png" alt="Aperçu Thème Blue">
             </div>
             <div class="logo-picker-info">
               <div class="logo-picker-title">
-                <span>Bleu &amp; Or</span>
-                <span class="status-badge status-badge-blue" style="font-size: 0.68rem; padding: 2px 6px;">Prestige</span>
+                <span>Blue</span>
+                <span class="status-badge status-badge-blue" style="font-size: 0.68rem; padding: 2px 6px;">Blue</span>
               </div>
               <div class="logo-picker-desc">Thème royal bleu profond rehaussé de bordures et reflets dorés étincelants.</div>
             </div>
             <div class="logo-picker-check" id="logoCheckBlue" style="display: inline-flex;" aria-hidden="true">✓</div>
           </div>
 
-          <!-- Option 2 : Cyber Glassmorphism -->
-          <div class="logo-picker-card" id="logoOptionGlass" data-logo="glass" role="button" tabindex="0" aria-label="Choisir le thème Cyber Glassmorphism">
+          <!-- Option 2 : Space -->
+          <div class="logo-picker-card" id="logoOptionGlass" data-logo="glass" role="button" tabindex="0" aria-label="Choisir le thème Space">
             <div class="logo-picker-preview logo-picker-preview-glass">
-              <img src="icons/logo-glass.png" alt="Aperçu Thème Cyber Glassmorphism">
+              <img src="icons/logo-glass.png" alt="Aperçu Thème Space">
             </div>
             <div class="logo-picker-info">
               <div class="logo-picker-title">
-                <span>Cyber Glassmorphism</span>
-                <span class="status-badge status-badge-glass" style="font-size: 0.68rem; padding: 2px 6px;">Verre &amp; Titane</span>
+                <span>Space</span>
+                <span class="status-badge status-badge-glass" style="font-size: 0.68rem; padding: 2px 6px;">Space</span>
               </div>
-              <div class="logo-picker-desc">Thème complet inspiré du visuel cyber-mécanique : verre dépoli, circuits orbitaux, titane brossé et silhouette néon blanche.</div>
+              <div class="logo-picker-desc">Thème inspiré du visuel cyber-mécanique : verre dépoli, circuits orbitaux, titane brossé et silhouette néon blanche.</div>
             </div>
             <div class="logo-picker-check" id="logoCheckGlass" style="display: none;" aria-hidden="true">✓</div>
           </div>
 
-          <!-- Option 3 : Acier Mécanique & Digital -->
-          <div class="logo-picker-card" id="logoOptionSteel" data-logo="steel" role="button" tabindex="0" aria-label="Choisir le thème Acier Mécanique et Digital">
+          <!-- Option 3 : Steel -->
+          <div class="logo-picker-card" id="logoOptionSteel" data-logo="steel" role="button" tabindex="0" aria-label="Choisir le thème Steel">
             <div class="logo-picker-preview logo-picker-preview-steel">
-              <img src="icons/logo-steel.png" alt="Aperçu Thème Acier Mécanique & Digital">
+              <img src="icons/logo-steel.png" alt="Aperçu Thème Steel">
             </div>
             <div class="logo-picker-info">
               <div class="logo-picker-title">
-                <span>Acier Mécanique &amp; Digital</span>
-                <span class="status-badge status-badge-steel" style="font-size: 0.68rem; padding: 2px 6px;">Métal &amp; 3D</span>
+                <span>Steel</span>
+                <span class="status-badge status-badge-steel" style="font-size: 0.68rem; padding: 2px 6px;">Steel</span>
               </div>
               <div class="logo-picker-desc">Finition acier brossé mat, chanfreins biseautés acérés, relief 3D tangible et télémétrie numérique HUD.</div>
             </div>
             <div class="logo-picker-check" id="logoCheckSteel" style="display: none;" aria-hidden="true">✓</div>
           </div>
 
-          <!-- Option 4 : Carbone & Bulle de Verre -->
-          <div class="logo-picker-card" id="logoOptionBubble" data-logo="bubble" role="button" tabindex="0" aria-label="Choisir le thème Carbone & Bulle">
+          <!-- Option 4 : Solid -->
+          <div class="logo-picker-card" id="logoOptionBubble" data-logo="bubble" role="button" tabindex="0" aria-label="Choisir le thème Solid">
             <div class="logo-picker-preview logo-picker-preview-bubble">
-              <img src="icons/logo-bubble.png" alt="Aperçu Thème Carbone & Bulle">
+              <img src="icons/logo-bubble.png" alt="Aperçu Thème Solid">
             </div>
             <div class="logo-picker-info">
               <div class="logo-picker-title">
-                <span>Carbone &amp; Bulle</span>
-                <span class="status-badge status-badge-bubble" style="font-size: 0.68rem; padding: 2px 6px;">Nouveau</span>
+                <span>Solid</span>
+                <span class="status-badge status-badge-bubble" style="font-size: 0.68rem; padding: 2px 6px;">Solid</span>
               </div>
               <div class="logo-picker-desc">Sombre, bulles de verre et reflets liquides.</div>
             </div>
             <div class="logo-picker-check" id="logoCheckBubble" style="display: none;" aria-hidden="true">✓</div>
           </div>
 
-          <!-- Option 5 : Apple Liquid Glass iOS 26 -->
-          <div class="logo-picker-card" id="logoOptionLiquid" data-logo="liquid" role="button" tabindex="0" aria-label="Choisir le thème Apple Liquid Glass iOS 26">
+          <!-- Option 5 : Glass -->
+          <div class="logo-picker-card" id="logoOptionLiquid" data-logo="liquid" role="button" tabindex="0" aria-label="Choisir le thème Glass">
             <div class="logo-picker-preview logo-picker-preview-liquid">
-              <img src="icons/logo-liquid.png" alt="Aperçu Thème Apple Liquid Glass iOS 26">
+              <img src="icons/logo-liquid.png" alt="Aperçu Thème Glass">
             </div>
             <div class="logo-picker-info">
               <div class="logo-picker-title">
-                <span>Apple iOS 26 Liquid Glass</span>
-                <span class="status-badge status-badge-liquid" style="font-size: 0.68rem; padding: 2px 6px;">iOS 26</span>
+                <span>Glass</span>
+                <span class="status-badge status-badge-liquid" style="font-size: 0.68rem; padding: 2px 6px;">Glass</span>
               </div>
-              <div class="logo-picker-desc">Design système Apple iOS 26 : verre optique liquide, flou dynamique 22px saturé, capsules flottantes et reflets spéculaires.</div>
+              <div class="logo-picker-desc">Design système en verre optique liquide, capsules flottantes et reflets spéculaires.</div>
             </div>
             <div class="logo-picker-check" id="logoCheckLiquid" style="display: none;" aria-hidden="true">✓</div>
           </div>

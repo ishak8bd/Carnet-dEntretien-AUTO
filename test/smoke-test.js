@@ -684,7 +684,7 @@ try {
   assert(!document.body.classList.contains('theme-bubble'), 'La classe theme-bubble ne doit pas être présente par défaut');
   assert(!document.body.classList.contains('theme-liquid'), 'La classe theme-liquid ne doit pas être présente par défaut');
   if (activeBadge) {
-    assert.strictEqual(activeBadge.textContent.trim(), 'Bleu & Or', 'Le badge indique Bleu & Or');
+    assert.strictEqual(activeBadge.textContent.trim(), 'Blue', 'Le badge indique Blue');
   }
 
   // Basculer vers le thème Cyber Glassmorphism
@@ -701,7 +701,7 @@ try {
   assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'glass', 'Le choix "glass" doit être persisté dans localStorage carnet_app_theme');
   assert.strictEqual(window.appState.settings.appLogo, 'glass', 'appState.settings.appLogo doit valoir "glass"');
   if (activeBadge) {
-    assert.strictEqual(activeBadge.textContent.trim(), 'Cyber Glassmorphism', 'Le badge indique Cyber Glassmorphism');
+    assert.strictEqual(activeBadge.textContent.trim(), 'Space', 'Le badge indique Space');
   }
 
   // Basculer vers le thème Acier Mécanique & Digital
@@ -718,7 +718,7 @@ try {
   assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'steel', 'Le choix "steel" doit être persisté dans localStorage carnet_app_theme');
   assert.strictEqual(window.appState.settings.appLogo, 'steel', 'appState.settings.appLogo doit valoir "steel"');
   if (activeBadge) {
-    assert.strictEqual(activeBadge.textContent.trim(), 'Acier Mécanique & Digital', 'Le badge indique Acier Mécanique & Digital');
+    assert.strictEqual(activeBadge.textContent.trim(), 'Steel', 'Le badge indique Steel');
   }
 
   // Basculer vers le thème Carbone & Bulle
@@ -735,7 +735,7 @@ try {
   assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'bubble', 'Le choix "bubble" doit être persisté dans localStorage carnet_app_theme');
   assert.strictEqual(window.appState.settings.appLogo, 'bubble', 'appState.settings.appLogo doit valoir "bubble"');
   if (activeBadge) {
-    assert.strictEqual(activeBadge.textContent.trim(), 'Carbone & Bulle', 'Le badge indique Carbone & Bulle');
+    assert.strictEqual(activeBadge.textContent.trim(), 'Solid', 'Le badge indique Solid');
   }
 
   // Basculer vers le thème Apple iOS 26 Liquid Glass
@@ -752,7 +752,7 @@ try {
   assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'liquid', 'Le choix "liquid" doit être persisté dans localStorage carnet_app_theme');
   assert.strictEqual(window.appState.settings.appLogo, 'liquid', 'appState.settings.appLogo doit valoir "liquid"');
   if (activeBadge) {
-    assert(activeBadge.textContent.includes('Liquid Glass'), 'Le badge indique Apple iOS 26 Liquid Glass');
+    assert.strictEqual(activeBadge.textContent.trim(), 'Glass', 'Le badge indique Glass');
   }
 
   // Basculer de nouveau vers le logo Bleu & Or
@@ -771,7 +771,7 @@ try {
   assert.strictEqual(window.localStorage.getItem('carnet_app_logo'), 'blue', 'Le choix "blue" doit être persisté dans localStorage');
   assert.strictEqual(window.appState.settings.appLogo, 'blue', 'appState.settings.appLogo doit valoir "blue"');
   if (activeBadge) {
-    assert.strictEqual(activeBadge.textContent.trim(), 'Bleu & Or', 'Le badge indique Bleu & Or');
+    assert.strictEqual(activeBadge.textContent.trim(), 'Blue', 'Le badge indique Blue');
   }
 
   // Test du bouton de bascule rapide de thème dans l'en-tête (btnHeaderThemeSwitch) : blue -> glass -> steel -> bubble -> liquid -> blue
