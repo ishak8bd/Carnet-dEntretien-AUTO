@@ -1,5 +1,5 @@
 // Service Worker - Suivi Entretien Véhicule PWA (100% Hors-Ligne & Support Firebase)
-const CACHE_NAME = 'entretien-v24';
+const CACHE_NAME = 'entretien-v25';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -8,17 +8,13 @@ const ASSETS_TO_CACHE = [
   './room.js',
   './firebase-config.js',
   './manifest.json',
-  './icons/logo-dark.png',
   './icons/logo-blue.png',
   './icons/logo-glass.png',
   './icons/logo-steel.png',
   './icons/logo-bubble.png',
-  './icons/logo-liquid.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable.png',
-  './icons/icon-dark-192.png',
-  './icons/icon-dark-512.png',
   './icons/icon-blue-192.png',
   './icons/icon-blue-512.png',
   './icons/icon-glass-192.png',
@@ -27,8 +23,6 @@ const ASSETS_TO_CACHE = [
   './icons/icon-steel-512.png',
   './icons/icon-bubble-192.png',
   './icons/icon-bubble-512.png',
-  './icons/icon-liquid-192.png',
-  './icons/icon-liquid-512.png',
   './icons/icon.svg',
   './icons/bg-orbits.svg',
   './icons/bg-mechanical.svg',

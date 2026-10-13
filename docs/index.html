@@ -12,15 +12,18 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Carnet Auto">
   
-  <link id="dynamicFavicon" rel="icon" type="image/png" href="icons/icon-192.png">
-  <link id="dynamicAppleIcon" rel="apple-touch-icon" href="icons/icon-192.png">
+  <link id="dynamicFavicon" rel="icon" type="image/png" href="icons/icon-blue-192.png">
+  <link id="dynamicAppleIcon" rel="apple-touch-icon" href="icons/icon-blue-192.png">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
   <script>
     // Pré-application immédiate du logo et thème personnalisé pour éviter le flash
     (function() {
       try {
-        var savedTheme = localStorage.getItem('carnet_app_theme') || localStorage.getItem('carnet_app_logo') || 'dark';
+        var savedTheme = localStorage.getItem('carnet_app_theme') || localStorage.getItem('carnet_app_logo') || 'blue';
+        if (savedTheme === 'dark' || savedTheme === 'liquid') {
+          savedTheme = 'blue';
+        }
         var fav = document.getElementById('dynamicFavicon');
         var apple = document.getElementById('dynamicAppleIcon');
         if (savedTheme === 'steel') {
@@ -31,18 +34,15 @@
           if (fav) fav.href = 'icons/icon-glass-192.png';
           if (apple) apple.href = 'icons/icon-glass-192.png';
           document.documentElement.classList.add('theme-glass');
-        } else if (savedTheme === 'blue') {
-          if (fav) fav.href = 'icons/icon-blue-192.png';
-          if (apple) apple.href = 'icons/icon-blue-192.png';
-          document.documentElement.classList.add('theme-blue');
         } else if (savedTheme === 'bubble') {
           if (fav) fav.href = 'icons/icon-bubble-192.png';
           if (apple) apple.href = 'icons/icon-bubble-192.png';
           document.documentElement.classList.add('theme-bubble');
-        } else if (savedTheme === 'liquid') {
-          if (fav) fav.href = 'icons/icon-liquid-192.png';
-          if (apple) apple.href = 'icons/icon-liquid-192.png';
-          document.documentElement.classList.add('theme-liquid');
+        } else {
+          // Par défaut : Bleu & Or
+          if (fav) fav.href = 'icons/icon-blue-192.png';
+          if (apple) apple.href = 'icons/icon-blue-192.png';
+          document.documentElement.classList.add('theme-blue');
         }
       } catch (e) {}
     })();
@@ -52,10 +52,10 @@
   <div class="app-container">
 
     <!-- En-tête de l'application -->
-    <header class="app-header liquid-glass">
+    <header class="app-header">
       <div class="brand">
         <div class="brand-icon" id="appBrandIconContainer" title="Logo de l'application - Cliquer pour personnaliser">
-          <img id="appLogoImg" src="icons/logo-dark.png" alt="Logo Carnet d'Entretien" class="brand-logo-img">
+          <img id="appLogoImg" src="icons/logo-blue.png" alt="Logo Carnet d'Entretien" class="brand-logo-img">
         </div>
         <div class="brand-text">
           <h1>Carnet d'Entretien</h1>
@@ -64,8 +64,8 @@
       </div>
       <div class="header-right-actions" style="display: flex; align-items: center; gap: 8px;">
         <button id="btnHeaderThemeSwitch" class="theme-quick-switch-btn" type="button" title="Changer le thème de l'application">
-          <span id="headerThemeIcon">✨</span>
-          <span id="headerThemeText">Thème</span>
+          <span id="headerThemeIcon">👑</span>
+          <span id="headerThemeText">Bleu &amp; Or</span>
         </button>
         <div id="roomSyncBadge" class="room-sync-badge hidden">
           <span class="sync-dot sync-green"></span>
@@ -119,7 +119,7 @@
           </div>
         </div>
         <div class="banner-actions">
-          <button type="button" id="btnBannerEnableNotif" class="banner-btn banner-btn-notif liquid-glass">📲 Activer</button>
+          <button type="button" id="btnBannerEnableNotif" class="banner-btn banner-btn-notif">📲 Activer</button>
           <button type="button" id="btnBannerDismissNotif" class="banner-btn banner-btn-subtle" title="Masquer">✕</button>
         </div>
       </div>
@@ -157,7 +157,7 @@
               autocomplete="off"
               required
             >
-            <button type="submit" class="btn-primary liquid-glass" id="btnSubmitKm">
+            <button type="submit" class="btn-primary" id="btnSubmitKm">
               <span>Enregistrer</span>
             </button>
           </form>
@@ -554,30 +554,15 @@
           <div class="card-title">
             <span>🎨 Thème &amp; Apparence globale de l'application</span>
           </div>
-          <span id="activeLogoBadge" class="status-badge status-badge-info">Noir &amp; Carbone</span>
+          <span id="activeLogoBadge" class="status-badge status-badge-blue">Bleu &amp; Or</span>
         </div>
         <p class="card-subtitle">
-          Personnalisez le design complet de votre carnet d'entretien. Le thème sélectionné transforme l'intégralité de l'application : arrière-plan cosmique, cartes en verre dépoli, reflets titane brossé, jauges, boutons, typographie et icône.
+          Personnalisez le design complet de votre carnet d'entretien. Le thème sélectionné transforme l'intégralité de l'application : arrière-plan, cartes en verre dépoli, reflets titane brossé, jauges, boutons, typographie et icône.
         </p>
 
         <div class="logo-picker-grid">
-          <!-- Option 1 : Noir & Carbone (Par défaut) -->
-          <div class="logo-picker-card active" id="logoOptionDark" data-logo="dark" role="button" tabindex="0" aria-label="Choisir le thème Noir et Carbone">
-            <div class="logo-picker-preview">
-              <img src="icons/logo-dark.png" alt="Aperçu Thème Noir et Carbone">
-            </div>
-            <div class="logo-picker-info">
-              <div class="logo-picker-title">
-                <span>Noir &amp; Carbone</span>
-                <span class="status-badge" style="font-size: 0.68rem; padding: 2px 6px;">Classique</span>
-              </div>
-              <div class="logo-picker-desc">Thème sombre sportif épuré avec finitions carbone et contrastes sobres.</div>
-            </div>
-            <div class="logo-picker-check" id="logoCheckDark" aria-hidden="true">✓</div>
-          </div>
-
-          <!-- Option 2 : Bleu & Or -->
-          <div class="logo-picker-card" id="logoOptionBlue" data-logo="blue" role="button" tabindex="0" aria-label="Choisir le thème Bleu et Or">
+          <!-- Option 1 : Bleu & Or (Par défaut) -->
+          <div class="logo-picker-card active" id="logoOptionBlue" data-logo="blue" role="button" tabindex="0" aria-label="Choisir le thème Bleu et Or">
             <div class="logo-picker-preview">
               <img src="icons/logo-blue.png" alt="Aperçu Thème Bleu et Or">
             </div>
@@ -588,10 +573,10 @@
               </div>
               <div class="logo-picker-desc">Thème royal bleu profond rehaussé de bordures et reflets dorés étincelants.</div>
             </div>
-            <div class="logo-picker-check" id="logoCheckBlue" style="display: none;" aria-hidden="true">✓</div>
+            <div class="logo-picker-check" id="logoCheckBlue" style="display: inline-flex;" aria-hidden="true">✓</div>
           </div>
 
-          <!-- Option 3 : Cyber Glassmorphism -->
+          <!-- Option 2 : Cyber Glassmorphism -->
           <div class="logo-picker-card" id="logoOptionGlass" data-logo="glass" role="button" tabindex="0" aria-label="Choisir le thème Cyber Glassmorphism">
             <div class="logo-picker-preview logo-picker-preview-glass">
               <img src="icons/logo-glass.png" alt="Aperçu Thème Cyber Glassmorphism">
@@ -606,7 +591,7 @@
             <div class="logo-picker-check" id="logoCheckGlass" style="display: none;" aria-hidden="true">✓</div>
           </div>
 
-          <!-- Option 4 : Acier Mécanique & Digital -->
+          <!-- Option 3 : Acier Mécanique & Digital -->
           <div class="logo-picker-card" id="logoOptionSteel" data-logo="steel" role="button" tabindex="0" aria-label="Choisir le thème Acier Mécanique et Digital">
             <div class="logo-picker-preview logo-picker-preview-steel">
               <img src="icons/logo-steel.png" alt="Aperçu Thème Acier Mécanique & Digital">
@@ -621,8 +606,7 @@
             <div class="logo-picker-check" id="logoCheckSteel" style="display: none;" aria-hidden="true">✓</div>
           </div>
 
-          
-          <!-- Option 5 : Carbone & Bulle de Verre -->
+          <!-- Option 4 : Carbone & Bulle de Verre -->
           <div class="logo-picker-card" id="logoOptionBubble" data-logo="bubble" role="button" tabindex="0" aria-label="Choisir le thème Carbone & Bulle">
             <div class="logo-picker-preview logo-picker-preview-bubble">
               <img src="icons/logo-bubble.png" alt="Aperçu Thème Carbone & Bulle">
@@ -632,24 +616,9 @@
                 <span>Carbone &amp; Bulle</span>
                 <span class="status-badge status-badge-bubble" style="font-size: 0.68rem; padding: 2px 6px;">Nouveau</span>
               </div>
-              <div class="logo-picker-desc">Sombre, bulles de verre et reflets liquides</div>
+              <div class="logo-picker-desc">Sombre, bulles de verre et reflets liquides.</div>
             </div>
             <div class="logo-picker-check" id="logoCheckBubble" style="display: none;" aria-hidden="true">✓</div>
-          </div>
-
-          <!-- Option 6 : Apple iOS 26 Liquid Glass -->
-          <div class="logo-picker-card" id="logoOptionLiquid" data-logo="liquid" role="button" tabindex="0" aria-label="Choisir le thème Apple iOS 26 Liquid Glass">
-            <div class="logo-picker-preview logo-picker-preview-liquid">
-              <img src="icons/logo-liquid.png" alt="Aperçu Thème Apple iOS 26 Liquid Glass">
-            </div>
-            <div class="logo-picker-info">
-              <div class="logo-picker-title">
-                <span>Apple Liquid Glass</span>
-                <span class="status-badge status-badge-liquid" style="font-size: 0.68rem; padding: 2px 6px;">iOS 26</span>
-              </div>
-              <div class="logo-picker-desc">Navigation flottante en verre liquide, barres pilule, reflets caustiques et contenu solide pur.</div>
-            </div>
-            <div class="logo-picker-check" id="logoCheckLiquid" style="display: none;" aria-hidden="true">✓</div>
           </div>
         </div>
       </section>
@@ -693,7 +662,7 @@
         </div>
 
         <div class="settings-actions" style="display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
-          <button type="button" id="btnToggleNotifications" class="btn-primary liquid-glass" style="display: inline-flex; align-items: center; gap: 6px;">
+          <button type="button" id="btnToggleNotifications" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
             <span>🔔</span>
             <span id="btnToggleNotifText">Activer les notifications</span>
           </button>
@@ -829,7 +798,7 @@
 
             <!-- Bouton d'enregistrement explicite -->
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
-              <button type="button" id="btnSaveAlertFrequencies" class="btn-primary liquid-glass" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; padding: 8px 16px;">
+              <button type="button" id="btnSaveAlertFrequencies" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; padding: 8px 16px;">
                 <span>💾</span>
                 <span>Enregistrer la cadence</span>
               </button>
@@ -980,7 +949,7 @@
 
             <!-- Bouton d'enregistrement explicite -->
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
-              <button type="button" id="btnSaveEmailAlertFrequencies" class="btn-primary liquid-glass" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; padding: 8px 16px;">
+              <button type="button" id="btnSaveEmailAlertFrequencies" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; padding: 8px 16px;">
                 <span>💾</span>
                 <span>Enregistrer la cadence des e-mails</span>
               </button>
@@ -1032,7 +1001,7 @@
 
           <!-- Action rapide : Ouvrir WhatsApp pour tester -->
           <div style="margin-top: 14px; border-top: 1px solid var(--border-color); padding-top: 12px;">
-            <button type="button" id="btnTestWhatsappShare" class="btn-primary liquid-glass" style="background: linear-gradient(135deg, #16a34a, #15803d); width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+            <button type="button" id="btnTestWhatsappShare" class="btn-primary" style="background: linear-gradient(135deg, #16a34a, #15803d); width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
               <span>💬</span>
               <span>Tester l'envoi d'un message d'alerte sur WhatsApp</span>
             </button>
@@ -1071,7 +1040,7 @@
             </div>
           </div>
           <div style="margin-top: 14px;">
-            <button type="submit" class="btn-primary liquid-glass" style="width: 100%;">
+            <button type="submit" class="btn-primary" style="width: 100%;">
               💾 Enregistrer les intervalles par défaut
             </button>
           </div>
@@ -1099,7 +1068,7 @@
         </div>
 
         <div class="settings-actions-row">
-          <button type="button" id="btnExportJsonBackup" class="btn-primary liquid-glass" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+          <button type="button" id="btnExportJsonBackup" class="btn-primary" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
             <span>📥</span>
             <span>Exporter sauvegarde (JSON)</span>
           </button>
@@ -1181,7 +1150,7 @@
 
   <!-- MODAL: Ajouter / Modifier un véhicule -->
   <div id="vehicleModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-content liquid-glass">
+    <div class="modal-content">
       <div class="modal-header">
         <h2 class="modal-title" id="vehicleModalTitle">Ajouter un véhicule</h2>
         <button type="button" class="btn-icon" id="btnCloseVehicleModal" aria-label="Fermer">✕</button>
@@ -1241,7 +1210,7 @@
         <div class="modal-actions">
           <button type="button" id="btnDeleteVehicle" class="btn-danger hidden">Supprimer</button>
           <button type="button" id="btnCancelVehicleModal" class="btn-secondary">Annuler</button>
-          <button type="submit" class="btn-primary liquid-glass">Enregistrer</button>
+          <button type="submit" class="btn-primary">Enregistrer</button>
         </div>
       </form>
     </div>
@@ -1249,7 +1218,7 @@
 
   <!-- MODAL: Ajouter / Modifier un élément d'entretien (Étape 2) -->
   <div id="maintenanceItemModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-content liquid-glass">
+    <div class="modal-content">
       <div class="modal-header">
         <h2 class="modal-title" id="maintModalTitle">Élément d'entretien</h2>
         <button type="button" class="btn-icon" id="btnCloseMaintModal" aria-label="Fermer">✕</button>
@@ -1295,7 +1264,7 @@
         <div class="modal-actions">
           <button type="button" id="btnDeleteMaintItem" class="btn-danger hidden">Supprimer</button>
           <button type="button" id="btnCancelMaintModal" class="btn-secondary">Annuler</button>
-          <button type="submit" class="btn-primary liquid-glass">Enregistrer</button>
+          <button type="submit" class="btn-primary">Enregistrer</button>
         </div>
       </form>
     </div>
@@ -1303,7 +1272,7 @@
 
   <!-- MODAL: "Fait aujourd'hui" (Étape 4) -->
   <div id="doneModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-content liquid-glass">
+    <div class="modal-content">
       <div class="modal-header">
         <h2 class="modal-title" id="doneModalTitle">✅ Enregistrer l'entretien</h2>
         <button type="button" class="btn-icon" id="btnCloseDoneModal" aria-label="Fermer">✕</button>
@@ -1351,7 +1320,7 @@
 
         <div class="modal-actions">
           <button type="button" id="btnCancelDoneModal" class="btn-secondary">Annuler</button>
-          <button type="submit" class="btn-primary liquid-glass" style="background: linear-gradient(135deg, var(--success), #059669);">
+          <button type="submit" class="btn-primary" style="background: linear-gradient(135deg, var(--success), #059669);">
             Valider l'entretien
           </button>
         </div>
@@ -1361,7 +1330,7 @@
 
   <!-- MODAL: Ajouter une intervention passée dans l'historique -->
   <div id="modalAddHistoryEntry" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-content liquid-glass" style="max-width: 520px;">
+    <div class="modal-content" style="max-width: 520px;">
       <div class="modal-header">
         <h2 class="modal-title">📜 Ajouter une intervention passée</h2>
         <button type="button" class="btn-icon" id="btnCloseAddHistoryModal" aria-label="Fermer">✕</button>
@@ -1433,7 +1402,7 @@
           <button type="button" id="btnAddAnotherHistoryEntry" class="btn-secondary" style="font-size: 0.84rem;">
             ➕ Enregistrer &amp; en ajouter une autre
           </button>
-          <button type="submit" class="btn-primary liquid-glass" id="btnSubmitAddHistoryEntry" style="flex: 1; min-width: 140px;">
+          <button type="submit" class="btn-primary" id="btnSubmitAddHistoryEntry" style="flex: 1; min-width: 140px;">
             💾 Enregistrer
           </button>
         </div>
@@ -1443,7 +1412,7 @@
 
   <!-- MODAL / ONBOARDING: Premier lancement (0 véhicule) -->
   <div id="onboardingModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-content liquid-glass">
+    <div class="modal-content">
       
       <!-- Étape 1 : Choix du mode (Solo, Créer salle, Rejoindre salle) -->
       <div id="onboardingChoiceSection">
@@ -1545,7 +1514,7 @@
           </div>
 
           <div class="modal-actions" style="margin-top: 14px;">
-            <button type="submit" class="btn-primary liquid-glass" style="width: 100%;">Démarrer mon suivi</button>
+            <button type="submit" class="btn-primary" style="width: 100%;">Démarrer mon suivi</button>
           </div>
         </form>
       </div>
@@ -1555,7 +1524,7 @@
 
   <!-- MODAL: Multi-utilisateurs (multi-appareils) -->
   <div id="modalCreateRoom" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-content liquid-glass">
+    <div class="modal-content">
       <div class="modal-header">
         <h2 class="modal-title">Multi-utilisateurs (multi-appareils) 👥</h2>
         <button type="button" class="modal-close" id="btnCloseCreateRoom" aria-label="Fermer">✕</button>
@@ -1611,7 +1580,7 @@
         </div>
 
         <div class="modal-actions" style="margin-top: 16px;">
-          <button type="submit" class="btn-primary liquid-glass" style="flex: 1;">Activer &amp; Inviter</button>
+          <button type="submit" class="btn-primary" style="flex: 1;">Activer &amp; Inviter</button>
           <button type="button" id="btnCancelCreateRoom" class="btn-secondary">Annuler</button>
         </div>
       </form>
@@ -1620,7 +1589,7 @@
 
   <!-- MODAL: Rejoindre en multi-utilisateurs -->
   <div id="modalJoinRoom" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-content liquid-glass">
+    <div class="modal-content">
       <div class="modal-header">
         <h2 class="modal-title">Rejoindre en multi-utilisateurs 🔗</h2>
         <button type="button" class="modal-close" id="btnCloseJoinRoom" aria-label="Fermer">✕</button>
@@ -1654,7 +1623,7 @@
         </div>
 
         <div class="modal-actions" style="margin-top: 16px;">
-          <button type="submit" class="btn-primary liquid-glass" style="flex: 1;">Demander l'accès</button>
+          <button type="submit" class="btn-primary" style="flex: 1;">Demander l'accès</button>
           <button type="button" id="btnCancelJoinRoom" class="btn-secondary">Annuler</button>
         </div>
       </form>
@@ -1663,7 +1632,7 @@
 
   <!-- MODAL: En attente d'approbation -->
   <div id="modalPendingApproval" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-content liquid-glass">
+    <div class="modal-content">
       <div class="waiting-pulse-box">
         <div class="waiting-spinner"></div>
         <div>
@@ -1689,7 +1658,7 @@
 
   <!-- MODAL: Partager l'invitation -->
   <div id="modalShareInvite" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-content liquid-glass">
+    <div class="modal-content">
       <div class="modal-header">
         <h2 class="modal-title">Inviter un appareil / utilisateur 📲</h2>
         <button type="button" class="modal-close" id="btnCloseShareInvite" aria-label="Fermer">✕</button>
@@ -1726,14 +1695,14 @@
       </div>
 
       <div class="modal-actions" style="margin-top: 14px;">
-        <button type="button" id="btnCloseShareModalBtn" class="btn-primary liquid-glass" style="width: 100%;">Terminer</button>
+        <button type="button" id="btnCloseShareModalBtn" class="btn-primary" style="width: 100%;">Terminer</button>
       </div>
     </div>
   </div>
 
   <!-- MODAL: Transférer la gestion (Passation obligatoire avant départ de l'admin) -->
   <div id="modalTransferOwnership" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-content liquid-glass">
+    <div class="modal-content">
       <div class="modal-header">
         <h2 class="modal-title">Transférer la gestion 👑</h2>
         <button type="button" class="modal-close" id="btnCloseTransferOwnership" aria-label="Fermer">✕</button>
@@ -1756,7 +1725,7 @@
         </div>
 
         <div class="modal-actions" style="margin-top: 14px;">
-          <button type="submit" id="btnConfirmTransferOwnership" class="btn-primary liquid-glass" style="flex: 1;">
+          <button type="submit" id="btnConfirmTransferOwnership" class="btn-primary" style="flex: 1;">
             Transférer &amp; Quitter le partage
           </button>
           <button type="button" id="btnCancelTransferOwnership" class="btn-secondary">Annuler</button>
@@ -1767,7 +1736,7 @@
 
   <!-- MODAL: Modifier le profil d'un membre (Nom & Numéro WhatsApp) -->
   <div id="modalEditMemberProfile" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-content liquid-glass">
+    <div class="modal-content">
       <div class="modal-header">
         <h2 class="modal-title" id="editMemberModalTitle">Modifier le profil 👤</h2>
         <button type="button" class="modal-close" id="btnCloseEditMemberProfile" aria-label="Fermer">✕</button>
@@ -1801,7 +1770,7 @@
         </div>
 
         <div class="modal-actions" style="margin-top: 16px;">
-          <button type="submit" id="btnSubmitEditMemberProfile" class="btn-primary liquid-glass" style="flex: 1;">Enregistrer</button>
+          <button type="submit" id="btnSubmitEditMemberProfile" class="btn-primary" style="flex: 1;">Enregistrer</button>
           <button type="button" id="btnCancelEditMemberProfile" class="btn-secondary">Annuler</button>
         </div>
       </form>
@@ -1810,7 +1779,7 @@
 
   <!-- MODAL: Ajouter / Modifier un destinataire supplémentaire des alertes (Sans adhésion) -->
   <div id="modalAddContact" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-content liquid-glass" style="max-width: 480px;">
+    <div class="modal-content" style="max-width: 480px;">
       <div class="modal-header">
         <h2 class="modal-title" id="contactModalTitle">📢 Destinataire d'alertes</h2>
         <button type="button" class="modal-close" id="btnCloseContactModal" aria-label="Fermer">✕</button>
@@ -1845,7 +1814,7 @@
         </div>
 
         <div class="modal-actions" style="margin-top: 14px;">
-          <button type="submit" id="btnSubmitContact" class="btn-primary liquid-glass" style="flex: 1;">Enregistrer</button>
+          <button type="submit" id="btnSubmitContact" class="btn-primary" style="flex: 1;">Enregistrer</button>
           <button type="button" id="btnCancelContactModal" class="btn-secondary">Annuler</button>
         </div>
       </form>
@@ -1853,7 +1822,7 @@
   </div>
 
   <!-- Barre de navigation mobile inférieure (4 Onglets) -->
-  <nav class="bottom-nav liquid-glass" aria-label="Navigation principale">
+  <nav class="bottom-nav" aria-label="Navigation principale">
     <button type="button" class="nav-tab active" id="tabDashboard" aria-label="Tableau de bord">
       <span class="nav-tab-icon">📋</span>
       <span>Tableau</span>

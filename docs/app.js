@@ -40,7 +40,7 @@ let appState = {
     defaultIntervals: JSON.parse(JSON.stringify(DEFAULT_MAINTENANCE_TYPES)),
     lastBackupDate: null,
     contacts: [],
-    appLogo: 'dark',
+    appLogo: 'blue',
     notificationsEnabled: false,
     notifUrgentMaint: true,
     notifStaleKm: true,
@@ -214,22 +214,21 @@ function updateViewToggleButtons(toggleId, activeMode) {
 }
 
 /**
- * Applique l'apparence et le logo de l'application ('dark' ou 'blue').
+ * Applique l'apparence et le logo de l'application (Bleu & Or, Cyber Glassmorphism, Acier Mécanique, Carbone & Bulle).
  * Met à jour l'en-tête, les favicons dynamiques, les cartes de sélection et persiste le choix.
- * @param {string} theme - 'dark' (Noir & Carbone) ou 'blue' (Bleu & Or)
+ * @param {string} theme - 'blue' | 'glass' | 'steel' | 'bubble'
  * @param {boolean} notify - Afficher un message de confirmation si true
  */
 function applyAppLogo(theme, notify = false) {
-  let chosen = 'dark';
-  if (theme === 'blue') {
-    chosen = 'blue';
-  } else if (theme === 'glass') {
+  let chosen = 'blue';
+  if (theme === 'glass') {
     chosen = 'glass';
   } else if (theme === 'steel') {
     chosen = 'steel';
   } else if (theme === 'bubble') {
-      chosen = 'bubble';
-    } else if (theme === 'liquid') { chosen = 'liquid';
+    chosen = 'bubble';
+  } else if (theme === 'blue') {
+    chosen = 'blue';
   }
 
   if (!appState.settings) {
@@ -242,23 +241,21 @@ function applyAppLogo(theme, notify = false) {
     localStorage.setItem('carnet_app_theme', chosen);
   } catch (e) {}
 
-  // 0. Basculer les classes de thèmes globaux (Acier Mécanique / Cyber Glassmorphism / Prestige Bleu / Noir Carbone)
+  // 0. Basculer les classes de thèmes globaux (Bleu & Or par défaut / Cyber Glassmorphism / Acier Mécanique / Carbone & Bulle)
   if (typeof document !== 'undefined') {
     if (document.body) {
       document.body.classList.remove('theme-glass', 'theme-blue', 'theme-steel', 'theme-bubble', 'theme-liquid');
       if (chosen === 'steel') document.body.classList.add('theme-steel');
       else if (chosen === 'glass') document.body.classList.add('theme-glass');
-      else if (chosen === 'blue') document.body.classList.add('theme-blue');
       else if (chosen === 'bubble') document.body.classList.add('theme-bubble');
-      else if (chosen === 'liquid') document.body.classList.add('theme-liquid');
+      else document.body.classList.add('theme-blue');
     }
     if (document.documentElement) {
       document.documentElement.classList.remove('theme-glass', 'theme-blue', 'theme-steel', 'theme-bubble', 'theme-liquid');
       if (chosen === 'steel') document.documentElement.classList.add('theme-steel');
       else if (chosen === 'glass') document.documentElement.classList.add('theme-glass');
-      else if (chosen === 'blue') document.documentElement.classList.add('theme-blue');
       else if (chosen === 'bubble') document.documentElement.classList.add('theme-bubble');
-      else if (chosen === 'liquid') document.documentElement.classList.add('theme-liquid');
+      else document.documentElement.classList.add('theme-blue');
     }
   }
 
@@ -271,18 +268,12 @@ function applyAppLogo(theme, notify = false) {
     } else if (chosen === 'glass') {
       logoImg.src = 'icons/logo-glass.png';
       logoImg.alt = "Logo Carnet d'Entretien Cyber Glassmorphism";
-    } else if (chosen === 'blue') {
-      logoImg.src = 'icons/logo-blue.png';
-      logoImg.alt = "Logo Carnet d'Entretien Bleu & Or";
     } else if (chosen === 'bubble') {
       logoImg.src = 'icons/logo-bubble.png';
       logoImg.alt = "Logo Carnet d'Entretien Carbone & Bulle";
-    } else if (chosen === 'liquid') {
-      logoImg.src = 'icons/logo-liquid.png';
-      logoImg.alt = "Logo Carnet d'Entretien Apple Liquid Glass iOS 26";
     } else {
-      logoImg.src = 'icons/logo-dark.png';
-      logoImg.alt = "Logo Carnet d'Entretien Noir & Carbone";
+      logoImg.src = 'icons/logo-blue.png';
+      logoImg.alt = "Logo Carnet d'Entretien Bleu & Or";
     }
   }
 
@@ -296,18 +287,12 @@ function applyAppLogo(theme, notify = false) {
     } else if (chosen === 'glass') {
       headerIcon.textContent = '💎';
       headerText.textContent = 'Cyber Glass';
-    } else if (chosen === 'blue') {
-      headerIcon.textContent = '👑';
-      headerText.textContent = 'Bleu & Or';
     } else if (chosen === 'bubble') {
       headerIcon.textContent = '🫧';
       headerText.textContent = 'Bulle & Verre';
-    } else if (chosen === 'liquid') {
-      headerIcon.textContent = '💧';
-      headerText.textContent = 'Liquid Glass';
     } else {
-      headerIcon.textContent = '🌑';
-      headerText.textContent = 'Carbone';
+      headerIcon.textContent = '👑';
+      headerText.textContent = 'Bleu & Or';
     }
   }
 
@@ -318,14 +303,10 @@ function applyAppLogo(theme, notify = false) {
       fav.href = 'icons/icon-steel-192.png';
     } else if (chosen === 'glass') {
       fav.href = 'icons/icon-glass-192.png';
-    } else if (chosen === 'blue') {
-      fav.href = 'icons/icon-blue-192.png';
     } else if (chosen === 'bubble') {
       fav.href = 'icons/icon-bubble-192.png';
-    } else if (chosen === 'liquid') {
-      fav.href = 'icons/icon-liquid-192.png';
     } else {
-      fav.href = 'icons/icon-192.png';
+      fav.href = 'icons/icon-blue-192.png';
     }
   }
   const apple = document.getElementById('dynamicAppleIcon');
@@ -334,35 +315,24 @@ function applyAppLogo(theme, notify = false) {
       apple.href = 'icons/icon-steel-192.png';
     } else if (chosen === 'glass') {
       apple.href = 'icons/icon-glass-192.png';
-    } else if (chosen === 'blue') {
-      apple.href = 'icons/icon-blue-192.png';
     } else if (chosen === 'bubble') {
       apple.href = 'icons/icon-bubble-192.png';
-    } else if (chosen === 'liquid') {
-      apple.href = 'icons/icon-liquid-192.png';
     } else {
-      apple.href = 'icons/icon-192.png';
+      apple.href = 'icons/icon-blue-192.png';
     }
   }
 
   // 3. Mettre à jour les cartes du sélecteur dans les paramètres
-  const darkCard = document.getElementById('logoOptionDark');
   const blueCard = document.getElementById('logoOptionBlue');
   const glassCard = document.getElementById('logoOptionGlass');
   const steelCard = document.getElementById('logoOptionSteel');
   const bubbleCard = document.getElementById('logoOptionBubble');
-  const liquidCard = document.getElementById('logoOptionLiquid');
-  const darkCheck = document.getElementById('logoCheckDark');
   const blueCheck = document.getElementById('logoCheckBlue');
   const glassCheck = document.getElementById('logoCheckGlass');
   const steelCheck = document.getElementById('logoCheckSteel');
   const bubbleCheck = document.getElementById('logoCheckBubble');
-  const liquidCheck = document.getElementById('logoCheckLiquid');
   const activeBadge = document.getElementById('activeLogoBadge');
 
-  if (darkCard) {
-    darkCard.classList.toggle('active', chosen === 'dark');
-  }
   if (blueCard) {
     blueCard.classList.toggle('active', chosen === 'blue');
   }
@@ -375,13 +345,7 @@ function applyAppLogo(theme, notify = false) {
   if (bubbleCard) {
     bubbleCard.classList.toggle('active', chosen === 'bubble');
   }
-  if (liquidCard) {
-    liquidCard.classList.toggle('active', chosen === 'liquid');
-  }
 
-  if (darkCheck) {
-    darkCheck.style.display = chosen === 'dark' ? 'inline-flex' : 'none';
-  }
   if (blueCheck) {
     blueCheck.style.display = chosen === 'blue' ? 'inline-flex' : 'none';
   }
@@ -394,9 +358,6 @@ function applyAppLogo(theme, notify = false) {
   if (bubbleCheck) {
     bubbleCheck.style.display = chosen === 'bubble' ? 'inline-flex' : 'none';
   }
-  if (liquidCheck) {
-    liquidCheck.style.display = chosen === 'liquid' ? 'inline-flex' : 'none';
-  }
 
   if (activeBadge) {
     if (chosen === 'steel') {
@@ -405,33 +366,23 @@ function applyAppLogo(theme, notify = false) {
     } else if (chosen === 'glass') {
       activeBadge.textContent = 'Cyber Glassmorphism';
       activeBadge.className = 'status-badge status-badge-glass';
-    } else if (chosen === 'blue') {
-      activeBadge.textContent = 'Bleu & Or';
-      activeBadge.className = 'status-badge status-badge-blue';
     } else if (chosen === 'bubble') {
       activeBadge.textContent = 'Carbone & Bulle';
       activeBadge.className = 'status-badge status-badge-bubble';
-    } else if (chosen === 'liquid') {
-      activeBadge.textContent = 'Apple iOS 26 Liquid Glass';
-      activeBadge.className = 'status-badge status-badge-liquid';
     } else {
-      activeBadge.textContent = 'Noir & Carbone';
-      activeBadge.className = 'status-badge status-badge-info';
+      activeBadge.textContent = 'Bleu & Or';
+      activeBadge.className = 'status-badge status-badge-blue';
     }
   }
 
   if (notify && typeof showToast === 'function') {
-    let msg = '✨ Thème Noir & Carbone activé !';
+    let msg = '👑 Thème Prestige Bleu & Or activé pour toute l\'application !';
     if (chosen === 'steel') {
       msg = '⚙️ Thème Acier Mécanique & Digital activé pour toute l\'application !';
     } else if (chosen === 'glass') {
       msg = '✨ Thème Cyber Glassmorphism activé pour toute l\'application !';
-    } else if (chosen === 'blue') {
-      msg = '👑 Thème Prestige Bleu & Or activé pour toute l\'application !';
     } else if (chosen === 'bubble') {
       msg = '🫧 Thème Carbone & Bulle activé pour toute l\'application !';
-    } else if (chosen === 'liquid') {
-      msg = '💧 Thème Apple iOS 26 Liquid Glass activé pour toute l\'application !';
     }
     showToast(msg, 'success');
   }
@@ -441,8 +392,8 @@ function applyAppLogo(theme, notify = false) {
  * Fait défiler le thème de l'application en boucle
  */
 function cycleAppTheme() {
-  const current = (appState.settings && appState.settings.appLogo) || localStorage.getItem('carnet_app_theme') || localStorage.getItem('carnet_app_logo') || 'dark';
-  const themes = ['dark', 'blue', 'glass', 'steel', 'bubble', 'liquid'];
+  const current = (appState.settings && appState.settings.appLogo) || localStorage.getItem('carnet_app_theme') || localStorage.getItem('carnet_app_logo') || 'blue';
+  const themes = ['blue', 'glass', 'steel', 'bubble'];
   const currentIndex = themes.indexOf(current);
   const next = themes[(currentIndex + 1) % themes.length];
   applyAppLogo(next, true);
@@ -929,7 +880,11 @@ async function showDeviceNotification(title, options = {}) {
   if (!isNotificationSupported()) return false;
   if (Notification.permission !== 'granted') return false;
 
-  const currentLogo = (appState.settings && appState.settings.appLogo === 'blue') ? 'icons/icon-blue-192.png' : 'icons/icon-192.png';
+  let currentLogo = 'icons/icon-blue-192.png';
+  const logoSetting = appState.settings && appState.settings.appLogo;
+  if (logoSetting === 'glass') currentLogo = 'icons/icon-glass-192.png';
+  else if (logoSetting === 'steel') currentLogo = 'icons/icon-steel-192.png';
+  else if (logoSetting === 'bubble') currentLogo = 'icons/icon-bubble-192.png';
 
   const defaultOptions = {
     icon: currentLogo,
@@ -1302,7 +1257,7 @@ function loadState() {
         defaultIntervals: JSON.parse(JSON.stringify(DEFAULT_MAINTENANCE_TYPES)),
         lastBackupDate: null,
         contacts: [],
-        appLogo: 'dark',
+        appLogo: 'blue',
         notificationsEnabled: false,
         notifUrgentMaint: true,
         notifStaleKm: true
@@ -1314,11 +1269,12 @@ function loadState() {
       if (!Array.isArray(parsed.settings.contacts)) {
         parsed.settings.contacts = [];
       }
-      if (!parsed.settings.appLogo) {
+      if (!parsed.settings.appLogo || parsed.settings.appLogo === 'dark' || parsed.settings.appLogo === 'liquid') {
         try {
-          parsed.settings.appLogo = localStorage.getItem('carnet_app_logo') || 'dark';
+          const storedLogo = localStorage.getItem('carnet_app_logo');
+          parsed.settings.appLogo = (storedLogo && storedLogo !== 'dark' && storedLogo !== 'liquid') ? storedLogo : 'blue';
         } catch (e) {
-          parsed.settings.appLogo = 'dark';
+          parsed.settings.appLogo = 'blue';
         }
       }
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && !parsed.settings.notificationsExplicitlyDisabled) {
@@ -5371,7 +5327,8 @@ function renderSettingsScreen() {
   }
 
   // 4. Logo & Apparence de l'application
-  const currentLogo = (appState.settings && appState.settings.appLogo) || 'dark';
+  let currentLogo = (appState.settings && appState.settings.appLogo) || 'blue';
+  if (currentLogo === 'dark' || currentLogo === 'liquid') currentLogo = 'blue';
   applyAppLogo(currentLogo, false);
 
   // 5. État et réglages des notifications de l'appareil
@@ -6308,13 +6265,11 @@ function attachEventListeners() {
   document.getElementById('btnCancelContactModal')?.addEventListener('click', closeAddContactModal);
   document.getElementById('formAddContact')?.addEventListener('submit', handleContactFormSubmit);
 
-  // Sélecteur d'Apparence & Logo de l'application (Noir & Carbone vs Bleu & Or vs Cyber Glassmorphism vs Acier Mécanique)
-  document.getElementById('logoOptionDark')?.addEventListener('click', () => applyAppLogo('dark', true));
+  // Sélecteur d'Apparence & Logo de l'application (Bleu & Or vs Cyber Glassmorphism vs Acier Mécanique vs Carbone & Bulle)
   document.getElementById('logoOptionBlue')?.addEventListener('click', () => applyAppLogo('blue', true));
   document.getElementById('logoOptionGlass')?.addEventListener('click', () => applyAppLogo('glass', true));
   document.getElementById('logoOptionSteel')?.addEventListener('click', () => applyAppLogo('steel', true));
   document.getElementById('logoOptionBubble')?.addEventListener('click', () => applyAppLogo('bubble', true));
-    document.getElementById('logoOptionLiquid')?.addEventListener('click', () => applyAppLogo('liquid', true));
   document.getElementById('btnHeaderThemeSwitch')?.addEventListener('click', cycleAppTheme);
   document.getElementById('appBrandIconContainer')?.addEventListener('click', () => {
     switchView('settings');
@@ -6518,8 +6473,9 @@ window.addEventListener('DOMContentLoaded', () => {
     // Premier lancement : aucun véhicule chargé, ce qui affichera l'onboarding au renderApp()
   }
 
-  // Appliquer le logo sauvegardé ou par défaut (Noir & Carbone)
-  const initialLogo = localStorage.getItem('carnet_app_logo') || (appState.settings && appState.settings.appLogo) || 'dark';
+  // Appliquer le logo sauvegardé ou par défaut (Bleu & Or)
+  let initialLogo = localStorage.getItem('carnet_app_logo') || (appState.settings && appState.settings.appLogo) || 'blue';
+  if (initialLogo === 'dark' || initialLogo === 'liquid') initialLogo = 'blue';
   applyAppLogo(initialLogo, false);
 
   attachEventListeners();
