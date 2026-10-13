@@ -648,7 +648,7 @@ try {
   window.renderExternalContactsList();
   assert.strictEqual(contactsList.querySelectorAll('.contact-card-row').length, 3, '3 cartes de destinataires rendues dans le DOM');
 
-  console.log('23. Vérification du logo et des thèmes (Bleu & Or, Cyber Glassmorphism, Acier Mécanique, Carbone & Bulle et persistance)');
+  console.log('23. Vérification du logo et des thèmes (Bleu & Or, Cyber Glassmorphism, Acier Mécanique, Carbone & Bulle, Apple Liquid Glass et persistance)');
   const appLogoImg = document.getElementById('appLogoImg');
   const favIcon = document.getElementById('dynamicFavicon');
   const appleIcon = document.getElementById('dynamicAppleIcon');
@@ -664,7 +664,7 @@ try {
   assert(favIcon, 'Favicon dynamique présent');
   assert(appleIcon, 'Apple-touch-icon dynamique présent');
   assert(!optDark, 'Option logo Noir & Carbone doit être retirée des paramètres');
-  assert(!optLiquid, 'Option thème Apple Liquid Glass doit être retirée des paramètres');
+  assert(optLiquid, 'Option thème Apple Liquid Glass présente dans les paramètres');
   assert(optBlue, 'Option logo Bleu & Or présente dans les paramètres');
   assert(optGlass, 'Option thème Cyber Glassmorphism présente dans les paramètres');
   assert(optSteel, 'Option thème Acier Mécanique & Digital présente dans les paramètres');
@@ -677,6 +677,7 @@ try {
   assert(!optGlass.classList.contains('active'), 'L\'option Glassmorphism ne doit pas être active au départ');
   assert(!optSteel.classList.contains('active'), 'L\'option Acier ne doit pas être active au départ');
   assert(!optBubble.classList.contains('active'), 'L\'option Bulle ne doit pas être active au départ');
+  assert(!optLiquid.classList.contains('active'), 'L\'option Liquid ne doit pas être active au départ');
   assert(document.body.classList.contains('theme-blue'), 'La classe theme-blue doit être présente par défaut');
   assert(!document.body.classList.contains('theme-glass'), 'La classe theme-glass ne doit pas être présente par défaut');
   assert(!document.body.classList.contains('theme-steel'), 'La classe theme-steel ne doit pas être présente par défaut');
@@ -694,6 +695,7 @@ try {
   assert(!optBlue.classList.contains('active'), 'L\'option Bleu & Or ne doit plus être active');
   assert(!optSteel.classList.contains('active'), 'L\'option Acier ne doit plus être active');
   assert(!optBubble.classList.contains('active'), 'L\'option Bulle ne doit plus être active');
+  assert(!optLiquid.classList.contains('active'), 'L\'option Liquid ne doit plus être active');
   assert(document.body.classList.contains('theme-glass'), 'La classe theme-glass doit être ajoutée au body');
   assert.strictEqual(window.localStorage.getItem('carnet_app_logo'), 'glass', 'Le choix "glass" doit être persisté dans localStorage carnet_app_logo');
   assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'glass', 'Le choix "glass" doit être persisté dans localStorage carnet_app_theme');
@@ -710,6 +712,7 @@ try {
   assert(!optBlue.classList.contains('active'), 'L\'option Bleu & Or ne doit plus être active');
   assert(!optGlass.classList.contains('active'), 'L\'option Cyber Glassmorphism ne doit plus être active');
   assert(!optBubble.classList.contains('active'), 'L\'option Bulle ne doit plus être active');
+  assert(!optLiquid.classList.contains('active'), 'L\'option Liquid ne doit plus être active');
   assert(document.body.classList.contains('theme-steel'), 'La classe theme-steel doit être ajoutée au body');
   assert.strictEqual(window.localStorage.getItem('carnet_app_logo'), 'steel', 'Le choix "steel" doit être persisté dans localStorage carnet_app_logo');
   assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'steel', 'Le choix "steel" doit être persisté dans localStorage carnet_app_theme');
@@ -726,12 +729,30 @@ try {
   assert(!optBlue.classList.contains('active'), 'L\'option Bleu & Or ne doit plus être active');
   assert(!optGlass.classList.contains('active'), 'L\'option Cyber Glassmorphism ne doit plus être active');
   assert(!optSteel.classList.contains('active'), 'L\'option Acier ne doit plus être active');
+  assert(!optLiquid.classList.contains('active'), 'L\'option Liquid ne doit plus être active');
   assert(document.body.classList.contains('theme-bubble'), 'La classe theme-bubble doit être ajoutée au body');
   assert.strictEqual(window.localStorage.getItem('carnet_app_logo'), 'bubble', 'Le choix "bubble" doit être persisté dans localStorage carnet_app_logo');
   assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'bubble', 'Le choix "bubble" doit être persisté dans localStorage carnet_app_theme');
   assert.strictEqual(window.appState.settings.appLogo, 'bubble', 'appState.settings.appLogo doit valoir "bubble"');
   if (activeBadge) {
     assert.strictEqual(activeBadge.textContent.trim(), 'Carbone & Bulle', 'Le badge indique Carbone & Bulle');
+  }
+
+  // Basculer vers le thème Apple iOS 26 Liquid Glass
+  optLiquid.click();
+  assert(appLogoImg.src.includes('logo-liquid.png'), 'Le logo dans l\'en-tête doit maintenant pointer sur logo-liquid.png');
+  assert(favIcon.href.includes('icon-liquid-192.png'), 'Le favicon doit pointer sur icon-liquid-192.png');
+  assert(optLiquid.classList.contains('active'), 'L\'option Apple Liquid Glass doit être marquée active');
+  assert(!optBlue.classList.contains('active'), 'L\'option Bleu & Or ne doit plus être active');
+  assert(!optGlass.classList.contains('active'), 'L\'option Cyber Glassmorphism ne doit plus être active');
+  assert(!optSteel.classList.contains('active'), 'L\'option Acier ne doit plus être active');
+  assert(!optBubble.classList.contains('active'), 'L\'option Bulle ne doit plus être active');
+  assert(document.body.classList.contains('theme-liquid'), 'La classe theme-liquid doit être ajoutée au body');
+  assert.strictEqual(window.localStorage.getItem('carnet_app_logo'), 'liquid', 'Le choix "liquid" doit être persisté dans localStorage carnet_app_logo');
+  assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'liquid', 'Le choix "liquid" doit être persisté dans localStorage carnet_app_theme');
+  assert.strictEqual(window.appState.settings.appLogo, 'liquid', 'appState.settings.appLogo doit valoir "liquid"');
+  if (activeBadge) {
+    assert(activeBadge.textContent.includes('Liquid Glass'), 'Le badge indique Apple iOS 26 Liquid Glass');
   }
 
   // Basculer de nouveau vers le logo Bleu & Or
@@ -741,6 +762,7 @@ try {
   assert(!optGlass.classList.contains('active'), 'L\'option Cyber Glassmorphism ne doit plus être active');
   assert(!optSteel.classList.contains('active'), 'L\'option Acier ne doit plus être active');
   assert(!optBubble.classList.contains('active'), 'L\'option Bulle ne doit plus être active');
+  assert(!optLiquid.classList.contains('active'), 'L\'option Liquid ne doit plus être active');
   assert(document.body.classList.contains('theme-blue'), 'La classe theme-blue doit être présente sur le body');
   assert(!document.body.classList.contains('theme-glass'), 'La classe theme-glass doit être retirée du body');
   assert(!document.body.classList.contains('theme-steel'), 'La classe theme-steel doit être retirée du body');
@@ -752,7 +774,7 @@ try {
     assert.strictEqual(activeBadge.textContent.trim(), 'Bleu & Or', 'Le badge indique Bleu & Or');
   }
 
-  // Test du bouton de bascule rapide de thème dans l'en-tête (btnHeaderThemeSwitch) : blue -> glass -> steel -> bubble -> blue
+  // Test du bouton de bascule rapide de thème dans l'en-tête (btnHeaderThemeSwitch) : blue -> glass -> steel -> bubble -> liquid -> blue
   const btnHeaderTheme = document.getElementById('btnHeaderThemeSwitch');
   assert(btnHeaderTheme, 'Bouton de bascule rapide de thème présent dans l\'en-tête');
 
@@ -771,7 +793,12 @@ try {
   assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'bubble', 'Bascule rapide vers bubble');
   assert(document.body.classList.contains('theme-bubble'), 'Body a la classe theme-bubble');
 
-  // 4e clic -> retour vers 'blue'
+  // 4e clic -> bascule vers 'liquid'
+  btnHeaderTheme.click();
+  assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'liquid', 'Bascule rapide vers liquid');
+  assert(document.body.classList.contains('theme-liquid'), 'Body a la classe theme-liquid');
+
+  // 5e clic -> retour vers 'blue'
   btnHeaderTheme.click();
   assert.strictEqual(window.localStorage.getItem('carnet_app_theme'), 'blue', 'Bascule rapide retour vers blue');
   assert(document.body.classList.contains('theme-blue'), 'Body a la classe theme-blue');

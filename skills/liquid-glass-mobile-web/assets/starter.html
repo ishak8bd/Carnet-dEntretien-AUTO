@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Liquid Glass App</title>
+<style>
+:root{
+  color-scheme: light dark;
+  --accent:#0A84FF;
+  --bg:#F2F2F7; --card:#fff; --label:#000; --label-2:rgba(60,60,67,.6); --sep:rgba(60,60,67,.18);
+  --glass-fill:rgba(255,255,255,.28); --glass-fill-strong:rgba(255,255,255,.7);
+  --glass-edge:rgba(255,255,255,.7); --glass-edge-dim:rgba(255,255,255,.14);
+  --glass-shadow:0 8px 32px rgba(0,0,0,.14),0 1px 2px rgba(0,0,0,.08);
+  --blur:22px; --sat:180%;
+  --spring:cubic-bezier(.34,1.56,.64,1); --smooth:cubic-bezier(.22,.9,.3,1);
+  --font:-apple-system,"SF Pro Text","SF Pro Display",system-ui,"Inter",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#000; --card:#1c1c1e; --label:#fff; --label-2:rgba(235,235,245,.6); --sep:rgba(84,84,88,.5);
+  --glass-fill:rgba(40,40,46,.34); --glass-fill-strong:rgba(44,44,50,.78);
+  --glass-edge:rgba(255,255,255,.28); --glass-edge-dim:rgba(255,255,255,.06);
+  --glass-shadow:0 10px 36px rgba(0,0,0,.5),0 1px 2px rgba(0,0,0,.4);
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{font:400 17px/1.35 var(--font);background:var(--bg);color:var(--label);overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;touch-action:manipulation}
+button:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 60%,transparent);outline-offset:2px}
+
+/* ---- glass ---- */
+.glass{position:relative;isolation:isolate;border-radius:999px;background:var(--glass-fill);
+  -webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat));backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+  box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-edge),inset 0 -1px 0 var(--glass-edge-dim),inset 1px 0 0 var(--glass-edge-dim),inset -1px 0 0 var(--glass-edge-dim)}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;mix-blend-mode:soft-light;
+  background:linear-gradient(135deg,rgba(255,255,255,.35),rgba(255,255,255,0) 40%,rgba(255,255,255,0) 70%,rgba(255,255,255,.12))}
+.glass.tint{background:color-mix(in srgb,var(--accent) 72%,transparent);color:#fff}
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){.glass{background:var(--glass-fill-strong)}}
+@media (prefers-reduced-transparency:reduce){.glass{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--glass-fill-strong)}}
+@media (prefers-contrast:more){.glass{box-shadow:var(--glass-shadow),inset 0 0 0 1.5px var(--label-2)}}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+
+/* ---- layout ---- */
+.app{position:fixed;inset:0;overflow:hidden}
+.scroll{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(env(safe-area-inset-bottom) + 110px)}
+.backdrop{position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(60% 40% at 15% 8%,#ff9f6b55,transparent 70%),radial-gradient(55% 40% at 90% 30%,#5e8bff55,transparent 70%),radial-gradient(60% 40% at 30% 85%,#6be3b455,transparent 70%)}
+.large-title{font:700 34px/1.1 var(--font);letter-spacing:-.02em;padding:calc(env(safe-area-inset-top) + 64px) 20px 12px}
+
+.navbar{position:fixed;top:0;inset-inline:0;z-index:40;height:calc(env(safe-area-inset-top) + 52px);
+  padding:env(safe-area-inset-top) 16px 0;display:flex;align-items:center;justify-content:space-between;transition:background .25s}
+.navbar .title{font:600 17px var(--font);opacity:0;transition:opacity .2s}
+.navbar.scrolled{background:linear-gradient(var(--glass-fill),transparent);
+  -webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat));backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+  -webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent)}
+.navbar.scrolled .title{opacity:1}
+.icon-btn{width:44px;height:44px;border:0;padding:0;display:grid;place-items:center;transition:transform .35s var(--spring)}
+.icon-btn:active{transform:scale(.92)}
+
+/* ---- content (plain fills, never glass) ---- */
+.group{background:var(--card);border-radius:22px;overflow:hidden;margin:0 16px 18px}
+.row{min-height:60px;padding:10px 16px;display:flex;align-items:center;gap:12px;position:relative;width:100%;border:0;background:none;text-align:start}
+.row + .row::before{content:"";position:absolute;top:0;inset-inline-start:64px;inset-inline-end:0;height:.5px;background:var(--sep)}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#5e5ce6);flex:none}
+.row small{display:block;color:var(--label-2);font-size:13px}
+.section{font:600 13px var(--font);color:var(--label-2);text-transform:uppercase;letter-spacing:.04em;margin:18px 32px 8px}
+
+/* ---- segmented ---- */
+.segmented{display:flex;margin:0 16px 12px;padding:3px;height:40px}
+.segmented button{flex:1;border:0;background:none;font:600 14px var(--font);z-index:1}
+.segmented .thumb{position:absolute;top:3px;bottom:3px;left:3px;width:calc((100% - 6px)/var(--n));border-radius:999px;
+  background:var(--glass-fill-strong);box-shadow:0 2px 8px rgba(0,0,0,.15),inset 0 1px 0 var(--glass-edge);
+  transform:translateX(calc(var(--i)*100%));transition:transform .4s var(--spring)}
+
+/* ---- tab bar ---- */
+.tabbar{position:fixed;z-index:50;inset-inline:16px;bottom:calc(env(safe-area-inset-bottom) + 10px);height:64px;padding:6px;display:flex;gap:2px}
+.tabbar button{flex:1;position:relative;z-index:1;border:0;background:none;color:var(--label-2);border-radius:999px;min-width:44px;
+  font:600 10.5px/1 var(--font);display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;transition:color .25s}
+.tabbar button[aria-selected=true]{color:var(--accent)}
+.tabbar .pill{position:absolute;top:6px;bottom:6px;left:6px;width:calc((100% - 12px)/var(--n));border-radius:999px;
+  background:rgba(120,120,128,.2);box-shadow:inset 0 1px 0 var(--glass-edge-dim);
+  transform:translateX(calc(var(--i)*100%));transition:transform .45s var(--spring)}
+.tabbar svg,.icon-btn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---- sheet ---- */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.28);opacity:0;pointer-events:none;transition:opacity .3s;z-index:55}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;inset-inline:8px;bottom:8px;z-index:60;border-radius:36px;height:46dvh;
+  padding:10px 20px calc(env(safe-area-inset-bottom) + 16px);transform:translateY(calc(100% + 24px));
+  transition:transform .5s var(--smooth);background:var(--glass-fill-strong)}
+.sheet.open{transform:none}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--label-2);opacity:.5;margin:0 auto 16px}
+.btn{min-height:50px;padding:0 24px;border:0;width:100%;font:600 17px var(--font);transition:transform .35s var(--spring)}
+.btn:active{transform:scale(.97)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="backdrop"></div>
+
+  <header class="navbar" id="nav">
+    <button class="icon-btn glass" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <span class="title">Home</span>
+    <button class="icon-btn glass" aria-label="Add" id="add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  </header>
+
+  <main class="scroll" id="scroll">
+    <h1 class="large-title" id="lt">Home</h1>
+
+    <div class="segmented glass" id="seg" style="--n:3;--i:0">
+      <span class="thumb"></span>
+      <button>Today</button><button>Week</button><button>All</button>
+    </div>
+
+    <div class="section">Recent</div>
+    <div class="group">
+      <button class="row"><span class="avatar"></span><span>Item one<small>Subtitle text</small></span></button>
+      <button class="row"><span class="avatar"></span><span>Item two<small>Subtitle text</small></span></button>
+      <button class="row"><span class="avatar"></span><span>Item three<small>Subtitle text</small></span></button>
+    </div>
+    <div class="group">
+      <button class="row"><span class="avatar"></span><span>Item four<small>Subtitle text</small></span></button>
+      <button class="row"><span class="avatar"></span><span>Item five<small>Subtitle text</small></span></button>
+      <button class="row"><span class="avatar"></span><span>Item six<small>Subtitle text</small></span></button>
+      <button class="row"><span class="avatar"></span><span>Item seven<small>Subtitle text</small></span></button>
+    </div>
+  </main>
+
+  <nav class="tabbar glass" id="tabs" role="tablist" style="--n:4;--i:0">
+    <span class="pill" aria-hidden="true"></span>
+    <button role="tab" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/></svg>Home</button>
+    <button role="tab" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></svg>Search</button>
+    <button role="tab" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M6 8h12l-1 12H7zM9 8a3 3 0 016 0"/></svg>Orders</button>
+    <button role="tab" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Profile</button>
+  </nav>
+
+  <div class="scrim" id="scrim"></div>
+  <section class="sheet glass" id="sheet" role="dialog" aria-modal="true" aria-label="New item">
+    <div class="grabber"></div>
+    <h2 style="margin:0 0 6px;font:700 22px var(--font)">New item</h2>
+    <p style="color:var(--label-2);margin:0 0 20px">Sheet content goes here. Use plain fills inside, not more glass.</p>
+    <button class="btn glass tint" id="done">Done</button>
+  </section>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+// tab bar + segmented: set --i, CSS animates
+const bind=(root,sel,attr)=>{const items=[...root.querySelectorAll(sel)];
+  items.forEach((b,i)=>b.addEventListener('click',()=>{root.style.setProperty('--i',i);
+    if(attr)items.forEach((x,j)=>x.setAttribute(attr,j===i))}))};
+bind($('#tabs'),'[role=tab]','aria-selected'); bind($('#seg'),'button');
+// nav bar glass appears only after content scrolls under it
+const nav=$('#nav'),lt=$('#lt');
+$('#scroll').addEventListener('scroll',e=>nav.classList.toggle('scrolled',e.target.scrollTop>lt.offsetHeight-20),{passive:true});
+// sheet
+const sheet=$('#sheet'),scrim=$('#scrim');
+const toggle=o=>{sheet.classList.toggle('open',o);scrim.classList.toggle('on',o)};
+$('#add').onclick=()=>toggle(true); scrim.onclick=$('#done').onclick=()=>toggle(false);
+</script>
+</body>
+</html>
