@@ -179,7 +179,7 @@ body {
   width: 100%;
   max-width: 680px;
   margin: 0 auto;
-  padding-top: max(20px, calc(env(safe-area-inset-top, 0px) + 14px));
+  padding-top: max(48px, calc(env(safe-area-inset-top, 0px) + 26px));
   padding-right: max(14px, env(safe-area-inset-right, 0px));
   padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   padding-left: max(14px, env(safe-area-inset-left, 0px));
@@ -187,6 +187,12 @@ body {
   flex-direction: column;
   gap: 16px;
   box-sizing: border-box;
+}
+
+@media (min-width: 641px) {
+  .app-container {
+    padding-top: 24px;
+  }
 }
 
 /* Vues de l'application (Dashboard, Habitudes, Historique, Paramètres) */
@@ -203,8 +209,9 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  padding-top: 4px;
   padding-bottom: 8px;
-  min-height: 48px;
+  min-height: 52px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -212,22 +219,24 @@ body {
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
   flex: 1 1 auto;
 }
 
 .brand-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-sm);
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   background: transparent;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
-  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
   flex-shrink: 0;
   cursor: pointer;
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
@@ -235,8 +244,8 @@ body {
 
 .brand-icon:hover {
   transform: scale(1.05);
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.55);
 }
 
 .brand-logo-img {
@@ -2336,6 +2345,13 @@ body {
 }
 
 @media (max-width: 380px) {
+  .brand-icon {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
   .km-hero-value {
     font-size: 1.85rem;
   }
@@ -3064,6 +3080,21 @@ body.theme-blue {
     radial-gradient(circle at 50% 120px, rgba(37, 99, 235, 0.2) 0%, transparent 450px),
     radial-gradient(circle at 85% 80%, rgba(234, 179, 8, 0.08) 0%, transparent 350px) !important;
   color: #f8fafc !important;
+}
+
+body.theme-blue .app-header {
+  padding: 6px 12px 10px 12px !important;
+  border-radius: 0 0 18px 18px !important;
+  border-bottom: 1.5px solid rgba(59, 130, 246, 0.25) !important;
+  background: rgba(10, 20, 44, 0.45) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  margin-bottom: 12px !important;
+}
+
+html[data-color-mode="light"] body.theme-blue .app-header {
+  background: rgba(255, 255, 255, 0.75) !important;
+  border-bottom-color: rgba(37, 99, 235, 0.18) !important;
 }
 
 body.theme-blue .card,
@@ -4737,6 +4768,9 @@ body.theme-liquid .app-header {
     inset 0 1px 0 var(--liquid-glass-edge),
     inset 0 -1px 0 var(--liquid-glass-edge-dim) !important;
   border-bottom: 1px solid var(--liquid-sep) !important;
+  padding: 8px 12px 10px 12px !important;
+  border-radius: 0 0 20px 20px !important;
+  margin-bottom: 12px !important;
 }
 
 body.theme-liquid .app-header .brand-icon {
