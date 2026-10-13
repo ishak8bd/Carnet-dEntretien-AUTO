@@ -2875,25 +2875,37 @@ html[data-color-mode="light"] .nav-tab.active .nav-tab-icon {
    Étape 4 : Synchronisation Temps Réel, Fil d'Activité & Auteurs
    ========================================================================== */
 
-/* Badge de statut de synchronisation dans l'en-tête */
+/* Badge de statut de synchronisation dans l'en-tête (Micro-indicateur très discret) */
 .room-sync-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
-  padding: 4px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: var(--text-main);
+  color: var(--text-muted);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.room-sync-badge #roomSyncText {
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  line-height: 1;
+  white-space: nowrap;
+  color: inherit;
+  opacity: 0.9;
 }
 
 .sync-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
+  min-width: 6px;
+  min-height: 6px;
   border-radius: 50%;
   display: inline-block;
+  flex-shrink: 0;
 }
 
 .sync-green {
@@ -3335,16 +3347,18 @@ html[data-color-mode="light"] .liquid-toggle-thumb,
     min-height: 34px !important;
     flex-shrink: 0 !important;
   }
-  /* Pastille de synchronisation sur mobile */
+  /* Pastille de synchronisation discrète sur mobile */
   .room-sync-badge {
-    padding: 4px 10px !important;
-    height: 30px !important;
-    min-height: 30px !important;
+    padding: 2px 7px !important;
+    height: 22px !important;
+    min-height: 22px !important;
     border-radius: var(--radius-full) !important;
     flex-shrink: 0 !important;
+    gap: 4px !important;
   }
   .room-sync-badge #roomSyncText {
     display: inline-block !important;
+    font-size: 0.58rem !important;
   }
 }
 
