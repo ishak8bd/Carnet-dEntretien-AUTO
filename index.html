@@ -17,11 +17,11 @@
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
   <script>
-    // Pré-application immédiate du logo et thème personnalisé pour éviter le flash
+    // Pré-application immédiate du logo, thème et mode sombre/clair pour éviter tout flash (FOUC)
     (function() {
       try {
         var savedTheme = localStorage.getItem('carnet_app_theme') || localStorage.getItem('carnet_app_logo') || 'blue';
-        if (savedTheme === 'dark' || savedTheme === 'liquid') {
+        if (savedTheme === 'dark') {
           savedTheme = 'blue';
         }
         var fav = document.getElementById('dynamicFavicon');
@@ -38,12 +38,27 @@
           if (fav) fav.href = 'icons/icon-bubble-192.png';
           if (apple) apple.href = 'icons/icon-bubble-192.png';
           document.documentElement.classList.add('theme-bubble');
+        } else if (savedTheme === 'liquid') {
+          if (fav) fav.href = 'icons/icon-liquid-192.png';
+          if (apple) apple.href = 'icons/icon-liquid-192.png';
+          document.documentElement.classList.add('theme-liquid');
         } else {
           // Par défaut : Bleu & Or
           if (fav) fav.href = 'icons/icon-blue-192.png';
           if (apple) apple.href = 'icons/icon-blue-192.png';
           document.documentElement.classList.add('theme-blue');
         }
+
+        // Mode Sombre / Mode Clair
+        var savedColorMode = localStorage.getItem('carnet_color_mode');
+        if (!savedColorMode) {
+          if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+            savedColorMode = 'light';
+          } else {
+            savedColorMode = 'dark';
+          }
+        }
+        document.documentElement.setAttribute('data-color-mode', savedColorMode);
       } catch (e) {}
     })();
   </script>
@@ -62,8 +77,11 @@
           <span>Suivi intelligent &amp; prédictif</span>
         </div>
       </div>
-      <div class="header-right-actions" style="display: flex; align-items: center; gap: 8px;">
-        <button id="btnHeaderThemeSwitch" class="theme-quick-switch-btn" type="button" title="Changer le thème de l'application">
+      <div class="header-right-actions">
+        <button id="btnHeaderColorModeSwitch" class="theme-mode-switch-btn" type="button" title="Passer au mode clair" aria-label="Basculer entre Mode Sombre et Mode Clair">
+          <span id="headerColorModeIcon" aria-hidden="true">☀️</span>
+        </button>
+        <button id="btnHeaderThemeSwitch" class="theme-quick-switch-btn" type="button" title="Changer le style visuel de l'application">
           <span id="headerThemeIcon">👑</span>
           <span id="headerThemeText">Bleu &amp; Or</span>
         </button>

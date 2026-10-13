@@ -426,9 +426,96 @@ function cycleAppTheme() {
   applyAppLogo(next, true);
 }
 
+/**
+ * Applique le mode de couleur sombre ou clair sur l'application
+ * @param {'dark' | 'light'} mode - Mode sombre ('dark') ou clair ('light')
+ * @param {boolean} notify - Afficher un message de confirmation si true
+ */
+function applyColorMode(mode, notify = false) {
+  let chosen = 'dark';
+  if (mode === 'light') {
+    chosen = 'light';
+  } else if (mode === 'dark') {
+    chosen = 'dark';
+  } else {
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+      chosen = 'light';
+    } else {
+      chosen = 'dark';
+    }
+  }
+
+  if (!appState.settings) {
+    appState.settings = { contacts: [] };
+  }
+  appState.settings.colorMode = chosen;
+
+  try {
+    localStorage.setItem('carnet_color_mode', chosen);
+  } catch (e) {}
+
+  if (typeof document !== 'undefined') {
+    if (document.documentElement) {
+      document.documentElement.setAttribute('data-color-mode', chosen);
+    }
+    if (document.body) {
+      document.body.setAttribute('data-color-mode', chosen);
+    }
+
+    // Mettre à jour l'icône et l'intitulé du bouton d'en-tête
+    const modeBtn = document.getElementById('btnHeaderColorModeSwitch');
+    const modeIcon = document.getElementById('headerColorModeIcon');
+    if (modeIcon) {
+      // En mode sombre, l'icône propose de passer au mode clair (☀️)
+      // En mode clair, l'icône propose de passer au mode sombre (🌙)
+      modeIcon.textContent = chosen === 'dark' ? '☀️' : '🌙';
+    }
+    if (modeBtn) {
+      modeBtn.title = chosen === 'dark' ? 'Passer au mode clair' : 'Passer au mode sombre';
+      modeBtn.setAttribute('aria-label', modeBtn.title);
+    }
+
+    // Ajuster meta theme-color pour la barre de statut iOS / Android
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      const currentTheme = (appState.settings && appState.settings.appLogo) || localStorage.getItem('carnet_app_theme') || 'blue';
+      if (chosen === 'dark') {
+        if (currentTheme === 'liquid') metaThemeColor.content = '#000000';
+        else if (currentTheme === 'glass') metaThemeColor.content = '#080c15';
+        else if (currentTheme === 'steel') metaThemeColor.content = '#0b0f17';
+        else metaThemeColor.content = '#060b18';
+      } else {
+        if (currentTheme === 'liquid') metaThemeColor.content = '#F2F2F7';
+        else if (currentTheme === 'steel') metaThemeColor.content = '#eaedf2';
+        else if (currentTheme === 'glass') metaThemeColor.content = '#eef3f9';
+        else metaThemeColor.content = '#f4f7fc';
+      }
+    }
+  }
+
+  if (notify && typeof showToast === 'function') {
+    const msg = chosen === 'dark' ? '🌙 Mode sombre activé' : '☀️ Mode clair activé';
+    showToast(msg, 'info');
+  }
+}
+
+/**
+ * Bascule entre Mode Sombre et Mode Clair
+ */
+function toggleColorMode() {
+  const current = (typeof document !== 'undefined' && document.documentElement && document.documentElement.getAttribute('data-color-mode')) ||
+    (appState.settings && appState.settings.colorMode) ||
+    localStorage.getItem('carnet_color_mode') ||
+    'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  applyColorMode(next, true);
+}
+
 if (typeof window !== 'undefined') {
   window.applyAppLogo = applyAppLogo;
   window.cycleAppTheme = cycleAppTheme;
+  window.applyColorMode = applyColorMode;
+  window.toggleColorMode = toggleColorMode;
 }
 
 // ============================================================================
@@ -6300,6 +6387,7 @@ function attachEventListeners() {
   document.getElementById('logoOptionBubble')?.addEventListener('click', () => applyAppLogo('bubble', true));
   document.getElementById('logoOptionLiquid')?.addEventListener('click', () => applyAppLogo('liquid', true));
   document.getElementById('btnHeaderThemeSwitch')?.addEventListener('click', cycleAppTheme);
+  document.getElementById('btnHeaderColorModeSwitch')?.addEventListener('click', toggleColorMode);
   document.getElementById('appBrandIconContainer')?.addEventListener('click', () => {
     switchView('settings');
     const logoCard = document.getElementById('settingsAppLogoCard');
@@ -6506,6 +6594,12 @@ window.addEventListener('DOMContentLoaded', () => {
   let initialLogo = localStorage.getItem('carnet_app_logo') || (appState.settings && appState.settings.appLogo) || 'blue';
   if (initialLogo === 'dark') initialLogo = 'blue';
   applyAppLogo(initialLogo, false);
+
+  // Appliquer le mode sombre / clair sauvegardé ou par défaut
+  let initialColorMode = localStorage.getItem('carnet_color_mode') ||
+    (appState.settings && appState.settings.colorMode) ||
+    (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  applyColorMode(initialColorMode, false);
 
   attachEventListeners();
   renderApp();

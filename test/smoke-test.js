@@ -807,6 +807,30 @@ try {
   assert(!document.body.classList.contains('theme-bubble'), 'Body n\'a plus theme-bubble');
   assert(!document.body.classList.contains('theme-liquid'), 'Body n\'a plus theme-liquid');
 
+  // Vérification de la bascule Mode Sombre / Mode Clair (Bouton esthétique en-tête)
+  const btnColorMode = document.getElementById('btnHeaderColorModeSwitch');
+  const iconColorMode = document.getElementById('headerColorModeIcon');
+  assert(btnColorMode, 'Bouton de bascule mode sombre/clair présent dans l\'en-tête');
+  assert(iconColorMode, 'Icône du bouton de bascule mode sombre/clair présente');
+
+  // Test du mode sombre
+  window.applyColorMode('dark');
+  assert.strictEqual(document.documentElement.getAttribute('data-color-mode'), 'dark', 'Attribut data-color-mode est bien "dark"');
+  assert.strictEqual(window.localStorage.getItem('carnet_color_mode'), 'dark', 'carnet_color_mode persisté à "dark"');
+  assert.strictEqual(iconColorMode.textContent, '☀️', 'Icône affiche ☀️ pour inviter au mode clair');
+
+  // Clic sur le bouton -> bascule vers mode clair
+  btnColorMode.click();
+  assert.strictEqual(document.documentElement.getAttribute('data-color-mode'), 'light', 'Bascule vers "light" validée');
+  assert.strictEqual(window.localStorage.getItem('carnet_color_mode'), 'light', 'carnet_color_mode persisté à "light"');
+  assert.strictEqual(iconColorMode.textContent, '🌙', 'Icône affiche 🌙 pour inviter au mode sombre');
+
+  // 2e Clic sur le bouton -> retour vers mode sombre
+  btnColorMode.click();
+  assert.strictEqual(document.documentElement.getAttribute('data-color-mode'), 'dark', 'Retour vers "dark" validé');
+  assert.strictEqual(window.localStorage.getItem('carnet_color_mode'), 'dark', 'carnet_color_mode persisté à "dark"');
+  assert.strictEqual(iconColorMode.textContent, '☀️', 'Icône réaffiche ☀️');
+
   console.log('24. Vérification des notifications de l\'appareil (Web Push & Alertes PWA)');
   const notifCard = document.getElementById('settingsNotificationsCard');
   const notifBadge = document.getElementById('notifStatusBadge');

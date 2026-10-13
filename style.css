@@ -45,8 +45,9 @@
   --transition: all 0.2s ease-in-out;
 }
 
+/* Mode sombre par préférence système (si non forcé en clair) */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-color-mode="light"]) {
     --bg-body: #0b0f19;
     --bg-card: #131b2e;
     --bg-card-subtle: #1a243b;
@@ -80,6 +81,76 @@
   }
 }
 
+/* Forçage explicite du Mode Sombre via attribut data-color-mode="dark" */
+:root[data-color-mode="dark"],
+html[data-color-mode="dark"] {
+  --bg-body: #0b0f19;
+  --bg-card: #131b2e;
+  --bg-card-subtle: #1a243b;
+  --bg-input: #1a243b;
+  --border-color: #24304f;
+  --border-focus: #60a5fa;
+
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-inverted: #0f172a;
+
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-subtle: #1e293b;
+
+  --success: #10b981;
+  --success-subtle: #064e3b;
+  --success-text: #6ee7b7;
+
+  --warning: #f59e0b;
+  --warning-subtle: #451a03;
+  --warning-text: #fcd34d;
+
+  --danger: #ef4444;
+  --danger-subtle: #450a0a;
+  --danger-text: #fca5a5;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+/* Forçage explicite du Mode Clair via attribut data-color-mode="light" */
+:root[data-color-mode="light"],
+html[data-color-mode="light"] {
+  --bg-body: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-card-subtle: #f8fafc;
+  --bg-input: #ffffff;
+  --border-color: #e2e8f0;
+  --border-focus: #3b82f6;
+
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --text-inverted: #ffffff;
+
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-subtle: #eff6ff;
+
+  --success: #10b981;
+  --success-subtle: #ecfdf5;
+  --success-text: #065f46;
+
+  --warning: #f59e0b;
+  --warning-subtle: #fffbeb;
+  --warning-text: #92400e;
+
+  --danger: #ef4444;
+  --danger-subtle: #fef2f2;
+  --danger-text: #991b1b;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.12);
+}
+
 /* Réinitialisation de base */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -103,15 +174,19 @@ body {
   padding-bottom: 40px;
 }
 
-/* Structure globale */
+/* Structure globale (Gestion stricte du Safe Area sur iPhone/Notch/Dynamic Island) */
 .app-container {
   width: 100%;
   max-width: 680px;
   margin: 0 auto;
-  padding: 16px 16px calc(92px + env(safe-area-inset-bottom, 0px)) 16px;
+  padding-top: max(20px, calc(env(safe-area-inset-top, 0px) + 14px));
+  padding-right: max(14px, env(safe-area-inset-right, 0px));
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(14px, env(safe-area-inset-left, 0px));
   display: flex;
   flex-direction: column;
   gap: 16px;
+  box-sizing: border-box;
 }
 
 /* Vues de l'application (Dashboard, Habitudes, Historique, Paramètres) */
@@ -122,24 +197,29 @@ body {
   animation: fadeIn 0.2s ease;
 }
 
-/* Entête / Navigation */
+/* Entête / Navigation sans collision */
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   padding-bottom: 8px;
+  min-height: 48px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .brand-icon {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -168,18 +248,42 @@ body {
   transition: opacity 0.2s ease;
 }
 
+.brand-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
 .brand-text h1 {
-  font-size: 1.15rem;
+  font-size: clamp(0.92rem, 3.8vw, 1.15rem);
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  margin: 0;
 }
 
 .brand-text span {
-  font-size: 0.75rem;
+  font-size: clamp(0.66rem, 2.4vw, 0.75rem);
   color: var(--text-muted);
   display: block;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+.header-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 /* Sélecteur de véhicule */
@@ -2884,6 +2988,73 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Bouton esthétique compact de bascule Mode Sombre / Mode Clair */
+.theme-mode-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card-subtle);
+  color: var(--text-main);
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.theme-mode-switch-btn:hover {
+  transform: scale(1.08);
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.theme-mode-switch-btn:active {
+  transform: scale(0.92);
+}
+
+.theme-mode-switch-btn #headerColorModeIcon {
+  display: inline-block;
+  line-height: 1;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.theme-mode-switch-btn:hover #headerColorModeIcon {
+  transform: rotate(20deg);
+}
+
+/* Responsive compact header actions sur petits écrans */
+@media (max-width: 400px) {
+  .header-right-actions {
+    gap: 5px;
+  }
+  .theme-quick-switch-btn {
+    padding: 5px 8px;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .theme-quick-switch-btn #headerThemeText {
+    display: none;
+  }
+  .theme-quick-switch-btn {
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    justify-content: center;
+    border-radius: var(--radius-full);
+  }
+}
+
 /* ==========================================================================
    Thème 2 : Bleu & Or Prestige (Thème complet pour toute l'application)
    ========================================================================== */
@@ -2910,10 +3081,62 @@ body.theme-blue .btn-primary {
   color: #ffffff !important;
 }
 
-body.theme-blue .theme-quick-switch-btn {
+body.theme-blue .theme-quick-switch-btn,
+body.theme-blue .theme-mode-switch-btn {
   background: rgba(37, 99, 235, 0.15) !important;
   border-color: rgba(234, 179, 8, 0.4) !important;
   color: #fbbf24 !important;
+}
+
+body.theme-blue .theme-mode-switch-btn:hover {
+  background: rgba(37, 99, 235, 0.28) !important;
+  border-color: #fbbf24 !important;
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.35) !important;
+}
+
+/* Mode Clair pour Thème Bleu & Or */
+html[data-color-mode="light"] body.theme-blue,
+body.theme-blue[data-color-mode="light"] {
+  background-color: #f4f7fc !important;
+  background-image: 
+    radial-gradient(circle at 50% 120px, rgba(37, 99, 235, 0.12) 0%, transparent 450px),
+    radial-gradient(circle at 85% 80%, rgba(234, 179, 8, 0.1) 0%, transparent 350px) !important;
+  color: #0f172a !important;
+}
+
+html[data-color-mode="light"] body.theme-blue .card,
+html[data-color-mode="light"] body.theme-blue .odometer-card,
+html[data-color-mode="light"] body.theme-blue .stat-card,
+html[data-color-mode="light"] body.theme-blue .settings-card,
+html[data-color-mode="light"] body.theme-blue .maint-item-card,
+html[data-color-mode="light"] body.theme-blue .history-item-card,
+html[data-color-mode="light"] body.theme-blue .km-log-item,
+html[data-color-mode="light"] body.theme-blue .vehicle-card {
+  background: #ffffff !important;
+  border: 1.5px solid rgba(37, 99, 235, 0.2) !important;
+  box-shadow: inset 0 1px 0 rgba(234, 179, 8, 0.35), 0 8px 24px rgba(15, 23, 42, 0.08) !important;
+  color: #0f172a !important;
+}
+
+html[data-color-mode="light"] body.theme-blue .brand-text h1,
+html[data-color-mode="light"] body.theme-blue .stat-val,
+html[data-color-mode="light"] body.theme-blue .km-hero-value,
+html[data-color-mode="light"] body.theme-blue .card-title {
+  color: #0f172a !important;
+}
+
+html[data-color-mode="light"] body.theme-blue .brand-text span,
+html[data-color-mode="light"] body.theme-blue .text-muted,
+html[data-color-mode="light"] body.theme-blue .stat-label {
+  color: #64748b !important;
+}
+
+html[data-color-mode="light"] body.theme-blue .theme-quick-switch-btn,
+html[data-color-mode="light"] body.theme-blue .theme-mode-switch-btn {
+  background: #ffffff !important;
+  border-color: rgba(234, 179, 8, 0.5) !important;
+  color: #b45309 !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1) !important;
 }
 
 /* ==========================================================================
@@ -3007,8 +3230,9 @@ body.theme-glass .brand-text h1 {
   letter-spacing: -0.01em;
 }
 
-/* Bouton de bascule rapide de thème */
-body.theme-glass .theme-quick-switch-btn {
+/* Bouton de bascule rapide de thème & mode sombre/clair */
+body.theme-glass .theme-quick-switch-btn,
+body.theme-glass .theme-mode-switch-btn {
   background: rgba(255, 255, 255, 0.08) !important;
   border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
   color: #38bdf8 !important;
@@ -3017,9 +3241,66 @@ body.theme-glass .theme-quick-switch-btn {
   -webkit-backdrop-filter: blur(12px) !important;
 }
 
-body.theme-glass .theme-quick-switch-btn:hover {
+body.theme-glass .theme-quick-switch-btn:hover,
+body.theme-glass .theme-mode-switch-btn:hover {
   background: rgba(56, 189, 248, 0.16) !important;
   box-shadow: 0 0 20px rgba(56, 189, 248, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Mode Clair pour Cyber Glassmorphism */
+html[data-color-mode="light"] body.theme-glass,
+body.theme-glass[data-color-mode="light"] {
+  background-color: #eef3f9 !important;
+  background-image: 
+    radial-gradient(circle at 50% 160px, rgba(56, 189, 248, 0.18) 0%, transparent 480px),
+    radial-gradient(circle at 10% 30%, rgba(99, 102, 241, 0.12) 0%, transparent 420px),
+    radial-gradient(circle at 90% 75%, rgba(16, 185, 129, 0.1) 0%, transparent 400px),
+    url('icons/bg-orbits.svg') !important;
+  color: #0f172a !important;
+}
+
+html[data-color-mode="light"] body.theme-glass .card,
+html[data-color-mode="light"] body.theme-glass .odometer-card,
+html[data-color-mode="light"] body.theme-glass .stat-card,
+html[data-color-mode="light"] body.theme-glass .settings-card,
+html[data-color-mode="light"] body.theme-glass .maint-item-card,
+html[data-color-mode="light"] body.theme-glass .history-item-card,
+html[data-color-mode="light"] body.theme-glass .km-log-item,
+html[data-color-mode="light"] body.theme-glass .vehicle-card {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1.5px solid rgba(56, 189, 248, 0.35) !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+  color: #0f172a !important;
+}
+
+html[data-color-mode="light"] body.theme-glass .app-header {
+  background: rgba(255, 255, 255, 0.82) !important;
+  border-bottom-color: rgba(56, 189, 248, 0.35) !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08) !important;
+}
+
+html[data-color-mode="light"] body.theme-glass .brand-text h1,
+html[data-color-mode="light"] body.theme-glass .stat-val,
+html[data-color-mode="light"] body.theme-glass .km-hero-value,
+html[data-color-mode="light"] body.theme-glass .card-title {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+html[data-color-mode="light"] body.theme-glass .brand-text span,
+html[data-color-mode="light"] body.theme-glass .text-muted,
+html[data-color-mode="light"] body.theme-glass .stat-label {
+  color: #64748b !important;
+}
+
+html[data-color-mode="light"] body.theme-glass .theme-quick-switch-btn,
+html[data-color-mode="light"] body.theme-glass .theme-mode-switch-btn {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  color: #0284c7 !important;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.15) !important;
 }
 
 /* Barre de sélection du véhicule */
@@ -3446,8 +3727,9 @@ body.theme-steel .brand-text span {
   letter-spacing: 0.02em;
 }
 
-/* Bouton de bascule rapide de thème en acier biseauté */
-body.theme-steel .theme-quick-switch-btn {
+/* Bouton de bascule rapide de thème en acier biseauté & mode sombre/clair */
+body.theme-steel .theme-quick-switch-btn,
+body.theme-steel .theme-mode-switch-btn {
   background: linear-gradient(180deg, #283448 0%, #192130 100%) !important;
   border: 1.5px solid rgba(255, 255, 255, 0.35) !important;
   color: #00e5ff !important;
@@ -3458,7 +3740,8 @@ body.theme-steel .theme-quick-switch-btn {
   font-weight: 700 !important;
 }
 
-body.theme-steel .theme-quick-switch-btn:hover {
+body.theme-steel .theme-quick-switch-btn:hover,
+body.theme-steel .theme-mode-switch-btn:hover {
   background: linear-gradient(180deg, #324159 0%, #1f2a3c 100%) !important;
   border-color: #00e5ff !important;
   box-shadow: 
@@ -3467,6 +3750,59 @@ body.theme-steel .theme-quick-switch-btn:hover {
     0 6px 18px rgba(0, 0, 0, 0.6),
     0 0 14px rgba(0, 229, 255, 0.4) !important;
   transform: translateY(-1px) !important;
+}
+
+/* Mode Clair pour Acier Mécanique */
+html[data-color-mode="light"] body.theme-steel,
+body.theme-steel[data-color-mode="light"] {
+  background-color: #eaedf2 !important;
+  background-image: 
+    radial-gradient(circle at 50% 120px, rgba(0, 180, 216, 0.12) 0%, transparent 480px),
+    radial-gradient(circle at 85% 20%, rgba(245, 158, 11, 0.08) 0%, transparent 400px),
+    linear-gradient(180deg, rgba(241, 245, 249, 0.92) 0%, rgba(226, 232, 240, 0.98) 100%),
+    url('icons/bg-mechanical.svg') !important;
+  color: #0f172a !important;
+}
+
+html[data-color-mode="light"] body.theme-steel .card,
+html[data-color-mode="light"] body.theme-steel .odometer-card,
+html[data-color-mode="light"] body.theme-steel .stat-card,
+html[data-color-mode="light"] body.theme-steel .settings-card,
+html[data-color-mode="light"] body.theme-steel .maint-item-card,
+html[data-color-mode="light"] body.theme-steel .history-item-card,
+html[data-color-mode="light"] body.theme-steel .km-log-item,
+html[data-color-mode="light"] body.theme-steel .vehicle-card {
+  background: #ffffff !important;
+  border: 2px solid rgba(148, 163, 184, 0.45) !important;
+  box-shadow: inset 0 1.5px 0.5px rgba(255, 255, 255, 0.9), 0 8px 24px rgba(15, 23, 42, 0.08) !important;
+  color: #0f172a !important;
+}
+
+html[data-color-mode="light"] body.theme-steel .app-header {
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%) !important;
+  border-bottom-color: rgba(148, 163, 184, 0.4) !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08) !important;
+}
+
+html[data-color-mode="light"] body.theme-steel .brand-text h1,
+html[data-color-mode="light"] body.theme-steel .stat-val,
+html[data-color-mode="light"] body.theme-steel .km-hero-value,
+html[data-color-mode="light"] body.theme-steel .card-title {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+html[data-color-mode="light"] body.theme-steel .brand-text span {
+  color: #0284c7 !important;
+  text-shadow: none !important;
+}
+
+html[data-color-mode="light"] body.theme-steel .theme-quick-switch-btn,
+html[data-color-mode="light"] body.theme-steel .theme-mode-switch-btn {
+  background: #ffffff !important;
+  border-color: rgba(2, 132, 199, 0.4) !important;
+  color: #0284c7 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06) !important;
 }
 
 /* Barre de sélection du véhicule usinée */
@@ -3977,6 +4313,7 @@ body.theme-bubble {
 .theme-bubble .btn-secondary,
 .theme-bubble .btn-icon,
 .theme-bubble .theme-quick-switch-btn,
+.theme-bubble .theme-mode-switch-btn,
 .theme-bubble .form-input,
 .theme-bubble .form-select,
 .theme-bubble .input-km {
@@ -3988,6 +4325,41 @@ body.theme-bubble {
   color: var(--text-main);
   border-radius: 9999px; /* Pill shape for liquid bubble feel */
   transition: all 0.3s ease;
+}
+
+/* Mode Clair pour Carbone & Bulle */
+html[data-color-mode="light"] body.theme-bubble,
+body.theme-bubble[data-color-mode="light"] {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+html[data-color-mode="light"] body.theme-bubble .card,
+html[data-color-mode="light"] body.theme-bubble .odometer-card,
+html[data-color-mode="light"] body.theme-bubble .stat-card,
+html[data-color-mode="light"] body.theme-bubble .settings-card,
+html[data-color-mode="light"] body.theme-bubble .maint-item-card,
+html[data-color-mode="light"] body.theme-bubble .history-item-card,
+html[data-color-mode="light"] body.theme-bubble .km-log-item,
+html[data-color-mode="light"] body.theme-bubble .vehicle-card {
+  background: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(56, 189, 248, 0.3) !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06) !important;
+  color: #0f172a !important;
+}
+
+html[data-color-mode="light"] body.theme-bubble .brand-text h1,
+html[data-color-mode="light"] body.theme-bubble .stat-val,
+html[data-color-mode="light"] body.theme-bubble .km-hero-value,
+html[data-color-mode="light"] body.theme-bubble .card-title {
+  color: #0f172a !important;
+}
+
+html[data-color-mode="light"] body.theme-bubble .theme-quick-switch-btn,
+html[data-color-mode="light"] body.theme-bubble .theme-mode-switch-btn {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(56, 189, 248, 0.35) !important;
+  color: #0284c7 !important;
 }
 
 .theme-bubble .btn-primary {
@@ -4154,8 +4526,8 @@ body.theme-liquid {
 }
 
 @media (prefers-color-scheme: dark) {
-  :root.theme-liquid,
-  body.theme-liquid {
+  :root.theme-liquid:not([data-color-mode="light"]),
+  body.theme-liquid:not([data-color-mode="light"]) {
     --liquid-bg: #000000;
     --liquid-card: #1c1c1e;
     --liquid-label: #ffffff;
@@ -4169,6 +4541,44 @@ body.theme-liquid {
     --liquid-glass-shadow: 0 14px 40px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
     --bg-input: rgba(120, 120, 128, 0.18);
   }
+}
+
+/* Forçage explicite Mode Sombre pour Apple Liquid Glass */
+:root[data-color-mode="dark"].theme-liquid,
+html[data-color-mode="dark"].theme-liquid,
+html[data-color-mode="dark"] body.theme-liquid,
+body.theme-liquid[data-color-mode="dark"] {
+  --liquid-bg: #000000;
+  --liquid-card: #1c1c1e;
+  --liquid-label: #ffffff;
+  --liquid-label-2: rgba(235, 235, 245, 0.6);
+  --liquid-label-3: rgba(235, 235, 245, 0.3);
+  --liquid-sep: rgba(84, 84, 88, 0.45);
+  --liquid-glass-fill: rgba(40, 40, 46, 0.48);
+  --liquid-glass-fill-strong: rgba(44, 44, 50, 0.82);
+  --liquid-glass-edge: rgba(255, 255, 255, 0.28);
+  --liquid-glass-edge-dim: rgba(255, 255, 255, 0.06);
+  --liquid-glass-shadow: 0 14px 40px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
+  --bg-input: rgba(120, 120, 128, 0.18);
+}
+
+/* Forçage explicite Mode Clair pour Apple Liquid Glass */
+:root[data-color-mode="light"].theme-liquid,
+html[data-color-mode="light"].theme-liquid,
+html[data-color-mode="light"] body.theme-liquid,
+body.theme-liquid[data-color-mode="light"] {
+  --liquid-bg: #F2F2F7;
+  --liquid-card: #ffffff;
+  --liquid-label: #000000;
+  --liquid-label-2: rgba(60, 60, 67, 0.6);
+  --liquid-label-3: rgba(60, 60, 67, 0.3);
+  --liquid-sep: rgba(60, 60, 67, 0.18);
+  --liquid-glass-fill: rgba(255, 255, 255, 0.45);
+  --liquid-glass-fill-strong: rgba(255, 255, 255, 0.78);
+  --liquid-glass-edge: rgba(255, 255, 255, 0.78);
+  --liquid-glass-edge-dim: rgba(255, 255, 255, 0.18);
+  --liquid-glass-shadow: 0 12px 36px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+  --bg-input: rgba(120, 120, 128, 0.08);
 }
 
 /* 1. Backdrop optique & Ambiance chromatique */
@@ -4185,12 +4595,28 @@ body.theme-liquid {
 }
 
 @media (prefers-color-scheme: dark) {
-  body.theme-liquid {
+  body.theme-liquid:not([data-color-mode="light"]) {
     background-image:
       radial-gradient(60% 40% at 15% 8%, rgba(255, 120, 80, 0.18), transparent 70%),
       radial-gradient(55% 40% at 90% 25%, rgba(10, 132, 255, 0.25), transparent 70%),
       radial-gradient(60% 45% at 30% 85%, rgba(48, 209, 88, 0.16), transparent 70%) !important;
   }
+}
+
+html[data-color-mode="dark"] body.theme-liquid,
+body.theme-liquid[data-color-mode="dark"] {
+  background-image:
+    radial-gradient(60% 40% at 15% 8%, rgba(255, 120, 80, 0.18), transparent 70%),
+    radial-gradient(55% 40% at 90% 25%, rgba(10, 132, 255, 0.25), transparent 70%),
+    radial-gradient(60% 45% at 30% 85%, rgba(48, 209, 88, 0.16), transparent 70%) !important;
+}
+
+html[data-color-mode="light"] body.theme-liquid,
+body.theme-liquid[data-color-mode="light"] {
+  background-image:
+    radial-gradient(60% 40% at 15% 8%, rgba(255, 159, 107, 0.25), transparent 70%),
+    radial-gradient(55% 40% at 90% 25%, rgba(94, 139, 255, 0.3), transparent 70%),
+    radial-gradient(60% 45% at 30% 85%, rgba(107, 227, 180, 0.22), transparent 70%) !important;
 }
 
 /* 2. Cartes de contenu : SOLIDES (Règle 1 du skill : le contenu reste pur, le verre est au-dessus) */
@@ -4334,7 +4760,8 @@ body.theme-liquid .btn-primary:active {
 }
 
 body.theme-liquid .btn-secondary,
-body.theme-liquid .theme-quick-switch-btn {
+body.theme-liquid .theme-quick-switch-btn,
+body.theme-liquid .theme-mode-switch-btn {
   border-radius: 999px !important;
   background: var(--liquid-glass-fill) !important;
   -webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-sat)) !important;
@@ -4346,7 +4773,8 @@ body.theme-liquid .theme-quick-switch-btn {
 }
 
 body.theme-liquid .btn-secondary:active,
-body.theme-liquid .theme-quick-switch-btn:active {
+body.theme-liquid .theme-quick-switch-btn:active,
+body.theme-liquid .theme-mode-switch-btn:active {
   transform: scale(0.95) !important;
 }
 
@@ -4386,7 +4814,8 @@ body.theme-liquid .modal-content {
   body.theme-liquid .bottom-nav,
   body.theme-liquid .app-header,
   body.theme-liquid .btn-secondary,
-  body.theme-liquid .theme-quick-switch-btn {
+  body.theme-liquid .theme-quick-switch-btn,
+  body.theme-liquid .theme-mode-switch-btn {
     background: var(--liquid-glass-fill-strong) !important;
   }
 }
@@ -4395,7 +4824,8 @@ body.theme-liquid .modal-content {
   body.theme-liquid .bottom-nav,
   body.theme-liquid .app-header,
   body.theme-liquid .btn-secondary,
-  body.theme-liquid .theme-quick-switch-btn {
+  body.theme-liquid .theme-quick-switch-btn,
+  body.theme-liquid .theme-mode-switch-btn {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
     background: var(--liquid-glass-fill-strong) !important;
