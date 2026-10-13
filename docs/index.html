@@ -15,7 +15,7 @@
   <link id="dynamicFavicon" rel="icon" type="image/png" href="icons/icon-blue-192.png">
   <link id="dynamicAppleIcon" rel="apple-touch-icon" href="icons/icon-blue-192.png">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=47">
+  <link rel="stylesheet" href="style.css?v=48">
   <script>
     // Pré-application immédiate du logo, thème et mode sombre/clair pour éviter tout flash (FOUC)
     (function() {
@@ -511,7 +511,7 @@
     <!-- VUE 4 : PARAMÈTRES, SAUVEGARDES & PWA (ÉCRAN 6) -->
     <div id="viewSettings" class="settings-screen hidden">
       <div class="settings-hero">
-        <h2 class="habitudes-hero-title">⚙️ Paramètres &amp; Sauvegardes</h2>
+        <h2 class="habitudes-hero-title">⚙️ Paramètres</h2>
         <p class="card-subtitle">
           Gérez vos alertes, votre salle partagée, le thème visuel, les intervalles et les sauvegardes.
         </p>
@@ -744,11 +744,14 @@
               <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
                 <span>⚙️ Cadence des alarmes : Notifications sur l'appareil</span>
               </div>
-              <span class="status-badge status-badge-info" style="font-size: 0.72rem;">Indépendant des e-mails</span>
             </div>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
-              Définissez librement la cadence de répétition des alertes <strong>directement sur votre téléphone ou ordinateur</strong> (indépendamment de la fréquence des e-mails).
+              Définissez librement la cadence de répétition des alertes <strong>directement sur votre téléphone ou ordinateur</strong>.
             </p>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; display: flex; align-items: center; gap: 6px;">
+              <span>💡</span>
+              <span>Les rappels et alertes s'arrêtent automatiquement dès que vous validez l'entretien comme <strong>« Fait »</strong>.</span>
+            </div>
 
             <!-- 1. Fréquence ROUGE -->
             <div class="alert-freq-card alert-freq-card-red">
@@ -868,10 +871,6 @@
               <strong style="color: var(--text-main);">truly.isaak@gmail.com</strong>
             </div>
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
-              <span style="color: var(--text-muted);">Planification Windows Task Scheduler :</span>
-              <span class="status-badge status-badge-green" style="font-size: 0.72rem;">En arrière-plan</span>
-            </div>
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
               <span style="color: var(--text-muted);">Gestion des destinataires e-mail :</span>
               <span style="color: var(--primary); font-weight: 600;">👥 Gérés dans l'onglet Salle Partagée</span>
             </div>
@@ -883,11 +882,14 @@
               <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
                 <span>⚙️ Cadence des alarmes : E-mails automatiques</span>
               </div>
-              <span class="status-badge status-badge-info" style="font-size: 0.72rem;">Indépendant des notifications</span>
             </div>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
-              Définissez une cadence d'envoi par e-mail propre, distincte de celle des notifications sur votre téléphone (ex: 24h ou 2 jours par e-mail au lieu de quelques minutes).
+              Définissez une cadence d'envoi par e-mail propre (ex: 24h ou 2 jours par e-mail au lieu de quelques minutes).
             </p>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; display: flex; align-items: center; gap: 6px;">
+              <span>💡</span>
+              <span>Les rappels par e-mail s'arrêtent automatiquement dès que vous validez l'entretien comme <strong>« Fait »</strong>.</span>
+            </div>
 
             <!-- 0. Seuil Kilométrique X jours pour E-mail -->
             <div style="background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: 8px; padding: 10px 12px; margin-top: 6px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">

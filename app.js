@@ -954,11 +954,8 @@ function updateNotificationSettingsUI() {
       badge.className = "status-badge status-badge-green";
     }
     if (infoEl) {
-      const roomProf = window.FamilyRoom && typeof window.FamilyRoom.getStoredRoomProfile === 'function' ? window.FamilyRoom.getStoredRoomProfile() : null;
-      const roomInfo = roomProf && roomProf.roomId 
-        ? `<div id="webPushStatusLine" style="margin-top: 6px; font-size: 0.82rem; color: var(--primary);">📲 <strong>Alertes application fermée :</strong> Synchronisation avec la salle active. Vos rappels arriveront même quand l'application n'est pas ouverte.</div>`
-        : `<div id="webPushStatusLine" style="margin-top: 6px; font-size: 0.82rem; color: var(--text-muted);">ℹ️ <em>Pour recevoir les alertes application fermée, rejoignez ou créez une salle partagée dans les Paramètres.</em></div>`;
-      infoEl.innerHTML = `✅ <strong>Les notifications sont actives sur cet appareil.</strong> Vous recevrez des alertes directes pour les entretiens urgents et les relevés de compteur.${roomInfo}`;
+      infoEl.innerHTML = '';
+      infoEl.style.display = 'none';
     }
     if (toggleBtn) {
       toggleBtn.disabled = false;
@@ -973,7 +970,8 @@ function updateNotificationSettingsUI() {
       badge.className = "status-badge status-badge-orange";
     }
     if (infoEl) {
-      infoEl.innerHTML = "🔕 <strong>Les notifications sont désactivées sur cet appareil.</strong> Cliquez sur le bouton ci-dessous pour autoriser et recevoir les alertes sur votre téléphone.";
+      infoEl.innerHTML = '';
+      infoEl.style.display = 'none';
     }
     if (toggleBtn) {
       toggleBtn.disabled = false;
