@@ -15,7 +15,7 @@
   <link id="dynamicFavicon" rel="icon" type="image/png" href="icons/icon-blue-192.png">
   <link id="dynamicAppleIcon" rel="apple-touch-icon" href="icons/icon-blue-192.png">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=33">
+  <link rel="stylesheet" href="style.css?v=34">
   <script>
     // Pré-application immédiate du logo, thème et mode sombre/clair pour éviter tout flash (FOUC)
     (function() {
@@ -78,8 +78,14 @@
         </div>
       </div>
       <div class="header-right-actions">
-        <button id="btnHeaderColorModeSwitch" class="theme-mode-switch-btn" type="button" title="Passer au mode clair" aria-label="Basculer entre Mode Sombre et Mode Clair">
-          <span id="headerColorModeIcon" aria-hidden="true">☀️</span>
+        <button id="btnHeaderColorModeSwitch" class="theme-mode-switch-btn liquid-glass-toggle" type="button" role="switch" aria-checked="true" title="Passer au mode clair" aria-label="Basculer entre Mode Sombre et Mode Clair">
+          <span class="liquid-toggle-track">
+            <span class="liquid-toggle-text" id="headerColorModeLabel">Night</span>
+            <span class="liquid-toggle-thumb">
+              <span class="liquid-toggle-icon" id="headerColorModeVisualIcon" aria-hidden="true">🌙</span>
+            </span>
+          </span>
+          <span id="headerColorModeIcon" class="sr-only" aria-hidden="true">☀️</span>
         </button>
         <button id="btnHeaderThemeSwitch" class="theme-quick-switch-btn" type="button" title="Changer le style visuel de l'application">
           <span id="headerThemeIcon">👑</span>

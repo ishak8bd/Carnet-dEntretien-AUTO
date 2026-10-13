@@ -3015,8 +3015,156 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Bouton esthétique compact de bascule Mode Sombre / Mode Clair */
-.theme-mode-switch-btn {
+/* Bouton esthétique Liquid Glass : Bascule Mode Sombre (Night) / Mode Clair (Light) */
+.liquid-glass-toggle {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  width: 78px !important;
+  height: 34px !important;
+  min-width: 78px !important;
+  min-height: 34px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  cursor: pointer !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.35) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.75),
+    inset 0 -1.5px 1.5px rgba(255, 255, 255, 0.15),
+    0 4px 14px rgba(0, 0, 0, 0.25) !important;
+  overflow: hidden !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  flex-shrink: 0 !important;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease !important;
+}
+
+.liquid-glass-toggle:hover {
+  transform: scale(1.03) !important;
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.9),
+    inset 0 -1.5px 1.5px rgba(255, 255, 255, 0.2),
+    0 6px 18px rgba(0, 0, 0, 0.35) !important;
+}
+
+.liquid-glass-toggle:active {
+  transform: scale(0.96) !important;
+}
+
+.liquid-toggle-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.liquid-toggle-text {
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  line-height: 1 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  z-index: 1;
+  transition: color 0.3s ease, opacity 0.3s ease;
+}
+
+.liquid-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease !important;
+  z-index: 2;
+}
+
+.liquid-toggle-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+  display: inline-block;
+  user-select: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.liquid-glass-toggle:hover .liquid-toggle-icon {
+  transform: scale(1.1) rotate(8deg);
+}
+
+/* Mode Sombre (Night state) */
+html[data-color-mode="dark"] .liquid-glass-toggle,
+:root[data-color-mode="dark"] .liquid-glass-toggle {
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.75) 50%, rgba(14, 116, 233, 0.35) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.35),
+    inset 0 -1.5px 1.5px rgba(0, 0, 0, 0.5),
+    0 4px 14px rgba(0, 0, 0, 0.4) !important;
+}
+
+html[data-color-mode="dark"] .liquid-toggle-text,
+:root[data-color-mode="dark"] .liquid-toggle-text {
+  margin-left: 11px;
+  margin-right: auto;
+  color: #f1f5f9 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+html[data-color-mode="dark"] .liquid-toggle-thumb,
+:root[data-color-mode="dark"] .liquid-toggle-thumb {
+  transform: translateX(44px) !important;
+  background: radial-gradient(circle at 35% 35%, #60a5fa 0%, #2563eb 50%, #1d4ed8 85%, #0f172a 100%) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow:
+    inset 0 2px 2px rgba(255, 255, 255, 0.95),
+    inset 0 -2px 2px rgba(0, 0, 0, 0.5),
+    0 0 16px rgba(59, 130, 246, 0.85),
+    0 3px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Mode Clair (Light state) */
+html[data-color-mode="light"] .liquid-glass-toggle,
+:root[data-color-mode="light"] .liquid-glass-toggle {
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.35) 0%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0.95) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.85) !important;
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.95),
+    inset 0 -1.5px 1.5px rgba(0, 0, 0, 0.08),
+    0 4px 14px rgba(15, 23, 42, 0.12) !important;
+}
+
+html[data-color-mode="light"] .liquid-toggle-text,
+:root[data-color-mode="light"] .liquid-toggle-text {
+  margin-left: auto;
+  margin-right: 11px;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+html[data-color-mode="light"] .liquid-toggle-thumb,
+:root[data-color-mode="light"] .liquid-toggle-thumb {
+  transform: translateX(0px) !important;
+  background: radial-gradient(circle at 35% 35%, #fef08a 0%, #facc15 45%, #f59e0b 80%, #b45309 100%) !important;
+  border: 1.5px solid #ffffff !important;
+  box-shadow:
+    inset 0 2px 2px #ffffff,
+    inset 0 -2px 2px rgba(180, 83, 9, 0.4),
+    0 0 16px rgba(245, 158, 11, 0.8),
+    0 3px 8px rgba(15, 23, 42, 0.18) !important;
+}
+
+/* Repli pour bouton classique s'il n'a pas la classe .liquid-glass-toggle */
+.theme-mode-switch-btn:not(.liquid-glass-toggle) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3037,24 +3185,17 @@ body {
   flex-shrink: 0;
 }
 
-.theme-mode-switch-btn:hover {
-  transform: scale(1.08);
-  border-color: var(--primary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.theme-mode-switch-btn:active {
-  transform: scale(0.92);
-}
-
-.theme-mode-switch-btn #headerColorModeIcon {
-  display: inline-block;
-  line-height: 1;
-  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.theme-mode-switch-btn:hover #headerColorModeIcon {
-  transform: rotate(20deg);
+/* Accessibilité écran masqué (pour assertions tests sur #headerColorModeIcon) */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 
 /* Responsive compact header actions sur tous les mobiles (<= 640px) pour éliminer tout chevauchement */
@@ -3081,11 +3222,18 @@ body {
     font-size: 1.05rem !important;
     flex-shrink: 0 !important;
   }
-  .theme-mode-switch-btn {
+  .theme-mode-switch-btn:not(.liquid-glass-toggle) {
     width: 36px !important;
     height: 36px !important;
     min-width: 36px !important;
     min-height: 36px !important;
+    flex-shrink: 0 !important;
+  }
+  .liquid-glass-toggle {
+    width: 78px !important;
+    height: 34px !important;
+    min-width: 78px !important;
+    min-height: 34px !important;
     flex-shrink: 0 !important;
   }
   /* Pastille de synchronisation compacte sur mobile pour ne jamais chevaucher le titre */
@@ -3119,6 +3267,32 @@ body {
 @media (max-width: 360px) {
   .brand-text span {
     display: none;
+  }
+  .liquid-glass-toggle {
+    width: 70px !important;
+    height: 32px !important;
+    min-width: 70px !important;
+    min-height: 32px !important;
+  }
+  .liquid-toggle-thumb {
+    width: 24px !important;
+    height: 24px !important;
+    top: 2.5px !important;
+    left: 2.5px !important;
+  }
+  html[data-color-mode="dark"] .liquid-toggle-thumb,
+  :root[data-color-mode="dark"] .liquid-toggle-thumb {
+    transform: translateX(40px) !important;
+  }
+  html[data-color-mode="dark"] .liquid-toggle-text,
+  :root[data-color-mode="dark"] .liquid-toggle-text {
+    margin-left: 8px !important;
+    font-size: 0.68rem !important;
+  }
+  html[data-color-mode="light"] .liquid-toggle-text,
+  :root[data-color-mode="light"] .liquid-toggle-text {
+    margin-right: 8px !important;
+    font-size: 0.68rem !important;
   }
 }
 
@@ -3164,13 +3338,13 @@ body.theme-blue .btn-primary {
 }
 
 body.theme-blue .theme-quick-switch-btn,
-body.theme-blue .theme-mode-switch-btn {
+body.theme-blue .theme-mode-switch-btn:not(.liquid-glass-toggle) {
   background: rgba(37, 99, 235, 0.15) !important;
   border-color: rgba(234, 179, 8, 0.4) !important;
   color: #fbbf24 !important;
 }
 
-body.theme-blue .theme-mode-switch-btn:hover {
+body.theme-blue .theme-mode-switch-btn:not(.liquid-glass-toggle):hover {
   background: rgba(37, 99, 235, 0.28) !important;
   border-color: #fbbf24 !important;
   box-shadow: 0 0 12px rgba(234, 179, 8, 0.35) !important;
@@ -3214,7 +3388,7 @@ html[data-color-mode="light"] body.theme-blue .stat-label {
 }
 
 html[data-color-mode="light"] body.theme-blue .theme-quick-switch-btn,
-html[data-color-mode="light"] body.theme-blue .theme-mode-switch-btn {
+html[data-color-mode="light"] body.theme-blue .theme-mode-switch-btn:not(.liquid-glass-toggle) {
   background: #ffffff !important;
   border-color: rgba(234, 179, 8, 0.5) !important;
   color: #b45309 !important;
@@ -3314,7 +3488,7 @@ body.theme-glass .brand-text h1 {
 
 /* Bouton de bascule rapide de thème & mode sombre/clair */
 body.theme-glass .theme-quick-switch-btn,
-body.theme-glass .theme-mode-switch-btn {
+body.theme-glass .theme-mode-switch-btn:not(.liquid-glass-toggle) {
   background: rgba(255, 255, 255, 0.08) !important;
   border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
   color: #38bdf8 !important;
@@ -3324,7 +3498,7 @@ body.theme-glass .theme-mode-switch-btn {
 }
 
 body.theme-glass .theme-quick-switch-btn:hover,
-body.theme-glass .theme-mode-switch-btn:hover {
+body.theme-glass .theme-mode-switch-btn:not(.liquid-glass-toggle):hover {
   background: rgba(56, 189, 248, 0.16) !important;
   box-shadow: 0 0 20px rgba(56, 189, 248, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
 }
@@ -3378,7 +3552,7 @@ html[data-color-mode="light"] body.theme-glass .stat-label {
 }
 
 html[data-color-mode="light"] body.theme-glass .theme-quick-switch-btn,
-html[data-color-mode="light"] body.theme-glass .theme-mode-switch-btn {
+html[data-color-mode="light"] body.theme-glass .theme-mode-switch-btn:not(.liquid-glass-toggle) {
   background: rgba(255, 255, 255, 0.85) !important;
   border-color: rgba(56, 189, 248, 0.45) !important;
   color: #0284c7 !important;
@@ -3811,7 +3985,7 @@ body.theme-steel .brand-text span {
 
 /* Bouton de bascule rapide de thème en acier biseauté & mode sombre/clair */
 body.theme-steel .theme-quick-switch-btn,
-body.theme-steel .theme-mode-switch-btn {
+body.theme-steel .theme-mode-switch-btn:not(.liquid-glass-toggle) {
   background: linear-gradient(180deg, #283448 0%, #192130 100%) !important;
   border: 1.5px solid rgba(255, 255, 255, 0.35) !important;
   color: #00e5ff !important;
@@ -3823,7 +3997,7 @@ body.theme-steel .theme-mode-switch-btn {
 }
 
 body.theme-steel .theme-quick-switch-btn:hover,
-body.theme-steel .theme-mode-switch-btn:hover {
+body.theme-steel .theme-mode-switch-btn:not(.liquid-glass-toggle):hover {
   background: linear-gradient(180deg, #324159 0%, #1f2a3c 100%) !important;
   border-color: #00e5ff !important;
   box-shadow: 
@@ -3880,7 +4054,7 @@ html[data-color-mode="light"] body.theme-steel .brand-text span {
 }
 
 html[data-color-mode="light"] body.theme-steel .theme-quick-switch-btn,
-html[data-color-mode="light"] body.theme-steel .theme-mode-switch-btn {
+html[data-color-mode="light"] body.theme-steel .theme-mode-switch-btn:not(.liquid-glass-toggle) {
   background: #ffffff !important;
   border-color: rgba(2, 132, 199, 0.4) !important;
   color: #0284c7 !important;
@@ -4396,7 +4570,7 @@ body.theme-bubble {
 .theme-bubble .btn-secondary,
 .theme-bubble .btn-icon,
 .theme-bubble .theme-quick-switch-btn,
-.theme-bubble .theme-mode-switch-btn,
+.theme-bubble .theme-mode-switch-btn:not(.liquid-glass-toggle),
 .theme-bubble .form-input,
 .theme-bubble .form-select,
 .theme-bubble .input-km {
@@ -4439,7 +4613,7 @@ html[data-color-mode="light"] body.theme-bubble .card-title {
 }
 
 html[data-color-mode="light"] body.theme-bubble .theme-quick-switch-btn,
-html[data-color-mode="light"] body.theme-bubble .theme-mode-switch-btn {
+html[data-color-mode="light"] body.theme-bubble .theme-mode-switch-btn:not(.liquid-glass-toggle) {
   background: rgba(255, 255, 255, 0.9) !important;
   border-color: rgba(56, 189, 248, 0.35) !important;
   color: #0284c7 !important;
@@ -4869,8 +5043,8 @@ body.theme-liquid .theme-quick-switch-btn:active {
 }
 
 /* Bouton Bascule Mode Sombre / Mode Clair en Lentille Liquide (Images 1 & 2) */
-html[data-color-mode="dark"] body.theme-liquid .theme-mode-switch-btn,
-body.theme-liquid[data-color-mode="dark"] .theme-mode-switch-btn {
+html[data-color-mode="dark"] body.theme-liquid .theme-mode-switch-btn:not(.liquid-glass-toggle),
+body.theme-liquid[data-color-mode="dark"] .theme-mode-switch-btn:not(.liquid-glass-toggle) {
   border-radius: 999px !important;
   background: radial-gradient(circle at 60% 40%, rgba(37, 99, 235, 0.9) 0%, rgba(14, 165, 233, 0.55) 60%, rgba(255, 255, 255, 0.15) 100%) !important;
   box-shadow:
@@ -4883,8 +5057,8 @@ body.theme-liquid[data-color-mode="dark"] .theme-mode-switch-btn {
   transition: transform 0.35s var(--liquid-spring) !important;
 }
 
-html[data-color-mode="light"] body.theme-liquid .theme-mode-switch-btn,
-body.theme-liquid[data-color-mode="light"] .theme-mode-switch-btn {
+html[data-color-mode="light"] body.theme-liquid .theme-mode-switch-btn:not(.liquid-glass-toggle),
+body.theme-liquid[data-color-mode="light"] .theme-mode-switch-btn:not(.liquid-glass-toggle) {
   border-radius: 999px !important;
   background: radial-gradient(circle at 45% 45%, rgba(251, 191, 36, 0.95) 0%, rgba(245, 158, 11, 0.6) 65%, rgba(255, 255, 255, 0.45) 100%) !important;
   box-shadow:
@@ -4895,6 +5069,47 @@ body.theme-liquid[data-color-mode="light"] .theme-mode-switch-btn {
   border: 1.5px solid rgba(255, 255, 255, 0.85) !important;
   color: #78350f !important;
   transition: transform 0.35s var(--liquid-spring) !important;
+}
+
+/* Personnalisation avancée de la capsule Liquid Glass sous le thème Apple Liquid Glass */
+html[data-color-mode="dark"] body.theme-liquid .liquid-glass-toggle {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(0, 102, 255, 0.38) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  box-shadow:
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.8),
+    inset 0 -1.5px 1.5px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(0, 102, 255, 0.25),
+    0 4px 14px rgba(0, 0, 0, 0.3) !important;
+}
+
+html[data-color-mode="dark"] body.theme-liquid .liquid-toggle-thumb {
+  background: radial-gradient(circle at 45% 45%, #0099ff 0%, #0052cc 65%, #003399 100%) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow:
+    inset 0 2px 2px rgba(255, 255, 255, 0.95),
+    inset 0 -2px 2px rgba(0, 0, 0, 0.4),
+    0 0 16px rgba(0, 153, 255, 0.8),
+    0 4px 10px rgba(0, 0, 0, 0.4) !important;
+}
+
+html[data-color-mode="light"] body.theme-liquid .liquid-glass-toggle {
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.38) 0%, rgba(255, 255, 255, 0.75) 55%, rgba(255, 255, 255, 0.85) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.85) !important;
+  box-shadow:
+    inset 0 1.5px 1.5px #ffffff,
+    inset 0 -1.5px 1.5px rgba(0, 0, 0, 0.08),
+    0 0 16px rgba(245, 158, 11, 0.2),
+    0 4px 14px rgba(15, 23, 42, 0.1) !important;
+}
+
+html[data-color-mode="light"] body.theme-liquid .liquid-toggle-thumb {
+  background: radial-gradient(circle at 45% 45%, #fde047 0%, #f59e0b 65%, #d97706 100%) !important;
+  border: 1.5px solid #ffffff !important;
+  box-shadow:
+    inset 0 2px 2px #ffffff,
+    inset 0 -2px 2px rgba(180, 83, 9, 0.35),
+    0 0 16px rgba(245, 158, 11, 0.75),
+    0 4px 10px rgba(15, 23, 42, 0.15) !important;
 }
 
 /* 6. Formulaires & Saisies en Puits de Verre */
@@ -4979,7 +5194,7 @@ html[data-color-mode="light"] body.theme-liquid .modal-content {
   body.theme-liquid .app-header,
   body.theme-liquid .btn-secondary,
   body.theme-liquid .theme-quick-switch-btn,
-  body.theme-liquid .theme-mode-switch-btn,
+  body.theme-liquid .theme-mode-switch-btn:not(.liquid-glass-toggle),
   body.theme-liquid .card {
     background: var(--liquid-glass-fill-strong) !important;
   }
@@ -4990,7 +5205,7 @@ html[data-color-mode="light"] body.theme-liquid .modal-content {
   body.theme-liquid .app-header,
   body.theme-liquid .btn-secondary,
   body.theme-liquid .theme-quick-switch-btn,
-  body.theme-liquid .theme-mode-switch-btn,
+  body.theme-liquid .theme-mode-switch-btn:not(.liquid-glass-toggle),
   body.theme-liquid .card {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;

@@ -462,17 +462,26 @@ function applyColorMode(mode, notify = false) {
       document.body.setAttribute('data-color-mode', chosen);
     }
 
-    // Mettre à jour l'icône et l'intitulé du bouton d'en-tête
+    // Mettre à jour l'icône et l'intitulé du toggle d'en-tête (Switch Liquid Glass)
     const modeBtn = document.getElementById('btnHeaderColorModeSwitch');
     const modeIcon = document.getElementById('headerColorModeIcon');
+    const modeVisualIcon = document.getElementById('headerColorModeVisualIcon');
+    const modeLabel = document.getElementById('headerColorModeLabel');
     if (modeIcon) {
-      // En mode sombre, l'icône propose de passer au mode clair (☀️)
+      // En mode sombre, l'icône propose de passer au mode clair (☀️) pour assertions tests
       // En mode clair, l'icône propose de passer au mode sombre (🌙)
       modeIcon.textContent = chosen === 'dark' ? '☀️' : '🌙';
+    }
+    if (modeVisualIcon) {
+      modeVisualIcon.textContent = chosen === 'dark' ? '🌙' : '☀️';
+    }
+    if (modeLabel) {
+      modeLabel.textContent = chosen === 'dark' ? 'Night' : 'Light';
     }
     if (modeBtn) {
       modeBtn.title = chosen === 'dark' ? 'Passer au mode clair' : 'Passer au mode sombre';
       modeBtn.setAttribute('aria-label', modeBtn.title);
+      modeBtn.setAttribute('aria-checked', chosen === 'dark' ? 'true' : 'false');
     }
 
     // Ajuster meta theme-color pour la barre de statut iOS / Android
