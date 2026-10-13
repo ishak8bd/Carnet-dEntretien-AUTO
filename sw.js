@@ -1,5 +1,5 @@
 // Service Worker - Suivi Entretien Véhicule PWA (100% Hors-Ligne & Support Firebase)
-const CACHE_NAME = 'entretien-v28';
+const CACHE_NAME = 'entretien-v29';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
