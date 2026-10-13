@@ -413,6 +413,10 @@ function applyAppLogo(theme, notify = false) {
     }
     showToast(msg, 'success');
   }
+
+  if (typeof updateNavPillPosition === 'function') {
+    setTimeout(() => updateNavPillPosition(true), 20);
+  }
 }
 
 /**
@@ -3572,6 +3576,51 @@ function renderHabitudesScreen(vehicle, engine) {
 // Navigation entre les écrans (Bottom Nav)
 let currentView = 'dashboard';
 
+/**
+ * Met à jour la position de la lentille coulissante Liquid Glass dans la barre d'onglets (Bottom Nav)
+ * Applique la physique de rebond élastique liquide (cubic-bezier(0.34, 1.56, 0.64, 1))
+ * @param {boolean} immediate - Saute l'animation si true (chargement initial, redimensionnement)
+ */
+function updateNavPillPosition(immediate = false) {
+  if (typeof document === 'undefined') return;
+  const pill = document.getElementById('navActivePill');
+  const nav = document.querySelector('.bottom-nav');
+  if (!pill || !nav) return;
+
+  const activeTab = nav.querySelector('.nav-tab.active');
+  if (!activeTab) return;
+
+  const navRect = nav.getBoundingClientRect();
+  const tabRect = activeTab.getBoundingClientRect();
+
+  // Repli si l'élément n'a pas encore de géométrie dans le DOM (ex: jsdom / tests unitaires)
+  if (!tabRect.width || !tabRect.height) {
+    const tabIndices = { tabDashboard: 0, tabHistory: 1, tabHabitudes: 2, tabSettings: 3 };
+    const idx = tabIndices[activeTab.id] || 0;
+    pill.style.transform = `translateX(calc(${idx} * 100%))`;
+    return;
+  }
+
+  const left = tabRect.left - navRect.left;
+  const width = tabRect.width;
+  const height = tabRect.height > 10 ? Math.min(tabRect.height - 8, 54) : 48;
+  const top = (tabRect.height - height) / 2;
+
+  if (immediate) {
+    const prevTransition = pill.style.transition;
+    pill.style.transition = 'none';
+    pill.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+    pill.style.width = `${width}px`;
+    pill.style.height = `${height}px`;
+    void pill.offsetHeight; // Forcer le reflow synchrone
+    pill.style.transition = prevTransition;
+  } else {
+    pill.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+    pill.style.width = `${width}px`;
+    pill.style.height = `${height}px`;
+  }
+}
+
 function switchView(viewName) {
   currentView = viewName;
   const viewDash = document.getElementById('viewDashboard');
@@ -3594,6 +3643,18 @@ function switchView(viewName) {
   if (tabHab) tabHab.classList.remove('active');
   if (tabHist) tabHist.classList.remove('active');
   if (tabSet) tabSet.classList.remove('active');
+
+  const bottomNav = document.querySelector('.bottom-nav');
+  const tabIndices = { dashboard: 0, history: 1, habitudes: 2, settings: 3 };
+  if (bottomNav) {
+    bottomNav.setAttribute('data-active-view', viewName);
+    bottomNav.setAttribute('data-active-index', tabIndices[viewName] !== undefined ? tabIndices[viewName] : 0);
+  }
+
+  // Retour haptique tactile léger sur mobile si supporté
+  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+    try { navigator.vibrate(8); } catch (e) {}
+  }
 
   if (viewName === 'habitudes') {
     if (viewHab) viewHab.classList.remove('hidden');
@@ -3621,6 +3682,9 @@ function switchView(viewName) {
 
     renderApp();
   }
+
+  // Animation glissante physique Liquid Glass de la lentille active
+  updateNavPillPosition(false);
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -6613,6 +6677,14 @@ window.addEventListener('DOMContentLoaded', () => {
   attachEventListeners();
   renderApp();
 
+  // Initialisation immédiate et écouteurs de redimensionnement pour la lentille Liquid Glass des onglets
+  updateNavPillPosition(true);
+  window.addEventListener('resize', () => updateNavPillPosition(true));
+  window.addEventListener('orientationchange', () => updateNavPillPosition(true));
+  if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => updateNavPillPosition(true)).catch(() => {});
+  }
+
   // Vérification et émission des notifications d'échéances en arrière-plan
   checkAndSendPendingMaintenanceNotifications();
 
@@ -6694,3 +6766,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+if (typeof window !== 'undefined') {
+  window.updateNavPillPosition = updateNavPillPosition;
+}

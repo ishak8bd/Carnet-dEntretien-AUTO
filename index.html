@@ -15,7 +15,7 @@
   <link id="dynamicFavicon" rel="icon" type="image/png" href="icons/icon-blue-192.png">
   <link id="dynamicAppleIcon" rel="apple-touch-icon" href="icons/icon-blue-192.png">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=34">
+  <link rel="stylesheet" href="style.css?v=35">
   <script>
     // Pré-application immédiate du logo, thème et mode sombre/clair pour éviter tout flash (FOUC)
     (function() {
@@ -1861,7 +1861,8 @@
   </div>
 
   <!-- Barre de navigation mobile inférieure (4 Onglets) -->
-  <nav class="bottom-nav" aria-label="Navigation principale">
+  <nav class="bottom-nav" aria-label="Navigation principale" data-active-view="dashboard" data-active-index="0">
+    <div class="nav-active-pill" id="navActivePill" aria-hidden="true"></div>
     <button type="button" class="nav-tab active" id="tabDashboard" aria-label="Tableau de bord">
       <span class="nav-tab-icon">📋</span>
       <span>Tableau</span>
