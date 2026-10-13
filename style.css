@@ -179,7 +179,7 @@ body {
   width: 100%;
   max-width: 680px;
   margin: 0 auto;
-  padding-top: max(105px, calc(env(safe-area-inset-top, 0px) + 58px));
+  padding-top: max(75px, calc(env(safe-area-inset-top, 0px) + 28px));
   padding-right: max(14px, env(safe-area-inset-right, 0px));
   padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   padding-left: max(14px, env(safe-area-inset-left, 0px));
@@ -2339,7 +2339,7 @@ html[data-color-mode="light"] .nav-tab.active .nav-tab-icon {
 
 @media (max-width: 640px) {
   .app-container {
-    padding-top: max(105px, calc(env(safe-area-inset-top, 0px) + 58px));
+    padding-top: max(75px, calc(env(safe-area-inset-top, 0px) + 28px));
     padding-right: max(12px, env(safe-area-inset-right, 0px));
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
     padding-left: max(12px, env(safe-area-inset-left, 0px));
