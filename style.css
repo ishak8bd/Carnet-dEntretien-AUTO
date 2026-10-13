@@ -203,44 +203,43 @@ body {
   animation: fadeIn 0.2s ease;
 }
 
-/* Entête / Navigation sans collision (Strictement sous la Dynamic Island) */
+/* Entête / Navigation Liquid Glass plus haute et plus large (Boutons positionnés en dessous du titre) */
 .app-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 12px;
-  min-height: 54px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 14px 16px;
+  min-height: 104px;
   width: 100%;
   box-sizing: border-box;
-  flex-wrap: nowrap;
-  border-radius: 18px;
+  border-radius: 24px;
   margin-top: 4px;
-  overflow: hidden;
+  margin-bottom: 8px;
+  overflow: visible;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  width: 100%;
   min-width: 0;
-  flex: 1 1 auto;
-  overflow: hidden;
 }
 
 .brand-icon {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   background: transparent;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
-  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
   flex-shrink: 0;
   cursor: pointer;
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
@@ -248,8 +247,8 @@ body {
 
 .brand-icon:hover {
   transform: scale(1.05);
-  border-color: rgba(255, 255, 255, 0.35);
-  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.55);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
 }
 
 .brand-logo-img {
@@ -264,43 +263,51 @@ body {
 .brand-text {
   min-width: 0;
   flex: 1 1 auto;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
 .brand-text h1 {
-  font-size: clamp(0.92rem, 3.6vw, 1.12rem);
+  font-size: clamp(1.12rem, 4.4vw, 1.3rem);
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-main);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.2;
+  white-space: normal;
+  overflow: visible;
+  line-height: 1.25;
   margin: 0;
 }
 
 .brand-text span {
-  font-size: clamp(0.66rem, 2.2vw, 0.74rem);
+  font-size: clamp(0.72rem, 2.5vw, 0.8rem);
   color: var(--text-muted);
-  display: block;
+  display: block !important;
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.2;
+  white-space: normal;
+  overflow: visible;
+  line-height: 1.3;
   margin-top: 2px;
 }
 
+/* Boutons d'actions positionnés en dessous du titre pour libérer toute la largeur */
 .header-right-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  margin-left: auto;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   white-space: nowrap;
+}
+
+html[data-color-mode="light"] .header-right-actions {
+  border-top-color: rgba(0, 0, 0, 0.07);
+}
+
+.header-right-actions #roomSyncBadge {
+  margin-right: auto;
 }
 
 /* Sélecteur de véhicule */
@@ -3271,29 +3278,35 @@ html[data-color-mode="light"] .liquid-toggle-thumb,
   border: 0 !important;
 }
 
-/* Responsive compact header actions sur tous les mobiles (<= 640px) pour éliminer tout chevauchement */
+/* Responsive header actions sur tous les mobiles (<= 640px) */
 @media (max-width: 640px) {
   .app-header {
-    padding: 8px 10px;
-    gap: 8px;
+    padding: 12px 14px !important;
+    gap: 10px !important;
+    min-height: 100px !important;
+    border-radius: 22px !important;
   }
   .header-right-actions {
-    gap: 6px;
+    gap: 8px;
+    padding-top: 8px;
     flex-shrink: 0;
   }
-  .theme-quick-switch-btn #headerThemeText {
-    display: none !important;
-  }
   .theme-quick-switch-btn {
-    padding: 0 !important;
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
-    min-height: 36px !important;
+    padding: 5px 12px !important;
+    height: 34px !important;
+    min-width: unset !important;
+    min-height: 34px !important;
     justify-content: center !important;
     border-radius: var(--radius-full) !important;
-    font-size: 1.05rem !important;
+    font-size: 0.8rem !important;
     flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+  .theme-quick-switch-btn #headerThemeText {
+    display: inline-block !important;
+    font-size: 0.76rem !important;
   }
   .theme-mode-switch-btn:not(.liquid-glass-toggle) {
     width: 36px !important;
@@ -3309,42 +3322,48 @@ html[data-color-mode="light"] .liquid-toggle-thumb,
     min-height: 34px !important;
     flex-shrink: 0 !important;
   }
-  /* Pastille de synchronisation compacte sur mobile pour ne jamais chevaucher le titre */
+  /* Pastille de synchronisation sur mobile */
   .room-sync-badge {
-    padding: 0 !important;
-    width: 28px !important;
-    height: 28px !important;
-    min-width: 28px !important;
-    min-height: 28px !important;
-    justify-content: center !important;
+    padding: 4px 10px !important;
+    height: 30px !important;
+    min-height: 30px !important;
     border-radius: var(--radius-full) !important;
     flex-shrink: 0 !important;
   }
   .room-sync-badge #roomSyncText {
-    display: none !important;
+    display: inline-block !important;
   }
 }
 
 @media (max-width: 380px) {
   .brand {
-    gap: 8px;
+    gap: 10px;
   }
   .brand-icon {
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
-    min-height: 40px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .theme-quick-switch-btn {
+    padding: 4px 10px !important;
   }
 }
 
 @media (max-width: 360px) {
   .brand-text span {
-    display: none;
+    display: block !important;
+    font-size: 0.7rem !important;
+  }
+  .theme-quick-switch-btn #headerThemeText {
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .liquid-glass-toggle {
-    width: 70px !important;
+    width: 72px !important;
     height: 32px !important;
-    min-width: 70px !important;
+    min-width: 72px !important;
     min-height: 32px !important;
   }
   .liquid-toggle-thumb {
@@ -3355,7 +3374,7 @@ html[data-color-mode="light"] .liquid-toggle-thumb,
   }
   html[data-color-mode="dark"] .liquid-toggle-thumb,
   :root[data-color-mode="dark"] .liquid-toggle-thumb {
-    transform: translateX(40px) !important;
+    transform: translateX(41px) !important;
   }
   html[data-color-mode="dark"] .liquid-toggle-text,
   :root[data-color-mode="dark"] .liquid-toggle-text {
@@ -3381,8 +3400,6 @@ body.theme-blue {
 }
 
 body.theme-blue .app-header {
-  padding: 8px 12px !important;
-  border-radius: 18px !important;
   border: 1.5px solid rgba(59, 130, 246, 0.25) !important;
   background: rgba(10, 20, 44, 0.5) !important;
   backdrop-filter: blur(14px) !important;
@@ -3545,8 +3562,6 @@ body.theme-glass .app-header {
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   border: 1.5px solid rgba(255, 255, 255, 0.14) !important;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
-  padding: 8px 12px !important;
-  border-radius: 18px !important;
   margin-bottom: 8px !important;
 }
 
@@ -4039,8 +4054,6 @@ body.theme-steel .app-header {
     inset 0 1.5px 0.5px rgba(255, 255, 255, 0.5),
     inset 0 -1.5px 1px rgba(0, 0, 0, 0.8),
     0 10px 28px rgba(0, 0, 0, 0.7) !important;
-  padding: 8px 12px !important;
-  border-radius: 18px !important;
   margin-bottom: 8px !important;
 }
 
@@ -4052,7 +4065,7 @@ body.theme-steel .brand-icon {
     inset 0 -2px 2px rgba(0, 0, 0, 0.85),
     0 6px 16px rgba(0, 0, 0, 0.7),
     0 0 14px rgba(0, 229, 255, 0.3) !important;
-  border-radius: 12px !important;
+  border-radius: 14px !important;
 }
 
 body.theme-steel .brand-icon:hover {
@@ -4668,8 +4681,6 @@ body.theme-bubble {
 }
 
 .theme-bubble .app-header {
-  border-radius: var(--radius-lg);
-  padding: 8px 12px;
   margin-bottom: 8px;
 }
 
@@ -5112,8 +5123,6 @@ body.theme-liquid .app-header {
     inset 0 -1px 1.5px rgba(255, 255, 255, 0.2),
     0 16px 40px rgba(0, 0, 0, 0.25) !important;
   border: 1px solid var(--liquid-sep) !important;
-  padding: 8px 12px !important;
-  border-radius: 22px !important;
   margin-bottom: 8px !important;
 }
 
