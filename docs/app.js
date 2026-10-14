@@ -964,7 +964,7 @@ function updateNotificationSettingsUI() {
       toggleBtn.disabled = false;
       toggleBtn.classList.remove('btn-secondary');
       toggleBtn.classList.add('btn-primary');
-      if (toggleBtnText) toggleBtnText.textContent = "📲 Activer les notifications";
+      if (toggleBtnText) toggleBtnText.textContent = "🔔 Activer les notifications";
     }
     if (testBtn) testBtn.style.display = 'none';
   }

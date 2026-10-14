@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=56">
+  <link rel="stylesheet" href="style.css?v=57">
   <script>
     // Pré-application immédiate du logo, thème et mode sombre/clair pour éviter tout flash (FOUC)
     (function() {
@@ -696,13 +696,11 @@
           <!-- Rempli dynamiquement en JS selon le statut -->
         </div>
 
-        <div class="settings-actions" style="display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
-          <button type="button" id="btnToggleNotifications" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
-            <span>🔔</span>
-            <span id="btnToggleNotifText">Activer les notifications</span>
+        <div class="notif-settings-actions">
+          <button type="button" id="btnToggleNotifications" class="btn-primary notif-action-btn">
+            <span id="btnToggleNotifText">🔔 Activer les notifications</span>
           </button>
-          <button type="button" id="btnTestNotification" class="btn-secondary" style="display: none; align-items: center; gap: 6px;">
-            <span>🧪</span>
+          <button type="button" id="btnTestNotification" class="btn-secondary notif-action-btn" style="display: none;">
             <span>Tester la notification</span>
           </button>
         </div>

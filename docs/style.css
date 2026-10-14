@@ -2274,6 +2274,53 @@ html[data-color-mode="light"] .nav-tab.active .nav-tab-icon {
   }
 }
 
+/* Actions spécifiques pour la carte Notifications Appareil */
+.notif-settings-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  width: 100%;
+}
+
+.notif-settings-actions .notif-action-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  flex-shrink: 1 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 10px !important;
+  font-size: 0.84rem !important;
+  font-weight: 600;
+  height: 44px !important;
+  min-height: 44px !important;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.notif-settings-actions .notif-action-btn span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 380px) {
+  .notif-settings-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .notif-settings-actions .notif-action-btn {
+    width: 100% !important;
+    min-width: 100% !important;
+    flex: none;
+    height: 44px !important;
+    font-size: 0.88rem !important;
+  }
+}
+
 .pwa-status-box {
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-color);
