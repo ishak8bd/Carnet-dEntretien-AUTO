@@ -2501,7 +2501,7 @@ function openAddVehicleModal() {
 
   document.getElementById('btnDeleteVehicle').classList.add('hidden');
   document.getElementById('vehicleModal').classList.remove('hidden');
-  document.getElementById('vehBrand').focus();
+  document.getElementById('vehName').focus();
 }
 
 function openEditVehicleModal() {
@@ -2521,6 +2521,7 @@ function openEditVehicleModal() {
 
   document.getElementById('btnDeleteVehicle').classList.remove('hidden');
   document.getElementById('vehicleModal').classList.remove('hidden');
+  document.getElementById('vehName').focus();
 }
 
 function closeVehicleModal() {
@@ -2537,20 +2538,27 @@ function handleVehicleFormSubmit(e) {
   const plate = document.getElementById('vehPlate').value.trim();
   const frequency = document.getElementById('vehFrequency').value;
 
-  if (!brand || !model) {
-    showToast('La marque et le modèle sont obligatoires.', 'warning');
+  if (!name) {
+    showToast('Le nom du véhicule est obligatoire.', 'warning');
+    const vehNameInput = document.getElementById('vehName');
+    if (vehNameInput) vehNameInput.focus();
     return;
   }
+
+  // Si brand ou model ne sont pas spécifiés séparément, on déduit depuis le nom complet
+  const nameParts = name.split(/\s+/);
+  const fallbackBrand = nameParts[0] || 'Véhicule';
+  const fallbackModel = nameParts.slice(1).join(' ') || nameParts[0] || 'Auto';
 
   if (editId) {
     // Modification
     const veh = appState.vehicles.find(v => v.id === editId);
     if (veh) {
-      veh.name = name || `${brand} ${model}`;
-      veh.brand = brand;
-      veh.model = model;
-      veh.year = year;
-      veh.plate = plate;
+      veh.name = name;
+      veh.brand = brand || veh.brand || fallbackBrand;
+      veh.model = model || veh.model || fallbackModel;
+      veh.year = year || veh.year || new Date().getFullYear();
+      veh.plate = plate || veh.plate || '';
       veh.updateFrequency = frequency;
       showToast('Véhicule mis à jour avec succès.', 'success');
 
@@ -2576,9 +2584,9 @@ function handleVehicleFormSubmit(e) {
     const todayIso = getTodayIsoString();
     const newVeh = {
       id: 'veh_' + Date.now(),
-      name: name || `${brand} ${model}`,
-      brand: brand,
-      model: model,
+      name: name,
+      brand: brand || fallbackBrand,
+      model: model || fallbackModel,
       year: year,
       plate: plate,
       currentKm: kmVal,

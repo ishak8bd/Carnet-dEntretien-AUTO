@@ -15,7 +15,7 @@
   <link id="dynamicFavicon" rel="icon" type="image/png" href="icons/icon-blue-192.png">
   <link id="dynamicAppleIcon" rel="apple-touch-icon" href="icons/icon-blue-192.png">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=52">
+  <link rel="stylesheet" href="style.css?v=53">
   <script>
     // Pré-application immédiate du logo, thème et mode sombre/clair pour éviter tout flash (FOUC)
     (function() {
@@ -103,7 +103,7 @@
       <div class="vehicle-select-wrapper">
         <select id="vehicleSelect" class="vehicle-select" aria-label="Choisir le véhicule"></select>
       </div>
-      <button id="btnEditVehicle" class="btn-icon" title="Modifier ce véhicule" aria-label="Modifier le véhicule">⚙️</button>
+      <button id="btnEditVehicle" class="btn-icon" title="Modifier ce véhicule" aria-label="Modifier le véhicule">🛞</button>
       <button id="btnAddVehicle" class="btn-icon" title="Ajouter un véhicule (max 3)" aria-label="Ajouter un véhicule">➕</button>
     </section>
 
@@ -1205,32 +1205,14 @@
 
       <form id="vehicleForm">
         <input type="hidden" id="editVehicleId">
+        <input type="hidden" id="vehBrand">
+        <input type="hidden" id="vehModel">
+        <input type="hidden" id="vehYear">
+        <input type="hidden" id="vehPlate">
 
         <div class="form-group">
-          <label class="form-label" for="vehName">Nom usuel (ex: Ma voiture, Travail)</label>
-          <input type="text" id="vehName" class="form-input" placeholder="Ma voiture" required>
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-          <div class="form-group" style="flex: 1;">
-            <label class="form-label" for="vehBrand">Marque</label>
-            <input type="text" id="vehBrand" class="form-input" placeholder="Renault" required>
-          </div>
-          <div class="form-group" style="flex: 1;">
-            <label class="form-label" for="vehModel">Modèle</label>
-            <input type="text" id="vehModel" class="form-input" placeholder="Symbol" required>
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-          <div class="form-group" style="flex: 1;">
-            <label class="form-label" for="vehYear">Année</label>
-            <input type="number" id="vehYear" class="form-input" placeholder="2015" min="1980" max="2035" required>
-          </div>
-          <div class="form-group" style="flex: 1;">
-            <label class="form-label" for="vehPlate">Immatriculation</label>
-            <input type="text" id="vehPlate" class="form-input" placeholder="12345 115 16">
-          </div>
+          <label class="form-label" for="vehName">Nom complet du véhicule</label>
+          <input type="text" id="vehName" class="form-input" placeholder="ex: Renault Symbol 1.2 16V" required>
         </div>
 
         <div class="form-group" id="vehCurrentKmGroup">
@@ -1240,15 +1222,15 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="vehFrequency">Fréquence des rappels de relevé</label>
-          <div style="display: flex; gap: 8px;">
+          <label class="form-label" for="vehFrequency">Fréquence des rappels</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
             <select id="vehFrequency" class="form-select" style="flex: 1;">
               <option value="biweekly">Tous les 15 jours (recommandé)</option>
               <option value="weekly">Hebdomadaire (tous les 7 jours)</option>
               <option value="daily">Quotidienne (chaque jour)</option>
             </select>
-            <button type="button" id="btnVehExportReminder" class="btn-sm btn-secondary" title="Télécharger le rappel récurrent pour votre agenda (.ics)">
-              📅 Rappel .ics
+            <button type="button" id="btnVehExportReminder" class="btn-icon" style="flex-shrink: 0;" title="Télécharger le rappel récurrent pour votre agenda (.ics)" aria-label="Télécharger le rappel calendrier (.ics)">
+              📅
             </button>
           </div>
           <span class="form-help">Déclenche la bannière de rappel si aucun relevé n'est saisi.</span>
