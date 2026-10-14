@@ -5398,6 +5398,7 @@ function renderSettingsScreen() {
       lastBackupEl.textContent = `${formatDate(lastBackup)} (${daysElapsed === 0 ? "aujourd'hui" : `il y a ${daysElapsed} jour${daysElapsed > 1 ? 's' : ''}`})`;
     }
     if (backupBadge) {
+      backupBadge.style.display = 'inline-flex';
       if (daysElapsed < 30) {
         backupBadge.textContent = "À jour 🟢";
         backupBadge.className = "vehicle-meta-badge status-badge-green";
@@ -5409,13 +5410,14 @@ function renderSettingsScreen() {
   } else {
     if (lastBackupEl) lastBackupEl.textContent = "Jamais effectuée";
     if (backupBadge) {
-      backupBadge.textContent = "Non sauvegardé 🟠";
-      backupBadge.className = "vehicle-meta-badge status-badge-orange";
+      backupBadge.style.display = 'none';
+      backupBadge.textContent = "";
     }
   }
 
-  // 2. Statut réseau
+  // 2. Statut réseau et PWA
   updateNetworkStatus();
+  updatePwaInstallUI();
 
   // 3. Liste ou Tableau des intervalles par défaut
   const container = document.getElementById('defaultIntervalsContainer') || document.getElementById('defaultIntervalsList');
@@ -5792,6 +5794,263 @@ function handleExportJsonBackup() {
   showToast("✅ Sauvegarde JSON exportée avec succès !", "success");
 }
 
+/** Export des données et de l'historique d'entretien au format CSV compatible Excel */
+function handleExportCsvBackup() {
+  if (!appState.vehicles || appState.vehicles.length === 0) {
+    showToast("Aucun véhicule à exporter.", "warning");
+    return;
+  }
+
+  const escapeCsv = (str) => {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/"/g, '""');
+  };
+
+  const rows = [];
+  rows.push(['Véhicule', 'Immatriculation', 'Type d\'enregistrement', 'Opération / Entretien', 'Date', 'Kilométrage (km)', 'Coût (€)', 'Garage / Prestataire', 'Notes / Observations', 'Auteur']);
+
+  // 1. Interventions passées (Historique)
+  const history = appState.history || [];
+  history.forEach(h => {
+    const v = (appState.vehicles || []).find(veh => veh.id === h.vehicleId) || appState.vehicles[0];
+    rows.push([
+      v ? v.name : 'Véhicule',
+      v && v.plate ? v.plate : '',
+      'Intervention réalisée',
+      h.type || '',
+      h.date || '',
+      (h.km !== null && h.km !== undefined) ? h.km : '',
+      (h.cost !== null && h.cost !== undefined) ? h.cost : '',
+      h.garage || '',
+      h.notes || '',
+      h.authorName || ''
+    ]);
+  });
+
+  // 2. Programme d'entretien actuel (Échéances par véhicule)
+  (appState.vehicles || []).forEach(v => {
+    (v.maintenanceItems || []).forEach(it => {
+      rows.push([
+        v.name,
+        v.plate || '',
+        'Programme d\'entretien',
+        it.name,
+        it.lastDate || 'Non renseignée',
+        (it.lastKm !== null && it.lastKm !== undefined) ? it.lastKm : '',
+        '',
+        '',
+        `Intervalle : ${it.intervalKm ? it.intervalKm + ' km' : 'Sans'} / ${it.intervalMonths ? it.intervalMonths + ' mois' : 'Sans'}${it.notes ? ' | ' + it.notes : ''}`,
+        ''
+      ]);
+    });
+  });
+
+  const csvContent = '\uFEFF' + rows.map(r => r.map(field => `"${escapeCsv(field)}"`).join(';')).join('\r\n');
+  const todayStr = getTodayIsoString();
+  const filename = `carnet_entretien_${todayStr}.csv`;
+
+  if (typeof document !== 'undefined' && typeof Blob !== 'undefined' && typeof URL !== 'undefined') {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      if (a.parentNode) a.parentNode.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 250);
+  }
+
+  showToast("📊 Carnet exporté en CSV (Excel) avec succès !", "success");
+}
+
+/** Impression propre ou génération PDF du carnet technique du véhicule actif */
+function handlePrintMaintenanceReport() {
+  const v = getActiveVehicle();
+  if (!v) {
+    showToast("Aucun véhicule sélectionné.", "warning");
+    return;
+  }
+
+  const todayStr = formatDate(getTodayIsoString());
+  const vHistory = (appState.history || []).filter(h => h.vehicleId === v.id || (!h.vehicleId && appState.vehicles.length === 1));
+  const engine = computePredictionEngine(v);
+
+  let itemsRows = '';
+  (v.maintenanceItems || []).forEach(it => {
+    const due = calculateItemDueStatus(v, it, engine);
+    let statusText = 'À jour';
+    let statusColor = '#16a34a';
+    if (due.status === 'red') {
+      statusText = 'URGENT';
+      statusColor = '#dc2626';
+    } else if (due.status === 'orange') {
+      statusText = 'À prévoir';
+      statusColor = '#ea580c';
+    } else if (due.status === 'grey') {
+      statusText = 'À renseigner';
+      statusColor = '#64748b';
+    }
+
+    const lastDoneStr = it.lastDate ? `${formatDate(it.lastDate)}${it.lastKm !== null && it.lastKm !== undefined ? ' (' + formatKm(it.lastKm) + ')' : ''}` : 'Non renseigné';
+    const intervalStr = `${it.intervalKm ? formatKm(it.intervalKm) : ''}${it.intervalKm && it.intervalMonths ? ' / ' : ''}${it.intervalMonths ? it.intervalMonths + ' mois' : ''}` || 'Non défini';
+    const nextDueStr = due.targetDate ? formatDate(due.targetDate) : (due.targetKm ? formatKm(due.targetKm) : '-');
+
+    itemsRows += `
+      <tr>
+        <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1; font-weight: 600;">${it.name}</td>
+        <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1;">${lastDoneStr}</td>
+        <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1;">${intervalStr}</td>
+        <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1;">${nextDueStr}</td>
+        <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1; font-weight: 700; color: ${statusColor};">${statusText}</td>
+      </tr>
+    `;
+  });
+
+  let historyRows = '';
+  if (vHistory.length === 0) {
+    historyRows = `<tr><td colspan="6" style="padding: 12px; text-align: center; color: #64748b; font-style: italic;">Aucune intervention enregistrée dans l'historique.</td></tr>`;
+  } else {
+    vHistory.forEach(h => {
+      historyRows += `
+        <tr>
+          <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1;">${formatDate(h.date)}</td>
+          <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1;">${h.km !== null && h.km !== undefined ? formatKm(h.km) : '-'}</td>
+          <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1; font-weight: 600;">${h.type || ''}</td>
+          <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1;">${h.cost ? h.cost + ' €' : '-'}</td>
+          <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1;">${h.garage || '-'}</td>
+          <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1;">${h.notes || ''}${h.authorName ? ' (' + h.authorName + ')' : ''}</td>
+        </tr>
+      `;
+    });
+  }
+
+  const printHtml = `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Carnet d'Entretien - ${v.name}</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm 15mm; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; margin: 0; padding: 10px; font-size: 12px; line-height: 1.45; background: #fff; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0284c7; padding-bottom: 10px; margin-bottom: 16px; }
+    h1 { margin: 0 0 2px 0; font-size: 19px; color: #0284c7; }
+    .subtitle { color: #64748b; font-size: 11px; margin: 0; }
+    .meta-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px; margin-bottom: 18px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .meta-item strong { display: block; font-size: 10px; text-transform: uppercase; color: #64748b; margin-bottom: 2px; }
+    .meta-item span { font-size: 14px; font-weight: 700; color: #0f172a; }
+    h2 { font-size: 14px; margin: 16px 0 8px 0; color: #1e293b; border-left: 3.5px solid #0284c7; padding-left: 8px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; }
+    th { background: #f1f5f9; text-align: left; padding: 7px 9px; font-weight: 700; border-bottom: 2px solid #94a3b8; color: #334155; }
+    tr { page-break-inside: avoid; }
+    .footer { text-align: center; color: #94a3b8; font-size: 10px; margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Carnet d'Entretien Automobile</h1>
+      <p class="subtitle">Rapport d'entretien technique &amp; historique des révisions</p>
+    </div>
+    <div style="text-align: right; font-size: 11px; color: #64748b;">
+      Édité le : <strong>${todayStr}</strong>
+    </div>
+  </div>
+
+  <div class="meta-box">
+    <div class="meta-item">
+      <strong>Véhicule</strong>
+      <span>${v.name}</span>
+    </div>
+    <div class="meta-item">
+      <strong>Immatriculation</strong>
+      <span>${v.plate || 'Non renseignée'}</span>
+    </div>
+    <div class="meta-item">
+      <strong>Compteur Actuel</strong>
+      <span>${formatKm(v.currentKm || 0)}</span>
+    </div>
+    <div class="meta-item">
+      <strong>Motorisation</strong>
+      <span>${v.fuelType || 'Standard'}</span>
+    </div>
+  </div>
+
+  <h2>1. Programme d'Entretien &amp; Échéances</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Opération</th>
+        <th>Dernière réalisation</th>
+        <th>Intervalle préconisé</th>
+        <th>Prochaine échéance</th>
+        <th>Statut</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemsRows}
+    </tbody>
+  </table>
+
+  <h2>2. Historique des Interventions Réalisées</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Kilométrage</th>
+        <th>Intervention</th>
+        <th>Coût</th>
+        <th>Garage / Prestataire</th>
+        <th>Notes &amp; Auteur</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${historyRows}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    Document généré automatiquement depuis Carnet d'Entretien Automobile.
+  </div>
+</body>
+</html>
+  `;
+
+  if (typeof document === 'undefined') return;
+  const printIframe = document.createElement('iframe');
+  printIframe.style.position = 'fixed';
+  printIframe.style.right = '0';
+  printIframe.style.bottom = '0';
+  printIframe.style.width = '0';
+  printIframe.style.height = '0';
+  printIframe.style.border = '0';
+  document.body.appendChild(printIframe);
+
+  if (printIframe.contentWindow && printIframe.contentWindow.document) {
+    const doc = printIframe.contentWindow.document;
+    doc.open();
+    doc.write(printHtml);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        if (typeof printIframe.contentWindow.print === 'function') {
+          printIframe.contentWindow.focus();
+          printIframe.contentWindow.print();
+        }
+      } catch (e) {
+        console.error("Erreur impression:", e);
+      }
+      setTimeout(() => {
+        if (printIframe.parentNode) printIframe.parentNode.removeChild(printIframe);
+      }, 2000);
+    }, 350);
+  }
+}
+
 /** Importation et restauration d'un fichier de sauvegarde JSON */
 function handleImportJsonBackup(event) {
   const fileInput = event.target;
@@ -6029,6 +6288,37 @@ function updateNetworkStatus() {
     } else {
       offlineBanner.classList.remove('hidden');
     }
+  }
+}
+
+/** Vérifie si l'application est exécutée en mode installé PWA (standalone) */
+function isPwaInstalled() {
+  if (typeof window === 'undefined') return false;
+  return Boolean(
+    (window.matchMedia && (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: window-controls-overlay)').matches
+    )) ||
+    window.navigator.standalone === true ||
+    (typeof document !== 'undefined' && document.referrer && document.referrer.includes('android-app://'))
+  );
+}
+
+/** Met à jour intelligemment l'interface d'installation PWA */
+function updatePwaInstallUI() {
+  if (typeof document === 'undefined') return;
+  const isInstalled = isPwaInstalled();
+  const btnInstall = document.getElementById('btnInstallPwa');
+  const badgeInstalled = document.getElementById('pwaInstalledBadge');
+  const iosHelp = document.getElementById('pwaIosInstructions');
+
+  if (isInstalled) {
+    if (btnInstall) btnInstall.style.display = 'none';
+    if (iosHelp) iosHelp.classList.add('hidden');
+    if (badgeInstalled) badgeInstalled.style.display = 'inline-flex';
+  } else {
+    if (btnInstall) btnInstall.style.display = 'inline-flex';
+    if (badgeInstalled) badgeInstalled.style.display = 'none';
   }
 }
 
@@ -6402,6 +6692,24 @@ function attachEventListeners() {
   const btnExportJson = document.getElementById('btnExportJsonBackup');
   if (btnExportJson) btnExportJson.addEventListener('click', handleExportJsonBackup);
 
+  const btnExportCsv = document.getElementById('btnExportCsvBackup');
+  if (btnExportCsv) btnExportCsv.addEventListener('click', handleExportCsvBackup);
+
+  const btnPrint = document.getElementById('btnPrintReport');
+  if (btnPrint) btnPrint.addEventListener('click', handlePrintMaintenanceReport);
+
+  const btnSettingsRefresh = document.getElementById('btnSettingsRefreshApp');
+  if (btnSettingsRefresh) {
+    btnSettingsRefresh.addEventListener('click', () => {
+      btnSettingsRefresh.style.transition = 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+      btnSettingsRefresh.style.transform = 'rotate(360deg)';
+      showToast("Actualisation de l'application...", "info", 1500);
+      setTimeout(() => {
+        window.location.reload();
+      }, 350);
+    });
+  }
+
   const btnQuickBackup = document.getElementById('btnQuickBackup');
   if (btnQuickBackup) btnQuickBackup.addEventListener('click', handleExportJsonBackup);
 
@@ -6712,8 +7020,15 @@ window.addEventListener('DOMContentLoaded', () => {
     deferredInstallPrompt = null;
     const text = document.getElementById('btnInstallPwaText');
     if (text) text.textContent = "✅ Application installée";
+    updatePwaInstallUI();
     showToast("Application installée avec succès !", "success");
   });
+
+  try {
+    if (window.matchMedia) {
+      window.matchMedia('(display-mode: standalone)').addEventListener('change', updatePwaInstallUI);
+    }
+  } catch (e) {}
 
   // Bouton pour forcer la mise à jour et vider le cache PWA
   document.getElementById('btnForcePwaUpdate')?.addEventListener('click', async () => {
@@ -6766,4 +7081,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
 if (typeof window !== 'undefined') {
   window.updateNavPillPosition = updateNavPillPosition;
+  window.isPwaInstalled = isPwaInstalled;
+  window.updatePwaInstallUI = updatePwaInstallUI;
+  window.handleExportCsvBackup = handleExportCsvBackup;
+  window.handlePrintMaintenanceReport = handlePrintMaintenanceReport;
 }

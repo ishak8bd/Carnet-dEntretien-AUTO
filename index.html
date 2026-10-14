@@ -15,7 +15,7 @@
   <link id="dynamicFavicon" rel="icon" type="image/png" href="icons/icon-blue-192.png">
   <link id="dynamicAppleIcon" rel="apple-touch-icon" href="icons/icon-blue-192.png">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=50">
+  <link rel="stylesheet" href="style.css?v=51">
   <script>
     // Pré-application immédiate du logo, thème et mode sombre/clair pour éviter tout flash (FOUC)
     (function() {
@@ -511,7 +511,12 @@
     <!-- VUE 4 : PARAMÈTRES, SAUVEGARDES & PWA (ÉCRAN 6) -->
     <div id="viewSettings" class="settings-screen hidden">
       <div class="settings-hero">
-        <h2 class="habitudes-hero-title">⚙️ Paramètres</h2>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+          <h2 class="habitudes-hero-title" style="margin: 0;">⚙️ Paramètres</h2>
+          <button type="button" id="btnSettingsRefreshApp" class="btn-secondary" title="Rafraîchir l'application" aria-label="Rafraîchir l'application" style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border-radius: var(--radius-sm); font-size: 0.95rem; cursor: pointer; flex-shrink: 0;">
+            🔄
+          </button>
+        </div>
         <p class="card-subtitle">
           Gérez vos alertes, votre salle partagée, le thème visuel, les intervalles et les sauvegardes.
         </p>
@@ -1084,10 +1089,10 @@
           <div class="card-title">
             <span>💾 Sauvegarde &amp; Restauration</span>
           </div>
-          <span class="vehicle-meta-badge" id="backupStatusBadge">Stockage local</span>
+          <span class="vehicle-meta-badge" id="backupStatusBadge" style="display: none;"></span>
         </div>
         <p class="card-subtitle">
-          Toutes vos données sont stockées sur cet appareil. Pour éviter toute perte en cas de nettoyage du navigateur ou changement de téléphone, exportez régulièrement un fichier JSON.
+          Exportez une copie de votre carnet pour l'utiliser ailleurs.
         </p>
 
         <div class="backup-info-box">
@@ -1096,15 +1101,26 @@
         </div>
 
         <div class="settings-actions-row">
-          <button type="button" id="btnExportJsonBackup" class="btn-primary" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+          <button type="button" id="btnExportJsonBackup" class="btn-primary" style="flex: 1; min-width: 150px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
             <span>📥</span>
             <span>Exporter sauvegarde (JSON)</span>
           </button>
-          <label for="backupFileInput" class="btn-secondary" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-align: center; margin: 0;">
+          <label for="backupFileInput" class="btn-secondary" style="flex: 1; min-width: 150px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-align: center; margin: 0;">
             <span>📤</span>
             <span>Restaurer sauvegarde</span>
           </label>
           <input type="file" id="backupFileInput" accept=".json,application/json" class="hidden">
+        </div>
+
+        <div class="settings-actions-row" style="margin-top: 8px;">
+          <button type="button" id="btnExportCsvBackup" class="btn-secondary" style="flex: 1; min-width: 150px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+            <span>📊</span>
+            <span>Exporter en CSV / Excel</span>
+          </button>
+          <button type="button" id="btnPrintReport" class="btn-secondary" style="flex: 1; min-width: 150px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+            <span>🖨️</span>
+            <span>Imprimer le carnet</span>
+          </button>
         </div>
       </section>
 
@@ -1125,19 +1141,22 @@
             <span class="pwa-icon">⚡</span>
             <div>
               <strong>Service Worker &amp; Cache</strong>
-              <div class="pwa-status-sub" id="swStatusText">Prêt pour le mode hors-ligne (v5)</div>
+              <div class="pwa-status-sub" id="swStatusText">Prêt pour le mode hors-ligne</div>
             </div>
           </div>
           <div class="pwa-status-item">
             <span class="pwa-icon">🔒</span>
             <div>
               <strong>Confidentialité totale</strong>
-              <div class="pwa-status-sub">Sans compte, sans serveur, 100% local sur votre appareil</div>
+              <div class="pwa-status-sub">Stockage local immédiat &amp; synchronisation cloud sécurisée en Salle Partagée.</div>
             </div>
           </div>
         </div>
 
         <div id="pwaInstallContainer" style="margin-top: 6px;">
+          <div id="pwaInstalledBadge" class="status-badge status-badge-green" style="display: none; width: 100%; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; font-size: 0.9rem; font-weight: 700; border-radius: var(--radius-md); box-sizing: border-box;">
+            ✓ Application déjà installée
+          </div>
           <button type="button" id="btnInstallPwa" class="btn-secondary" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
             <span>📲</span>
             <span id="btnInstallPwaText">Installer l'application sur l'appareil</span>

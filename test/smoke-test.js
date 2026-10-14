@@ -1085,6 +1085,21 @@ try {
   settingsTabRoom.click();
   assert(!panelRoom.classList.contains('hidden'), 'Retour final sur le panneau Salle Partagée validé');
 
+  // Vérification des nouvelles fonctionnalités Données & PWA
+  const btnRefresh = document.getElementById('btnSettingsRefreshApp');
+  assert(btnRefresh, 'Bouton de rafraîchissement présent dans la barre ⚙️ Paramètres');
+
+  const btnExportCsv = document.getElementById('btnExportCsvBackup');
+  const btnPrint = document.getElementById('btnPrintReport');
+  assert(btnExportCsv, 'Bouton export CSV présent dans Données & PWA');
+  assert(btnPrint, 'Bouton imprimer le carnet présent dans Données & PWA');
+
+  const pwaBadge = document.getElementById('pwaInstalledBadge');
+  assert(pwaBadge, 'Badge PWA installée présent dans le DOM');
+  assert(typeof window.isPwaInstalled === 'function', 'Fonction isPwaInstalled disponible');
+  assert(typeof window.handleExportCsvBackup === 'function', 'Fonction handleExportCsvBackup disponible');
+  assert(typeof window.handlePrintMaintenanceReport === 'function', 'Fonction handlePrintMaintenanceReport disponible');
+
   console.log('✅ TOUS LES TESTS DU SMOKE TEST (25/25) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
 } catch (err) {
