@@ -399,20 +399,7 @@ function applyAppLogo(theme, notify = false) {
     }
   }
 
-  if (notify && typeof showToast === 'function') {
-    let msg = 'Thème Blue activé pour toute l\'application !';
-    if (chosen === 'steel') {
-      msg = 'Thème Steel activé pour toute l\'application !';
-    } else if (chosen === 'glass') {
-      msg = 'Thème Space activé pour toute l\'application !';
-    } else if (chosen === 'bubble') {
-      msg = 'Thème Solid activé pour toute l\'application !';
-    } else if (chosen === 'liquid') {
-      msg = 'Thème Glass activé pour toute l\'application !';
-    }
-    showToast(msg, 'success');
-  }
-
+  // Basculement visuel instantané du thème sans toast vert envahissant
   if (typeof updateNavPillPosition === 'function') {
     setTimeout(() => updateNavPillPosition(true), 20);
   }
@@ -426,7 +413,7 @@ function cycleAppTheme() {
   const themes = ['blue', 'glass', 'steel', 'bubble', 'liquid'];
   const currentIndex = themes.indexOf(current);
   const next = themes[(currentIndex + 1) % themes.length];
-  applyAppLogo(next, true);
+  applyAppLogo(next, false);
 }
 
 /**
@@ -4232,7 +4219,10 @@ function renderHistoryScreen() {
         <td>${garageHtml}</td>
         <td>${notesHtml}</td>
         <td>
-          <div class="table-actions-cell" style="justify-content: center;">
+          <div class="table-actions-cell" style="justify-content: center; gap: 4px;">
+            <button type="button" class="btn-sm btn-edit-hist" data-id="${record.id}" style="color: var(--primary); border-color: rgba(37, 99, 235, 0.3);" title="Modifier cette intervention">
+              ✏️
+            </button>
             <button type="button" class="btn-sm btn-delete-hist" data-id="${record.id}" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);" title="Supprimer de l'historique">
               🗑️
             </button>
@@ -4295,15 +4285,28 @@ function renderHistoryScreen() {
 
         <div class="history-card-footer">
           <span>Opération effectuée${record.authorName ? ` par <strong>${escapeHtml(record.authorName)}</strong>` : ''}</span>
-          <button type="button" class="btn-sm btn-delete-hist" data-id="${record.id}" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
-            🗑️ Supprimer
-          </button>
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <button type="button" class="btn-sm btn-edit-hist" data-id="${record.id}" style="color: var(--primary); border-color: rgba(37, 99, 235, 0.3);">
+              ✏️ Modifier
+            </button>
+            <button type="button" class="btn-sm btn-delete-hist" data-id="${record.id}" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
+              🗑️ Supprimer
+            </button>
+          </div>
         </div>
       `;
 
       listDiv.appendChild(card);
     });
   }
+
+  // Attacher écouteurs de modification
+  container.querySelectorAll('.btn-edit-hist').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.getAttribute('data-id');
+      openEditHistoryModal(id);
+    });
+  });
 
   // Attacher écouteurs de suppression
   container.querySelectorAll('.btn-delete-hist').forEach(btn => {
@@ -4393,13 +4396,113 @@ function updateAddHistoryModalTypes() {
   }
 }
 
+let editingHistoryId = null;
+
+function openEditHistoryModal(id) {
+  const record = (appState.history || []).find(h => h.id === id);
+  if (!record) {
+    showToast("Intervention introuvable.", 'error');
+    return;
+  }
+
+  editingHistoryId = id;
+
+  const modal = document.getElementById('modalAddHistoryEntry');
+  const title = modal?.querySelector('.modal-title');
+  const subtitle = modal?.querySelector('.card-subtitle');
+  const submitBtn = document.getElementById('btnSubmitAddHistoryEntry');
+  const addAnotherBtn = document.getElementById('btnAddAnotherHistoryEntry');
+
+  const selVeh = document.getElementById('addHistVehicleSelect');
+  const selType = document.getElementById('addHistTypeSelect');
+  const customInput = document.getElementById('addHistCustomType');
+  const dateInput = document.getElementById('addHistDateInput');
+  const kmInput = document.getElementById('addHistKmInput');
+  const costInput = document.getElementById('addHistCostInput');
+  const garageInput = document.getElementById('addHistGarageInput');
+  const notesInput = document.getElementById('addHistNotesInput');
+  const syncCheck = document.getElementById('addHistSyncItemCheckbox');
+
+  if (!modal || !selVeh) return;
+
+  if (title) title.textContent = "✏️ Modifier l'intervention";
+  if (subtitle) subtitle.innerHTML = "Modifiez les informations de cette intervention enregistrée (date, kilométrage, coût, notes).";
+  if (submitBtn) submitBtn.textContent = "💾 Enregistrer les modifications";
+  if (addAnotherBtn) addAnotherBtn.style.display = 'none';
+
+  selVeh.innerHTML = '';
+  appState.vehicles.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.id;
+    opt.textContent = `${v.name} (${v.brand || ''} ${v.model || ''} - ${Number(v.currentKm || 0).toLocaleString('fr-FR')} km)`.trim();
+    if (v.id === record.vehicleId) opt.selected = true;
+    selVeh.appendChild(opt);
+  });
+
+  updateAddHistoryModalTypes();
+
+  let typeFound = false;
+  if (selType) {
+    for (let i = 0; i < selType.options.length; i++) {
+      if (selType.options[i].value === record.type) {
+        selType.selectedIndex = i;
+        typeFound = true;
+        break;
+      }
+    }
+    if (!typeFound) {
+      selType.value = 'custom';
+      if (customInput) {
+        customInput.value = record.type || '';
+        customInput.classList.remove('hidden');
+        customInput.required = true;
+      }
+    } else {
+      if (customInput) {
+        customInput.value = '';
+        customInput.classList.add('hidden');
+        customInput.required = false;
+      }
+    }
+  }
+
+  const todayIso = getTodayIsoString();
+  if (dateInput) {
+    dateInput.value = record.date || '';
+    dateInput.max = todayIso;
+    dateInput.min = '1980-01-01';
+  }
+  if (kmInput) kmInput.value = (record.km !== null && record.km !== undefined) ? record.km : '';
+  if (costInput) costInput.value = (record.cost !== null && record.cost !== undefined) ? record.cost : '';
+  if (garageInput) garageInput.value = record.garage || '';
+  if (notesInput) notesInput.value = record.notes || '';
+  if (syncCheck) syncCheck.checked = false;
+
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    if (kmInput) kmInput.focus();
+  }, 100);
+}
+
 function openAddHistoryModal(defaultVehicleId) {
   if (!appState.vehicles || appState.vehicles.length === 0) {
     showToast("Veuillez d'abord ajouter un véhicule pour enregistrer une intervention.", 'warning');
     return;
   }
 
+  editingHistoryId = null;
+
   const modal = document.getElementById('modalAddHistoryEntry');
+  const title = modal?.querySelector('.modal-title');
+  const subtitle = modal?.querySelector('.card-subtitle');
+  const submitBtn = document.getElementById('btnSubmitAddHistoryEntry');
+  const addAnotherBtn = document.getElementById('btnAddAnotherHistoryEntry');
+
+  if (title) title.textContent = "📜 Ajouter une intervention passée";
+  if (subtitle) subtitle.innerHTML = "Enregistrez une ancienne intervention (date et kilométrage). Le <strong>modèle d'IA</strong> comparera ces relevés à votre compteur actuel pour affiner la prédiction de votre rythme de roulage !";
+  if (submitBtn) submitBtn.textContent = "💾 Enregistrer";
+  if (addAnotherBtn) addAnotherBtn.style.display = 'inline-flex';
+
   const selVeh = document.getElementById('addHistVehicleSelect');
   const dateInput = document.getElementById('addHistDateInput');
   const kmInput = document.getElementById('addHistKmInput');
@@ -4447,6 +4550,7 @@ function openAddHistoryModal(defaultVehicleId) {
 }
 
 function closeAddHistoryModal() {
+  editingHistoryId = null;
   const modal = document.getElementById('modalAddHistoryEntry');
   if (modal) modal.classList.add('hidden');
 }
@@ -4529,6 +4633,67 @@ async function handleAddHistorySubmit(e, keepOpen = false) {
   const currentAuthorName = (currentProfile && currentProfile.myName && currentProfile.myName.trim())
     ? currentProfile.myName.trim()
     : null;
+
+  // Si on modifie une intervention existante
+  if (editingHistoryId) {
+    const record = (appState.history || []).find(h => h.id === editingHistoryId);
+    if (!record) {
+      showToast("Intervention introuvable.", 'error');
+      return;
+    }
+
+    record.vehicleId = vehicle.id;
+    record.type = typeVal;
+    record.date = dateVal;
+    record.km = kmVal;
+    record.cost = costVal;
+    record.garage = garageVal || '';
+    record.notes = notesVal || '';
+
+    let updatedItem = null;
+    if (syncWithPlan && Array.isArray(vehicle.maintenanceItems)) {
+      const matchingItem = vehicle.maintenanceItems.find(it => it.name.toLowerCase() === typeVal.toLowerCase());
+      if (matchingItem) {
+        matchingItem.lastDate = dateVal;
+        matchingItem.lastKm = kmVal;
+        updatedItem = matchingItem;
+      }
+    }
+
+    if (kmVal > (vehicle.currentKm || 0)) {
+      vehicle.currentKm = kmVal;
+      if (!vehicle.kmLog) vehicle.kmLog = [];
+      const existingLogIdx = vehicle.kmLog.findIndex(l => l.date === dateVal);
+      if (existingLogIdx >= 0) {
+        vehicle.kmLog[existingLogIdx].km = kmVal;
+      } else {
+        const realPredicted = typeof predictKmForDate === 'function' ? predictKmForDate(vehicle, dateVal) : null;
+        vehicle.kmLog.push({
+          date: dateVal,
+          km: kmVal,
+          predictedKm: (typeof realPredicted === 'number' && !isNaN(realPredicted)) ? realPredicted : null
+        });
+        vehicle.kmLog.sort((a, b) => a.date.localeCompare(b.date));
+      }
+    }
+
+    saveState();
+
+    if (window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive()) {
+      try {
+        await window.FamilyRoom.recordHistoryEntry(record, updatedItem);
+      } catch (err) {
+        console.warn("Erreur synchronisation intervention salle:", err);
+      }
+    }
+
+    editingHistoryId = null;
+    closeAddHistoryModal();
+    showToast(`✅ Intervention "${typeVal}" modifiée avec succès !`, 'success');
+    renderApp();
+    renderHistoryScreen();
+    return;
+  }
 
   const record = {
     id: 'hist_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
@@ -6759,11 +6924,11 @@ function attachEventListeners() {
   document.getElementById('formAddContact')?.addEventListener('submit', handleContactFormSubmit);
 
   // Sélecteur d'Apparence & Logo de l'application (Bleu & Or vs Cyber Glassmorphism vs Acier Mécanique vs Carbone & Bulle vs Apple Liquid Glass)
-  document.getElementById('logoOptionBlue')?.addEventListener('click', () => applyAppLogo('blue', true));
-  document.getElementById('logoOptionGlass')?.addEventListener('click', () => applyAppLogo('glass', true));
-  document.getElementById('logoOptionSteel')?.addEventListener('click', () => applyAppLogo('steel', true));
-  document.getElementById('logoOptionBubble')?.addEventListener('click', () => applyAppLogo('bubble', true));
-  document.getElementById('logoOptionLiquid')?.addEventListener('click', () => applyAppLogo('liquid', true));
+  document.getElementById('logoOptionBlue')?.addEventListener('click', () => applyAppLogo('blue', false));
+  document.getElementById('logoOptionGlass')?.addEventListener('click', () => applyAppLogo('glass', false));
+  document.getElementById('logoOptionSteel')?.addEventListener('click', () => applyAppLogo('steel', false));
+  document.getElementById('logoOptionBubble')?.addEventListener('click', () => applyAppLogo('bubble', false));
+  document.getElementById('logoOptionLiquid')?.addEventListener('click', () => applyAppLogo('liquid', false));
   document.getElementById('btnHeaderThemeSwitch')?.addEventListener('click', cycleAppTheme);
   document.getElementById('btnHeaderColorModeSwitch')?.addEventListener('click', toggleColorMode);
   document.getElementById('appBrandIconContainer')?.addEventListener('click', () => {
@@ -7085,4 +7250,5 @@ if (typeof window !== 'undefined') {
   window.updatePwaInstallUI = updatePwaInstallUI;
   window.handleExportCsvBackup = handleExportCsvBackup;
   window.handlePrintMaintenanceReport = handlePrintMaintenanceReport;
+  window.openEditHistoryModal = openEditHistoryModal;
 }

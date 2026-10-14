@@ -598,6 +598,27 @@ try {
   assert(window.appState.history.length >= 5, `Doit contenir au moins 5 interventions (actuel : ${window.appState.history.length})`);
   assert(modalAddHist.classList.contains('hidden'), 'La modale doit être fermée après la 5ème intervention');
 
+  // Test de modification d'une intervention enregistrée
+  const targetEditRecord = window.appState.history[0];
+  assert(targetEditRecord, 'Une intervention doit être présente pour le test de modification');
+  const initialKm = Number(targetEditRecord.km);
+  window.openEditHistoryModal(targetEditRecord.id);
+  assert(!modalAddHist.classList.contains('hidden'), 'La modale doit être ouverte en mode édition');
+  const titleEdit = modalAddHist.querySelector('.modal-title');
+  assert(titleEdit && titleEdit.textContent.includes('Modifier'), 'Le titre doit indiquer Modifier');
+
+  // Modifier le kilométrage et les notes
+  kmInputHist.value = String(initialKm + 250);
+  const notesInputHist = document.getElementById('addHistNotesInput');
+  if (notesInputHist) notesInputHist.value = 'Notes révisées par test unitaire';
+  await window.handleAddHistorySubmit(new window.Event('submit', { cancelable: true }));
+
+  assert(modalAddHist.classList.contains('hidden'), 'La modale doit être fermée après validation de l\'édition');
+  const updatedRecord = window.appState.history.find(h => h.id === targetEditRecord.id);
+  assert(updatedRecord, 'L\'intervention modifiée doit toujours être présente');
+  assert.strictEqual(updatedRecord.km, initialKm + 250, 'Le kilométrage modifié doit être mis à jour');
+  assert.strictEqual(updatedRecord.notes, 'Notes révisées par test unitaire', 'Les notes modifiées doivent être mises à jour');
+
   console.log('22. Vérification des destinataires supplémentaires d\'alertes (modal, saisie multiple e-mails/téléphones sans adhésion)');
   const modalContact = document.getElementById('modalAddContact');
   const btnAddContact = document.getElementById('btnAddExternalContact');

@@ -2255,6 +2255,22 @@ html[data-color-mode="light"] .nav-tab.active .nav-tab-icon {
   flex-wrap: wrap;
 }
 
+.settings-actions-row > * {
+  min-height: 42px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  .settings-actions-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .settings-actions-row > * {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+}
+
 .pwa-status-box {
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-color);
