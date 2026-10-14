@@ -4972,7 +4972,7 @@ body.theme-liquid {
   --liquid-sat: 200%;
   --liquid-spring: cubic-bezier(.34, 1.56, .64, 1);
   --liquid-smooth: cubic-bezier(.22, .9, .3, 1);
-  --liquid-font: -apple-system, "SF Pro Text", "SF Pro Display", system-ui, "Inter", sans-serif;
+  --liquid-font: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
 
   /* Harmonisation avec le moteur principal */
   --primary: var(--liquid-accent);
@@ -5041,7 +5041,40 @@ body.theme-liquid {
   background-attachment: fixed !important;
   color: var(--liquid-label) !important;
   font-family: var(--liquid-font) !important;
+  letter-spacing: -0.012em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body.theme-liquid button,
+body.theme-liquid input,
+body.theme-liquid select,
+body.theme-liquid textarea,
+body.theme-liquid .card-title,
+body.theme-liquid .modal-title,
+body.theme-liquid .brand-text,
+body.theme-liquid .stat-title,
+body.theme-liquid .odometer-title,
+body.theme-liquid .nav-tab,
+body.theme-liquid .nav-item,
+body.theme-liquid .vehicle-select,
+body.theme-liquid .item-name,
+body.theme-liquid .table-col-name,
+body.theme-liquid .km-hero-value {
+  font-family: var(--liquid-font) !important;
+}
+
+body.theme-liquid .card-title,
+body.theme-liquid .modal-title,
+body.theme-liquid .brand-text {
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+
+body.theme-liquid .km-hero-value {
+  letter-spacing: -0.035em;
+  font-weight: 800;
+  font-feature-settings: "tnum" 1, "cv05" 1;
 }
 
 body.theme-liquid,

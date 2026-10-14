@@ -1,10 +1,10 @@
 // Service Worker - Suivi Entretien Véhicule PWA (100% Hors-Ligne & Support Firebase)
-const CACHE_NAME = 'entretien-v54';
+const CACHE_NAME = 'entretien-v55';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './style.css',
-  './style.css?v=54',
+  './style.css?v=55',
   './app.js',
   './room.js',
   './firebase-config.js',
@@ -61,12 +61,13 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  // Filtrer les requêtes : accepter l'origine locale et le CDN officiel Firebase
+  // Filtrer les requêtes : accepter l'origine locale, le CDN officiel Firebase et Google Fonts
   try {
     const requestUrl = new URL(event.request.url);
     const isLocal = requestUrl.origin === self.location.origin;
     const isFirebaseCdn = requestUrl.origin === 'https://www.gstatic.com' && requestUrl.pathname.startsWith('/firebasejs/11.4.0/');
-    if (!isLocal && !isFirebaseCdn) return;
+    const isGoogleFonts = requestUrl.origin === 'https://fonts.googleapis.com' || requestUrl.origin === 'https://fonts.gstatic.com';
+    if (!isLocal && !isFirebaseCdn && !isGoogleFonts) return;
   } catch (e) {
     return;
   }
