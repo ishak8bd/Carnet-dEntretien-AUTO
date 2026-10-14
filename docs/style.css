@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
 /* ==========================================================================
    Suivi Entretien Véhicule - Feuille de style Mobile-First
    Palette moderne, contrastes soignés, thème clair / sombre automatique
@@ -42,6 +44,7 @@
   --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.12);
 
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --liquid-font: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
   --transition: all 0.2s ease-in-out;
 }
 
@@ -4935,6 +4938,7 @@ html[data-color-mode="light"] body.theme-bubble .theme-mode-switch-btn:not(.liqu
   filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.5));
 }
 
+/* ==========================================================================
    Apple iOS 26 "Liquid Glass" Design System (.theme-liquid)
    - Rendu fidèle aux références visuelles :
      1. Verre liquide dépoli ultra-réfractif (blur 28px saturate 200%).
@@ -4946,6 +4950,7 @@ html[data-color-mode="light"] body.theme-bubble .theme-mode-switch-btn:not(.liqu
    ========================================================================== */
 
 :root.theme-liquid,
+html.theme-liquid,
 body.theme-liquid {
   color-scheme: light dark;
   --liquid-accent: #0A84FF;
@@ -5046,21 +5051,9 @@ body.theme-liquid {
   -moz-osx-font-smoothing: grayscale;
 }
 
-body.theme-liquid button,
-body.theme-liquid input,
-body.theme-liquid select,
-body.theme-liquid textarea,
-body.theme-liquid .card-title,
-body.theme-liquid .modal-title,
-body.theme-liquid .brand-text,
-body.theme-liquid .stat-title,
-body.theme-liquid .odometer-title,
-body.theme-liquid .nav-tab,
-body.theme-liquid .nav-item,
-body.theme-liquid .vehicle-select,
-body.theme-liquid .item-name,
-body.theme-liquid .table-col-name,
-body.theme-liquid .km-hero-value {
+html.theme-liquid,
+body.theme-liquid,
+body.theme-liquid *:not([class*="icon"]):not(.sync-dot):not(.badge-icon):not(.banner-icon) {
   font-family: var(--liquid-font) !important;
 }
 
