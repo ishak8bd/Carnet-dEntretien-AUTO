@@ -35,7 +35,7 @@ console.log("Cliquez sur 'New repository secret' pour ajouter chacune de ces 3 v
 
 console.log("----------------------------------------------------------------------");
 console.log("1. Nom du secret : GMAIL_USER");
-console.log("   Valeur        : " + (emailConfig.gmailUser || 'truly.isaak@gmail.com'));
+console.log("   Valeur        : " + (emailConfig.gmailUser || 'votre-adresse@gmail.com'));
 console.log("----------------------------------------------------------------------\n");
 
 console.log("----------------------------------------------------------------------");

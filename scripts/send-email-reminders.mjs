@@ -29,7 +29,7 @@ export function loadConfig() {
   let cfg = {
     gmailUser: process.env.GMAIL_USER || '',
     gmailAppPassword: process.env.GMAIL_APP_PASSWORD || '',
-    roomId: process.env.FIREBASE_ROOM_ID || 'roommv13dgxrc6c448ac3b69',
+    roomId: process.env.FIREBASE_ROOM_ID || '',
     projectId: process.env.FIREBASE_PROJECT_ID || 'entretien-auto-tracker',
     apiKey: process.env.FIREBASE_API_KEY || 'AIzaSyA7qjZi_aWunCo15Y96BbvsZfX7n7O8LO8',
     appUrl: process.env.APP_URL || 'https://ishak8bd.github.io/Carnet-dEntretien-AUTO/',

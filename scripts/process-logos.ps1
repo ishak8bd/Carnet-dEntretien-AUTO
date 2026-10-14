@@ -1,7 +1,7 @@
 Add-Type -AssemblyName System.Drawing
 
-$darkSource = "C:\Users\pc\.gemini\antigravity\brain\3f7564d1-125e-4e6e-8c2b-b323c6dc6ccd\.user_uploaded\media_1791593757355_558fad61.jpg"
-$blueSource = "C:\Users\pc\.gemini\antigravity\brain\3f7564d1-125e-4e6e-8c2b-b323c6dc6ccd\.user_uploaded\media_1791593757460_3390361f.jpg"
+$darkSource = "$env:USERPROFILE\.gemini\antigravity\brain\3f7564d1-125e-4e6e-8c2b-b323c6dc6ccd\.user_uploaded\media_1791593757355_558fad61.jpg"
+$blueSource = "$env:USERPROFILE\.gemini\antigravity\brain\3f7564d1-125e-4e6e-8c2b-b323c6dc6ccd\.user_uploaded\media_1791593757460_3390361f.jpg"
 
 function Resize-And-Save($srcPath, $dstPath, $width, $height) {
     $srcImg = [System.Drawing.Image]::FromFile($srcPath)

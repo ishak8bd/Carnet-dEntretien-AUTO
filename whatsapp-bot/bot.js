@@ -799,7 +799,7 @@ async function handleIncomingMessage(msg) {
       `🚗 *TEST DU BOT WHATSAPP - Carnet d'Entretien Automobile*\n\n` +
       `✅ *Le système d'alerte fonctionne parfaitement !*\n\n` +
       `📊 *Données synchronisées en direct :*\n` +
-      `• Salle : *${cfg.roomId || 'roommv13dgxrc6c448ac3b69'}*\n` +
+      `• Salle : *${cfg.roomId || 'Non configurée'}*\n` +
       `• Véhicule : *${vehName}*\n` +
       `• Kilométrage actuel : *${currentKm.toLocaleString('fr-FR')} km*\n` +
       `• Entretien suivi : 🔧 *${itemName}* (échéance : ${itemDueKm.toLocaleString('fr-FR')} km, reste *${remainingKm.toLocaleString('fr-FR')} km*)\n` +

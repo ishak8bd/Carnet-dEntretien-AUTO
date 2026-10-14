@@ -22,7 +22,7 @@ function loadConfig() {
     targetPhone: '',
     targetPhones: [],
     subscribers: [],
-    roomId: 'roommv13dgxrc6c448ac3b69',
+    roomId: process.env.FIREBASE_ROOM_ID || 'votre_room_id',
     projectId: 'entretien-auto-tracker',
     apiKey: 'AIzaSyA7qjZi_aWunCo15Y96BbvsZfX7n7O8LO8'
   };
