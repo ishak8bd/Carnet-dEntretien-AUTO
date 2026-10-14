@@ -1429,7 +1429,12 @@ function loadState() {
 
     // S'assurer que chaque véhicule dispose des 13 éléments d'entretien par défaut
     if (Array.isArray(parsed.vehicles)) {
-      parsed.vehicles.forEach(v => ensureVehicleMaintenanceDefaults(v));
+      parsed.vehicles.forEach(v => {
+        ensureVehicleMaintenanceDefaults(v);
+        if (v && typeof v.name === 'string') {
+          v.name = v.name.replace(/\s*\((?:Renault|Symbol|Auto|Véhicule)[^)]*\)$/i, '').trim();
+        }
+      });
     }
 
     appState = parsed;
@@ -2508,9 +2513,12 @@ function openEditVehicleModal() {
   const vehicle = getActiveVehicle();
   if (!vehicle) return;
 
-  document.getElementById('vehicleModalTitle').textContent = `Modifier ${vehicle.name}`;
+  let cleanName = (vehicle.name || '').replace(/\s*\([^)]*\)$/, '').trim();
+  if (!cleanName && vehicle.name) cleanName = vehicle.name;
+
+  document.getElementById('vehicleModalTitle').textContent = `Modifier ${cleanName}`;
   document.getElementById('editVehicleId').value = vehicle.id;
-  document.getElementById('vehName').value = vehicle.name || '';
+  document.getElementById('vehName').value = cleanName;
   document.getElementById('vehBrand').value = vehicle.brand || '';
   document.getElementById('vehModel').value = vehicle.model || '';
   document.getElementById('vehYear').value = vehicle.year || '';
@@ -2532,8 +2540,6 @@ function handleVehicleFormSubmit(e) {
   e.preventDefault();
   const editId = document.getElementById('editVehicleId').value;
   const name = document.getElementById('vehName').value.trim();
-  const brand = document.getElementById('vehBrand').value.trim();
-  const model = document.getElementById('vehModel').value.trim();
   const year = parseInt(document.getElementById('vehYear').value, 10) || new Date().getFullYear();
   const plate = document.getElementById('vehPlate').value.trim();
   const frequency = document.getElementById('vehFrequency').value;
@@ -2547,16 +2553,16 @@ function handleVehicleFormSubmit(e) {
 
   // Si brand ou model ne sont pas spécifiés séparément, on déduit depuis le nom complet
   const nameParts = name.split(/\s+/);
-  const fallbackBrand = nameParts[0] || 'Véhicule';
-  const fallbackModel = nameParts.slice(1).join(' ') || nameParts[0] || 'Auto';
+  const derivedBrand = nameParts[0] || 'Véhicule';
+  const derivedModel = nameParts.slice(1).join(' ') || nameParts[0] || 'Auto';
 
   if (editId) {
     // Modification
     const veh = appState.vehicles.find(v => v.id === editId);
     if (veh) {
       veh.name = name;
-      veh.brand = brand || veh.brand || fallbackBrand;
-      veh.model = model || veh.model || fallbackModel;
+      veh.brand = derivedBrand;
+      veh.model = derivedModel;
       veh.year = year || veh.year || new Date().getFullYear();
       veh.plate = plate || veh.plate || '';
       veh.updateFrequency = frequency;
@@ -2850,7 +2856,7 @@ function renderApp() {
   // Badge véhicule & odomètre
   const vehicleBadge = document.getElementById('vehicleBadge');
   const plateText = vehicle.plate ? ` • ${vehicle.plate}` : '';
-  vehicleBadge.textContent = `${vehicle.brand} ${vehicle.model} (${vehicle.year})${plateText}`;
+  vehicleBadge.textContent = `${vehicle.name || `${vehicle.brand} ${vehicle.model}`}${plateText}`;
 
   // Affichage du kilométrage principal
   document.getElementById('currentKmDisplay').textContent = formatKm(vehicle.currentKm).replace(' km', '');
@@ -4061,7 +4067,7 @@ function renderHistoryScreen() {
     appState.vehicles.forEach(v => {
       const opt = document.createElement('option');
       opt.value = v.id;
-      opt.textContent = `${v.name} (${v.brand} ${v.model})`;
+      opt.textContent = v.name;
       if (v.id === currentVehFilter) opt.selected = true;
       selVehicle.appendChild(opt);
     });
@@ -4253,7 +4259,7 @@ function renderHistoryScreen() {
       card.className = 'history-card';
 
       const veh = appState.vehicles.find(v => v.id === record.vehicleId);
-      const vehName = veh ? `${veh.name} (${veh.brand} ${veh.model})` : 'Véhicule';
+      const vehName = veh ? veh.name : 'Véhicule';
 
       const costBadge = (record.cost !== null && record.cost !== undefined)
         ? `<span class="history-pill history-pill-cost">💰 ${formatCost(record.cost)}</span>`
@@ -4442,7 +4448,7 @@ function openEditHistoryModal(id) {
   appState.vehicles.forEach(v => {
     const opt = document.createElement('option');
     opt.value = v.id;
-    opt.textContent = `${v.name} (${v.brand || ''} ${v.model || ''} - ${Number(v.currentKm || 0).toLocaleString('fr-FR')} km)`.trim();
+    opt.textContent = `${v.name} (${Number(v.currentKm || 0).toLocaleString('fr-FR')} km)`.trim();
     if (v.id === record.vehicleId) opt.selected = true;
     selVeh.appendChild(opt);
   });
@@ -4527,7 +4533,7 @@ function openAddHistoryModal(defaultVehicleId) {
   appState.vehicles.forEach(v => {
     const opt = document.createElement('option');
     opt.value = v.id;
-    opt.textContent = `${v.name} (${v.brand || ''} ${v.model || ''} - ${Number(v.currentKm || 0).toLocaleString('fr-FR')} km)`.trim();
+    opt.textContent = `${v.name} (${Number(v.currentKm || 0).toLocaleString('fr-FR')} km)`.trim();
     if (v.id === targetVehId) opt.selected = true;
     selVeh.appendChild(opt);
   });
@@ -4902,11 +4908,11 @@ function generateSingleItemIcs(vehicle, item, due) {
   const uid = `maint-${item.id}-${vehicle.id}@carnet-entretien`;
 
   const isEstimated = Boolean(due.isDateEstimated);
-  const summary = `${item.name} - ${vehicle.brand} ${vehicle.model}${isEstimated ? ' (estimation)' : ''}`;
+  const summary = `${item.name} - ${vehicle.name}${isEstimated ? ' (estimation)' : ''}`;
 
   const descParts = [
     `Entretien : ${item.name}`,
-    `Véhicule : ${vehicle.name} (${vehicle.brand} ${vehicle.model}${vehicle.plate ? ' - ' + vehicle.plate : ''})`,
+    `Véhicule : ${vehicle.name}${vehicle.plate ? ' (' + vehicle.plate + ')' : ''}`,
     `Date d'échéance : ${formatDate(due.targetDate)}${isEstimated ? ' (estimation adaptative)' : ''}`
   ];
 
@@ -4982,11 +4988,11 @@ function generateAllItemsIcs(vehicle, itemsWithDue) {
     // UID stable pour synchroniser/mettre à jour les événements existants
     const uid = `maint-${item.id}-${vehicle.id}@carnet-entretien`;
     const isEstimated = Boolean(due.isDateEstimated);
-    const summary = `${item.name} - ${vehicle.brand} ${vehicle.model}${isEstimated ? ' (estimation)' : ''}`;
+    const summary = `${item.name} - ${vehicle.name}${isEstimated ? ' (estimation)' : ''}`;
 
     const descParts = [
       `Entretien : ${item.name}`,
-      `Véhicule : ${vehicle.name} (${vehicle.brand} ${vehicle.model}${vehicle.plate ? ' - ' + vehicle.plate : ''})`,
+      `Véhicule : ${vehicle.name}${vehicle.plate ? ' (' + vehicle.plate + ')' : ''}`,
       `Date d'échéance : ${formatDate(due.targetDate)}${isEstimated ? ' (estimation adaptative)' : ''}`
     ];
     if (due.remainingKm !== null) {
@@ -5048,7 +5054,7 @@ function generateRecurringReminderIcs(vehicle) {
   }
 
   const summary = `Mettre à jour le kilométrage - ${vehicle.name}`;
-  const description = `Pensez à relever le compteur de votre véhicule ${vehicle.name} (${vehicle.brand} ${vehicle.model}) et à mettre à jour votre Carnet d'Entretien pour recalibrer vos échéances.\n\nRappel ${freqLabel} configuré depuis Carnet d'Entretien.`;
+  const description = `Pensez à relever le compteur de votre véhicule ${vehicle.name} et à mettre à jour votre Carnet d'Entretien pour recalibrer vos échéances.\n\nRappel ${freqLabel} configuré depuis Carnet d'Entretien.`;
 
   const lines = [
     'BEGIN:VCALENDAR',
@@ -5184,7 +5190,7 @@ function renderVehicleSelector() {
   appState.vehicles.forEach(veh => {
     const opt = document.createElement('option');
     opt.value = veh.id;
-    opt.textContent = `${veh.name} (${veh.brand} ${veh.model})`;
+    opt.textContent = veh.name;
     if (veh.id === appState.activeVehicleId) {
       opt.selected = true;
     }
@@ -5519,7 +5525,7 @@ function renderAlertChannelSummaries() {
       `;
     } else {
       const vehicle = getActiveVehicle();
-      const vehName = vehicle ? `${vehicle.name} (${vehicle.brand} ${vehicle.model})` : 'Votre véhicule';
+      const vehName = vehicle ? vehicle.name : 'Votre véhicule';
       const defaultMsg = `🚨 *Alerte Entretien Véhicule*\nVéhicule : ${vehName}\nPensez à vérifier vos entretiens et actualiser votre compteur sur le Carnet d'Entretien.`;
 
       whatsappListEl.innerHTML = phoneRecipients.map(r => {
@@ -7120,7 +7126,7 @@ function attachEventListeners() {
   // Bouton de test WhatsApp
   document.getElementById('btnTestWhatsappShare')?.addEventListener('click', () => {
     const vehicle = getActiveVehicle();
-    const vehName = vehicle ? `${vehicle.name} (${vehicle.brand} ${vehicle.model})` : 'Votre véhicule';
+    const vehName = vehicle ? vehicle.name : 'Votre véhicule';
     const km = vehicle && vehicle.currentKm ? `${formatKm(vehicle.currentKm)}` : '';
     const msg = `🚨 *Alerte Entretien Carnet Automobile*\nVéhicule : ${vehName}${km ? ` (${km})` : ''}\nPensez à vérifier vos prochaines échéances d'entretien et actualiser votre compteur.`;
     const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
