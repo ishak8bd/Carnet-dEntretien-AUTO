@@ -1165,10 +1165,10 @@ try {
   assert.strictEqual(dueCheck.status, 'orange', 'Statut par défaut = orange (Bientôt)');
   assert.strictEqual(dueCheck.statusLabel, 'Bientôt', 'Label par défaut = Bientôt');
 
-  // 2. Modification du seuil Rouge : passage de Rouge à 300 km (devient Urgent)
+  // 2. Modification du seuil Rouge : passage de Rouge à 300 km (devient Urgent) via click bouton
   inpRedKm.value = '300';
   inpOrangeKm.value = '1500';
-  window.savePhaseThresholdsFromInputs();
+  btnSaveThresholds.click();
   assert.strictEqual(window.appState.settings.thresholdRedKm, 300, 'Seuil rouge km persisté à 300');
   assert.strictEqual(window.appState.settings.thresholdOrangeKm, 1500, 'Seuil orange km persisté à 1500');
 
@@ -1176,8 +1176,8 @@ try {
   assert.strictEqual(dueCheck.status, 'red', 'Le statut bascule en rouge (Urgent) car 250 km <= seuil rouge 300 km');
   assert.strictEqual(dueCheck.statusLabel, 'Urgent', 'Label bascule sur "Urgent"');
 
-  // 3. Rétablissement des seuils standards
-  window.resetPhaseThresholds();
+  // 3. Rétablissement des seuils standards via click bouton reset
+  btnResetThresholds.click();
   assert.strictEqual(window.appState.settings.thresholdRedKm, 0, 'Seuil rouge rétabli à 0');
   assert.strictEqual(window.appState.settings.thresholdOrangeKm, 1000, 'Seuil orange rétabli à 1000');
   dueCheck = window.calculateItemDueStatus(check26Veh, mockItem, predEngine);

@@ -645,6 +645,10 @@ function buildFullAlertFrequenciesPayload() {
     kmUnit: notifKmUnit,
     kmMinutes: getAlertFrequencyMinutes('km'),
     staleKmDays: notifStale,
+    thresholdOrangeKm: (appState.settings && appState.settings.thresholdOrangeKm !== undefined) ? Number(appState.settings.thresholdOrangeKm) : 1000,
+    thresholdOrangeDays: (appState.settings && appState.settings.thresholdOrangeDays !== undefined) ? Number(appState.settings.thresholdOrangeDays) : 30,
+    thresholdRedKm: (appState.settings && appState.settings.thresholdRedKm !== undefined) ? Number(appState.settings.thresholdRedKm) : 0,
+    thresholdRedDays: (appState.settings && appState.settings.thresholdRedDays !== undefined) ? Number(appState.settings.thresholdRedDays) : 0,
 
     // Spécifique Notifications
     notifications: {
@@ -955,6 +959,37 @@ async function savePhaseThresholdsFromInputs(showFeedback = false) {
 /**
  * Réinitialise les seuils de phases aux valeurs standards
  */
+
+/**
+ * Règle rapidement un seuil de phase d'entretien via les boutons puces (chips)
+ */
+function setQuickThreshold(type, val) {
+  val = parseInt(val, 10);
+  if (isNaN(val)) return;
+  if (type === 'orangeKm') {
+    const inp = document.getElementById('inputThresholdOrangeKm');
+    if (inp) inp.value = String(val);
+    const lbl = document.getElementById('lblThresholdOrangeKm');
+    if (lbl) lbl.textContent = val.toLocaleString('fr-FR');
+  } else if (type === 'orangeDays') {
+    const inp = document.getElementById('inputThresholdOrangeDays');
+    if (inp) inp.value = String(val);
+    const lbl = document.getElementById('lblThresholdOrangeDays');
+    if (lbl) lbl.textContent = String(val);
+  } else if (type === 'redKm') {
+    const inp = document.getElementById('inputThresholdRedKm');
+    if (inp) inp.value = String(val);
+    const lbl = document.getElementById('lblThresholdRedKm');
+    if (lbl) lbl.textContent = val.toLocaleString('fr-FR');
+  } else if (type === 'redDays') {
+    const inp = document.getElementById('inputThresholdRedDays');
+    if (inp) inp.value = String(val);
+    const lbl = document.getElementById('lblThresholdRedDays');
+    if (lbl) lbl.textContent = String(val);
+  }
+  savePhaseThresholdsFromInputs(true);
+}
+
 function resetPhaseThresholds() {
   if (!appState.settings) appState.settings = {};
   appState.settings.thresholdOrangeKm = 1000;
@@ -1459,6 +1494,7 @@ if (typeof window !== 'undefined') {
   window.updatePhaseThresholdsUI = updatePhaseThresholdsUI;
   window.savePhaseThresholdsFromInputs = savePhaseThresholdsFromInputs;
   window.resetPhaseThresholds = resetPhaseThresholds;
+  window.setQuickThreshold = setQuickThreshold;
 }
 
 // ============================================================================
@@ -7191,6 +7227,41 @@ function attachEventListeners() {
   document.getElementById('btnSaveAlertFrequencies')?.addEventListener('click', () => {
     saveAlertFrequenciesFromInputs(true);
     checkAndSendPendingMaintenanceNotifications();
+  });
+
+  // Écouteurs des seuils de phases d'entretien (Orange & Rouge)
+  ['inputThresholdOrangeKm', 'inputThresholdOrangeDays', 'inputThresholdRedKm', 'inputThresholdRedDays'].forEach(id => {
+    const el = document.getElementById(id);
+    el?.addEventListener('input', () => {
+      const lblId = 'lbl' + id.replace('input', '');
+      const lbl = document.getElementById(lblId);
+      if (lbl) {
+        const n = parseInt(el.value, 10);
+        lbl.textContent = isNaN(n) ? '0' : n.toLocaleString('fr-FR');
+      }
+    });
+    el?.addEventListener('change', () => {
+      savePhaseThresholdsFromInputs(false);
+    });
+  });
+
+  document.querySelectorAll('[data-quick-threshold]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const type = btn.getAttribute('data-quick-threshold');
+      const val = parseInt(btn.getAttribute('data-val'), 10);
+      setQuickThreshold(type, val);
+    });
+  });
+
+  document.getElementById('btnSavePhaseThresholds')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    savePhaseThresholdsFromInputs(true);
+  });
+
+  document.getElementById('btnResetPhaseThresholds')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    resetPhaseThresholds();
   });
 
   // Boutons rapides de fréquence
