@@ -3251,8 +3251,35 @@ function renderMaintenanceList(vehicle, engine) {
     badgeEl.textContent = `${itemsWithStatus.length} élément${itemsWithStatus.length > 1 ? 's' : ''}`;
   }
 
-  // Tri par score d'urgence décroissant
-  itemsWithStatus.sort((a, b) => b.due.urgencyScore - a.due.urgencyScore);
+  // Tri de tous les entretiens par jours restants (du plus urgent / proche au plus lointain)
+  itemsWithStatus.sort((a, b) => {
+    // Les éléments non renseignés (gris) sont placés à la fin
+    const isGreyA = a.due.status === 'grey';
+    const isGreyB = b.due.status === 'grey';
+    if (isGreyA && !isGreyB) return 1;
+    if (!isGreyA && isGreyB) return -1;
+    if (isGreyA && isGreyB) return 0;
+
+    // Éléments strictement dépassés (en jours ou en km) en tout premier
+    const isOverdueA = a.due.statusLabel === 'Dépassé' || (a.due.remainingDays !== null && a.due.remainingDays <= 0) || (a.due.remainingKm !== null && a.due.remainingKm <= 0);
+    const isOverdueB = b.due.statusLabel === 'Dépassé' || (b.due.remainingDays !== null && b.due.remainingDays <= 0) || (b.due.remainingKm !== null && b.due.remainingKm <= 0);
+
+    if (isOverdueA && !isOverdueB) return -1;
+    if (!isOverdueA && isOverdueB) return 1;
+
+    // Classement par jours restants croissants (les plus petits en premier : 9j, 18j, 24j, 31j...)
+    const daysA = a.due.remainingDays !== null ? a.due.remainingDays : Infinity;
+    const daysB = b.due.remainingDays !== null ? b.due.remainingDays : Infinity;
+
+    if (daysA !== daysB) {
+      return daysA - daysB;
+    }
+
+    // En cas d'égalité sur les jours, départager par kilomètres restants croissants
+    const kmA = a.due.remainingKm !== null ? a.due.remainingKm : Infinity;
+    const kmB = b.due.remainingKm !== null ? b.due.remainingKm : Infinity;
+    return kmA - kmB;
+  });
 
   // Filtrage selon le statut sélectionné
   const displayedItems = activeStatusFilter === 'all'
@@ -3347,13 +3374,13 @@ function renderMaintenanceList(vehicle, engine) {
       if (due.remainingKm !== null) {
         if (due.remainingKm < 0) {
           kmMetricText = `-${formatKm(Math.abs(due.remainingKm))}`;
-          kmMetricClass = 'metric-danger';
-        } else if (due.remainingKm <= 1000) {
-          kmMetricText = formatKm(due.remainingKm);
-          kmMetricClass = 'metric-warning';
         } else {
           kmMetricText = formatKm(due.remainingKm);
         }
+        if (due.status === 'red') kmMetricClass = 'metric-danger';
+        else if (due.status === 'orange') kmMetricClass = 'metric-warning';
+        else if (due.status === 'yellow') kmMetricClass = 'metric-yellow';
+        else if (due.status === 'green') kmMetricClass = 'metric-success';
       }
 
       let daysMetricText = '--';
@@ -3361,13 +3388,13 @@ function renderMaintenanceList(vehicle, engine) {
       if (due.remainingDays !== null) {
         if (due.remainingDays < 0) {
           daysMetricText = `-${Math.abs(due.remainingDays)} j`;
-          daysMetricClass = 'metric-danger';
-        } else if (due.remainingDays <= 30) {
-          daysMetricText = `${due.remainingDays} j`;
-          daysMetricClass = 'metric-warning';
         } else {
           daysMetricText = `${due.remainingDays} j`;
         }
+        if (due.status === 'red') daysMetricClass = 'metric-danger';
+        else if (due.status === 'orange') daysMetricClass = 'metric-warning';
+        else if (due.status === 'yellow') daysMetricClass = 'metric-yellow';
+        else if (due.status === 'green') daysMetricClass = 'metric-success';
       }
 
       let lastDoneText = 'Non renseigné';
@@ -3504,13 +3531,13 @@ function renderMaintenanceList(vehicle, engine) {
         if (due.remainingKm !== null) {
           if (due.remainingKm < 0) {
             kmMetricText = `Dépassé de ${formatKm(Math.abs(due.remainingKm))}`;
-            kmMetricClass = 'metric-danger';
-          } else if (due.remainingKm <= 1000) {
-            kmMetricText = `Reste ${formatKm(due.remainingKm)}`;
-            kmMetricClass = 'metric-warning';
           } else {
             kmMetricText = `Reste ${formatKm(due.remainingKm)}`;
           }
+          if (due.status === 'red') kmMetricClass = 'metric-danger';
+          else if (due.status === 'orange') kmMetricClass = 'metric-warning';
+          else if (due.status === 'yellow') kmMetricClass = 'metric-yellow';
+          else if (due.status === 'green') kmMetricClass = 'metric-success';
         } else {
           kmMetricText = 'Non basé sur km';
         }
@@ -3520,13 +3547,13 @@ function renderMaintenanceList(vehicle, engine) {
         if (due.remainingDays !== null) {
           if (due.remainingDays < 0) {
             daysMetricText = `Dépassé de ${Math.abs(due.remainingDays)} j`;
-            daysMetricClass = 'metric-danger';
-          } else if (due.remainingDays <= 30) {
-            daysMetricText = `Reste ${due.remainingDays} j`;
-            daysMetricClass = 'metric-warning';
           } else {
             daysMetricText = `Reste ${due.remainingDays} j`;
           }
+          if (due.status === 'red') daysMetricClass = 'metric-danger';
+          else if (due.status === 'orange') daysMetricClass = 'metric-warning';
+          else if (due.status === 'yellow') daysMetricClass = 'metric-yellow';
+          else if (due.status === 'green') daysMetricClass = 'metric-success';
         } else {
           daysMetricText = 'Date non fixée';
         }

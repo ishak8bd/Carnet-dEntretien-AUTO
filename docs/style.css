@@ -1323,11 +1323,62 @@ html[data-color-mode="light"] .header-right-actions {
 }
 
 .metric-danger {
-  color: var(--danger);
+  color: var(--danger) !important;
 }
 
 .metric-warning {
-  color: var(--warning);
+  color: var(--warning) !important;
+}
+
+.metric-yellow {
+  color: var(--yellow, #eab308) !important;
+}
+
+.metric-success {
+  color: var(--success) !important;
+}
+
+/* En mode sombre et dans tous les thèmes : lisibilité et éclat parfaits */
+:root[data-color-mode="dark"] .metric-danger,
+html[data-color-mode="dark"] .metric-danger,
+body.theme-glass .metric-danger,
+body.theme-steel .metric-danger,
+body.theme-bubble .metric-danger,
+body.theme-liquid .metric-danger {
+  color: #f87171 !important;
+}
+
+:root[data-color-mode="dark"] .metric-warning,
+html[data-color-mode="dark"] .metric-warning,
+body.theme-glass .metric-warning,
+body.theme-steel .metric-warning,
+body.theme-bubble .metric-warning,
+body.theme-liquid .metric-warning {
+  color: #fbbf24 !important;
+}
+
+:root[data-color-mode="dark"] .metric-yellow,
+html[data-color-mode="dark"] .metric-yellow,
+body.theme-glass .metric-yellow,
+body.theme-steel .metric-yellow,
+body.theme-bubble .metric-yellow,
+body.theme-liquid .metric-yellow {
+  color: #facc15 !important;
+}
+
+:root[data-color-mode="dark"] .metric-success,
+html[data-color-mode="dark"] .metric-success,
+body.theme-glass .metric-success,
+body.theme-steel .metric-success,
+body.theme-bubble .metric-success,
+body.theme-liquid .metric-success {
+  color: #34d399 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-color-mode="light"]) .metric-yellow {
+    color: #facc15 !important;
+  }
 }
 
 /* Pied de la carte */
@@ -1696,20 +1747,74 @@ html[data-color-mode="light"] .header-right-actions {
   transition: width 0.4s ease;
 }
 
-.progress-fill-green {
-  background-color: var(--success);
+/* ==========================================================================
+   COULEURS DES BARRES D'USURE (ROUGE, ORANGE, JAUNE, VERT, GRIS) POUR TOUS LES THÈMES
+   ========================================================================== */
+
+.progress-bar-fill.progress-fill-red,
+.progress-fill-red,
+body.theme-glass .progress-bar-fill.progress-fill-red,
+body.theme-steel .progress-bar-fill.progress-fill-red,
+body.theme-bubble .progress-bar-fill.progress-fill-red,
+body.theme-liquid .progress-bar-fill.progress-fill-red {
+  background-color: #ef4444 !important;
+  background: #ef4444 !important;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.6) !important;
 }
 
-.progress-fill-orange {
-  background-color: var(--warning);
+.progress-bar-fill.progress-fill-orange,
+.progress-fill-orange,
+body.theme-glass .progress-bar-fill.progress-fill-orange,
+body.theme-steel .progress-bar-fill.progress-fill-orange,
+body.theme-bubble .progress-bar-fill.progress-fill-orange,
+body.theme-liquid .progress-bar-fill.progress-fill-orange {
+  background-color: #f59e0b !important;
+  background: #f59e0b !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.6) !important;
 }
 
-.progress-fill-red {
-  background-color: var(--danger);
+.progress-bar-fill.progress-fill-yellow,
+.progress-fill-yellow,
+body.theme-glass .progress-bar-fill.progress-fill-yellow,
+body.theme-steel .progress-bar-fill.progress-fill-yellow,
+body.theme-bubble .progress-bar-fill.progress-fill-yellow,
+body.theme-liquid .progress-bar-fill.progress-fill-yellow {
+  background-color: #eab308 !important;
+  background: #eab308 !important;
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.65) !important;
 }
 
-.progress-fill-grey {
-  background-color: #94a3b8;
+:root[data-color-mode="dark"] .progress-bar-fill.progress-fill-yellow,
+html[data-color-mode="dark"] .progress-bar-fill.progress-fill-yellow,
+body.theme-glass .progress-bar-fill.progress-fill-yellow,
+body.theme-steel .progress-bar-fill.progress-fill-yellow,
+body.theme-bubble .progress-bar-fill.progress-fill-yellow,
+body.theme-liquid .progress-bar-fill.progress-fill-yellow {
+  background-color: #facc15 !important;
+  background: #facc15 !important;
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.7) !important;
+}
+
+.progress-bar-fill.progress-fill-green,
+.progress-fill-green,
+body.theme-glass .progress-bar-fill.progress-fill-green,
+body.theme-steel .progress-bar-fill.progress-fill-green,
+body.theme-bubble .progress-bar-fill.progress-fill-green,
+body.theme-liquid .progress-bar-fill.progress-fill-green {
+  background-color: #10b981 !important;
+  background: #10b981 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.6) !important;
+}
+
+.progress-bar-fill.progress-fill-grey,
+.progress-fill-grey,
+body.theme-glass .progress-bar-fill.progress-fill-grey,
+body.theme-steel .progress-bar-fill.progress-fill-grey,
+body.theme-bubble .progress-bar-fill.progress-fill-grey,
+body.theme-liquid .progress-bar-fill.progress-fill-grey {
+  background-color: #64748b !important;
+  background: #64748b !important;
+  box-shadow: none !important;
 }
 
 /* ==========================================================================
