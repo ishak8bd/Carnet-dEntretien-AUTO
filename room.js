@@ -766,7 +766,7 @@ export async function migrateLocalDataToRoom(roomId, ownerUid, ownerName) {
           const itemRef = doc(db, 'rooms', roomId, 'items', item.id);
           const safeLastDate = (item.lastDate && String(item.lastDate).trim() !== '') ? item.lastDate : null;
           const safeLastKm = (item.lastKm !== null && item.lastKm !== undefined && item.lastKm !== '' && !isNaN(Number(item.lastKm))) ? Number(item.lastKm) : null;
-          const safeNotes = (item.notes && typeof item.notes === 'string' && item.notes.trim()) ? item.notes.trim().substring(0, 1000) : null;
+          const safeNotes = (item.notes && typeof item.notes === 'string' && item.notes.trim()) ? item.notes.trim().substring(0, 2000) : null;
 
           batch.set(itemRef, {
             vehicleId: v.id,
@@ -1250,7 +1250,7 @@ export async function recordHistoryEntry(record, updatedItem) {
         intervalMonths: Number(updatedItem.intervalMonths) || 12,
         lastDate: updatedItem.lastDate || null,
         lastKm: (updatedItem.lastKm !== null && updatedItem.lastKm !== undefined && !isNaN(Number(updatedItem.lastKm))) ? Number(updatedItem.lastKm) : null,
-        notes: (updatedItem.notes && typeof updatedItem.notes === 'string' && updatedItem.notes.trim()) ? updatedItem.notes.trim().substring(0, 1000) : null,
+        notes: (updatedItem.notes && typeof updatedItem.notes === 'string' && updatedItem.notes.trim()) ? updatedItem.notes.trim().substring(0, 2000) : null,
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
         deleted: false
@@ -1322,7 +1322,7 @@ export async function saveMaintenanceItem(item) {
   const user = await ensureAuth();
 
   const itemRef = doc(db, 'rooms', profile.roomId, 'items', item.id);
-  const safeNotes = (item.notes && typeof item.notes === 'string' && item.notes.trim()) ? item.notes.trim().substring(0, 1000) : null;
+  const safeNotes = (item.notes && typeof item.notes === 'string' && item.notes.trim()) ? item.notes.trim().substring(0, 2000) : null;
   await setDoc(itemRef, {
     vehicleId: item.vehicleId,
     name: item.name,
