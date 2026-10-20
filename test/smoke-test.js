@@ -1288,19 +1288,40 @@ try {
   assert.ok(addedItem, 'L\'entretien avec notes a été créé');
   assert.strictEqual(addedItem.notes, 'Réf NGK Laser Platinum ILZKR7B-11, couple de serrage 25 Nm', 'Notes enregistrées');
 
-  // B. Rendu dans la vue Tableau
+  // B. Rendu dans la vue Tableau : La note brute est MASQUÉE par défaut, présence du bouton pilule
   const btnTable27 = document.querySelector('#maintViewToggle button[data-mode="table"]');
   if (btnTable27) btnTable27.click();
-  const tableNotesEl = document.querySelector('.table-col-notes');
-  assert.ok(tableNotesEl, '.table-col-notes doit être affiché dans le tableau');
-  assert.ok(tableNotesEl.textContent.includes('ILZKR7B-11'), 'Le texte des notes doit être visible dans le tableau');
+  const tableNotePill = document.querySelector('.maintenance-table .btn-note-pill');
+  assert.ok(tableNotePill, 'Bouton pilule .btn-note-pill doit être présent dans le tableau');
+  assert.strictEqual(document.querySelector('.table-col-notes'), null, 'La note brute ne doit pas être étalée dans la cellule du tableau');
 
-  // C. Rendu dans la vue Fiches / Cartes
+  // C. Rendu dans la vue Fiches / Cartes : La note brute est MASQUÉE par défaut, présence du bouton pilule
   const btnCards27 = document.querySelector('#maintViewToggle button[data-mode="cards"]');
   if (btnCards27) btnCards27.click();
-  const cardNotesEl = document.querySelector('.item-card-notes');
-  assert.ok(cardNotesEl, '.item-card-notes doit être affiché dans la fiche');
-  assert.ok(cardNotesEl.textContent.includes('ILZKR7B-11'), 'Le texte des notes doit être visible dans la fiche');
+  const cardNotePill = document.querySelector('.item-card .btn-note-pill');
+  assert.ok(cardNotePill, 'Bouton pilule .btn-note-pill doit être présent dans la fiche');
+  assert.strictEqual(document.querySelector('.item-card-notes'), null, 'La note brute ne doit pas être étalée dans la fiche');
+
+  // C2. Ouverture de la note organisée via le bouton pilule (Tap to open)
+  const noteViewerModal = document.getElementById('noteViewerModal');
+  assert.ok(noteViewerModal, '#noteViewerModal doit exister dans le DOM');
+  cardNotePill.click();
+  assert.strictEqual(noteViewerModal.classList.contains('hidden'), false, 'Le modal de visualisation de la note doit être ouvert');
+
+  const noteViewerContent = document.getElementById('noteViewerContent');
+  assert.ok(noteViewerContent.textContent.includes('ILZKR7B-11'), 'Le contenu de la note doit être affiché de façon organisée');
+
+  // Fermeture du modal
+  const btnCloseNoteViewer = document.getElementById('btnCloseNoteViewerModal');
+  if (btnCloseNoteViewer) btnCloseNoteViewer.click();
+  assert.strictEqual(noteViewerModal.classList.contains('hidden'), true, 'Le modal de note se referme proprement');
+
+  // C3. Test du formateur organisé (formatOrganizedNote) avec étapes numérotées et sous-puces
+  const diagnosticSample = "1. Diagnostic OBD2 * Raison : Codes DTC en mémoire. * Résultat : Rapport d'erreur. 2. Nettoyer boîtier papillon";
+  const formattedHtml = window.formatOrganizedNote(diagnosticSample);
+  assert.ok(formattedHtml.includes('note-step-card'), 'Génération de cartes d\'étapes');
+  assert.ok(formattedHtml.includes('note-step-num'), 'Numérotation distincte des étapes');
+  assert.ok(formattedHtml.includes('<strong>Raison :</strong>'), 'Mise en valeur automatique des libellés');
 
   // D. Affichage dans le modal "Fait aujourd'hui"
   window.openDoneModal(addedItem.id);

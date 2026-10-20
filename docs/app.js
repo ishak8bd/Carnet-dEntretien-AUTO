@@ -3201,6 +3201,161 @@ function setStatusFilter(filter) {
   }
 }
 
+/**
+ * Formate intelligemment une note d'entretien de manière structurée et organisée
+ * Détecte les étapes numérotées (1., 2., 3.), puces (*, -), retours à la ligne et libellés clés
+ */
+function formatOrganizedNote(rawText) {
+  if (!rawText || !rawText.trim()) return '';
+  const clean = rawText.trim();
+
+  let normalized = clean
+    .replace(/(\r\n|\r|\n)/g, '\n')
+    // Saut de ligne avant les puces numérotées si précédées d'un espace : " 2. " -> "\n2. "
+    .replace(/([^\n])\s+(\d+[\.\)]\s+)/g, '$1\n$2')
+    // Saut de ligne avant les astérisques de liste si précédés d'un espace : " * " -> "\n* "
+    .replace(/([^\n])\s+\*\s+/g, '$1\n* ')
+    // Saut de ligne avant les tirets de liste si précédés d'un espace : " - " -> "\n- "
+    .replace(/([^\n])\s+-\s+/g, '$1\n- ');
+
+  const rawLines = normalized.split('\n').map(l => l.trim()).filter(Boolean);
+
+  const items = [];
+  let currentStep = null;
+
+  rawLines.forEach(line => {
+    const numMatch = line.match(/^(\d+)[\.\)]\s*(.*)$/);
+    const bulletMatch = line.match(/^[\*\-•]\s*(.*)$/);
+
+    if (numMatch) {
+      if (currentStep) items.push(currentStep);
+      currentStep = {
+        type: 'step',
+        number: numMatch[1],
+        title: numMatch[2],
+        sublines: []
+      };
+    } else if (bulletMatch) {
+      if (currentStep) {
+        currentStep.sublines.push(bulletMatch[1]);
+      } else {
+        items.push({
+          type: 'bullet',
+          text: bulletMatch[1]
+        });
+      }
+    } else {
+      if (currentStep) {
+        currentStep.sublines.push(line);
+      } else {
+        items.push({
+          type: 'paragraph',
+          text: line
+        });
+      }
+    }
+  });
+
+  if (currentStep) items.push(currentStep);
+
+  function formatLineText(txt) {
+    let safe = escapeHtml(txt);
+    // Met en valeur les étiquettes se terminant par deux-points (ex: "Raison :", "Résultat :", "Couple :")
+    safe = safe.replace(/(^|[\.\?!]\s*|\b)([A-ZÀ-Ý][\w\s'’]{1,25}\s*:)/g, '$1<strong>$2</strong>');
+    return safe;
+  }
+
+  let html = '<div class="organized-note-container">';
+
+  const hasSteps = items.some(it => it.type === 'step');
+
+  if (hasSteps) {
+    html += '<div class="organized-steps-list">';
+    items.forEach(it => {
+      if (it.type === 'step') {
+        html += `
+          <div class="note-step-card">
+            <div class="note-step-header">
+              <span class="note-step-num">${it.number}</span>
+              <span class="note-step-title">${formatLineText(it.title)}</span>
+            </div>
+            ${it.sublines.length > 0 ? `
+              <div class="note-step-body">
+                ${it.sublines.map(sub => `
+                  <div class="note-step-bullet">
+                    <span class="bullet-dot">▸</span>
+                    <span class="bullet-text">${formatLineText(sub)}</span>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      } else if (it.type === 'bullet') {
+        html += `
+          <div class="note-bullet-line">
+            <span class="bullet-dot">•</span>
+            <span class="bullet-text">${formatLineText(it.text)}</span>
+          </div>
+        `;
+      } else {
+        html += `<p class="note-p">${formatLineText(it.text)}</p>`;
+      }
+    });
+    html += '</div>';
+  } else {
+    items.forEach(it => {
+      if (it.type === 'bullet') {
+        html += `
+          <div class="note-bullet-line">
+            <span class="bullet-dot">•</span>
+            <span class="bullet-text">${formatLineText(it.text)}</span>
+          </div>
+        `;
+      } else {
+        html += `<p class="note-p">${formatLineText(it.text)}</p>`;
+      }
+    });
+  }
+
+  html += '</div>';
+  return html;
+}
+
+let currentViewingNoteItem = null;
+
+function openNoteViewerModal(itemId) {
+  const vehicle = getActiveVehicle();
+  if (!vehicle || !vehicle.maintenanceItems) return;
+  const item = vehicle.maintenanceItems.find(i => i.id === itemId);
+  if (!item || !item.notes || !item.notes.trim()) return;
+
+  currentViewingNoteItem = item;
+
+  const subtitleEl = document.getElementById('noteViewerSubtitle');
+  if (subtitleEl) {
+    subtitleEl.textContent = `${item.name}${vehicle.name ? ' • ' + vehicle.name : ''}`;
+  }
+
+  const contentEl = document.getElementById('noteViewerContent');
+  if (contentEl) {
+    contentEl.innerHTML = formatOrganizedNote(item.notes);
+  }
+
+  const modal = document.getElementById('noteViewerModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+  }
+}
+
+function closeNoteViewerModal() {
+  const modal = document.getElementById('noteViewerModal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+  currentViewingNoteItem = null;
+}
+
 function renderMaintenanceList(vehicle, engine) {
   const container = document.getElementById('maintenanceContainer') || document.getElementById('maintenanceList');
   const badgeEl = document.getElementById('maintenanceCountBadge');
@@ -3412,7 +3567,13 @@ function renderMaintenanceList(vehicle, engine) {
         <td>${badgeHtml}</td>
         <td>
           <div class="table-col-name">${escapeHtml(item.name)}</div>
-          ${item.notes && item.notes.trim() ? `<span class="table-col-notes" title="${escapeHtml(item.notes.trim())}">📝 ${escapeHtml(item.notes.trim())}</span>` : ''}
+          ${item.notes && item.notes.trim() ? `
+            <button type="button" class="btn-note-pill btn-open-note" data-id="${item.id}" title="Appuyer pour voir la note organisée">
+              <span class="note-pill-icon">📝</span>
+              <span>Note</span>
+              <span class="note-pill-arrow">↗</span>
+            </button>
+          ` : ''}
         </td>
         <td><span class="table-col-sub">${escapeHtml(intervalDesc)}</span></td>
         <td>${dueDateHtml}</td>
@@ -3588,10 +3749,11 @@ function renderMaintenanceList(vehicle, engine) {
             <span class="item-name">${escapeHtml(item.name)}</span>
             <span class="item-interval">${escapeHtml(intervalDesc)}</span>
             ${item.notes && item.notes.trim() ? `
-              <div class="item-card-notes" title="${escapeHtml(item.notes.trim())}">
-                <span class="notes-icon">📝</span>
-                <span>${escapeHtml(item.notes.trim())}</span>
-              </div>
+              <button type="button" class="btn-note-pill btn-open-note" data-id="${item.id}" title="Appuyer pour voir la note organisée">
+                <span class="note-pill-icon">📝</span>
+                <span>Note &amp; Spécifications</span>
+                <span class="note-pill-arrow">↗</span>
+              </button>
             ` : ''}
           </div>
           ${badgeHtml}
@@ -3642,6 +3804,14 @@ function renderMaintenanceList(vehicle, engine) {
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.getAttribute('data-id');
       openEditMaintenanceItemModal(id);
+    });
+  });
+
+  container.querySelectorAll('.btn-open-note').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = e.currentTarget.getAttribute('data-id');
+      if (id) openNoteViewerModal(id);
     });
   });
 }
@@ -4189,7 +4359,7 @@ function openDoneModal(itemId) {
   const notesDisplay = document.getElementById('doneItemNotesDisplay');
   if (notesDisplay) {
     if (item.notes && item.notes.trim()) {
-      notesDisplay.innerHTML = '<strong>📝 Spécifications / Mémo :</strong> ' + escapeHtml(item.notes.trim());
+      notesDisplay.innerHTML = '<div style="font-weight: 700; color: var(--primary); margin-bottom: 6px; display: flex; align-items: center; gap: 5px;"><span>📝</span> <span>Mémo &amp; Spécifications :</span></div>' + formatOrganizedNote(item.notes.trim());
       notesDisplay.style.display = 'block';
     } else {
       notesDisplay.textContent = '';
@@ -6898,6 +7068,47 @@ function attachEventListeners() {
   document.getElementById('btnCloseDoneModal').addEventListener('click', closeDoneModal);
   document.getElementById('btnCancelDoneModal').addEventListener('click', closeDoneModal);
 
+  // Modal Affichage Organisé de la Note
+  const btnCloseNoteModal = document.getElementById('btnCloseNoteViewerModal');
+  if (btnCloseNoteModal) btnCloseNoteModal.addEventListener('click', closeNoteViewerModal);
+  const btnCloseNoteFooter = document.getElementById('btnCloseNoteViewerFooter');
+  if (btnCloseNoteFooter) btnCloseNoteFooter.addEventListener('click', closeNoteViewerModal);
+
+  const noteViewerModalEl = document.getElementById('noteViewerModal');
+  if (noteViewerModalEl) {
+    noteViewerModalEl.addEventListener('click', (e) => {
+      if (e.target === noteViewerModalEl) closeNoteViewerModal();
+    });
+  }
+
+  const btnCopyNote = document.getElementById('btnCopyNoteViewer');
+  if (btnCopyNote) {
+    btnCopyNote.addEventListener('click', () => {
+      if (currentViewingNoteItem && currentViewingNoteItem.notes) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(currentViewingNoteItem.notes).then(() => {
+            showToast('Note copiée dans le presse-papier !', 'success');
+          }).catch(() => {
+            showToast('Erreur lors de la copie', 'warning');
+          });
+        } else {
+          showToast('Presse-papier non supporté sur ce navigateur', 'info');
+        }
+      }
+    });
+  }
+
+  const btnEditFromNote = document.getElementById('btnEditNoteFromViewer');
+  if (btnEditFromNote) {
+    btnEditFromNote.addEventListener('click', () => {
+      const itemToEdit = currentViewingNoteItem;
+      closeNoteViewerModal();
+      if (itemToEdit && itemToEdit.id) {
+        openEditMaintenanceItemModal(itemToEdit.id);
+      }
+    });
+  }
+
   // Filtres de l'écran Historique (Étape 4)
   const histFilterVeh = document.getElementById('histFilterVehicle');
   const histFilterType = document.getElementById('histFilterType');
@@ -7626,4 +7837,7 @@ if (typeof window !== 'undefined') {
   window.handleExportCsvBackup = handleExportCsvBackup;
   window.handlePrintMaintenanceReport = handlePrintMaintenanceReport;
   window.openEditHistoryModal = openEditHistoryModal;
+  window.formatOrganizedNote = formatOrganizedNote;
+  window.openNoteViewerModal = openNoteViewerModal;
+  window.closeNoteViewerModal = closeNoteViewerModal;
 }

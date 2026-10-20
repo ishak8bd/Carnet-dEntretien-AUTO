@@ -1648,6 +1648,152 @@ body.theme-liquid .metric-success {
   opacity: 0.9;
 }
 
+/* Bouton pilule "📝 Note" cliquable pour ouvrir la note organisée */
+.btn-note-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(14, 165, 233, 0.12);
+  color: var(--primary);
+  border: 1px solid rgba(14, 165, 233, 0.28);
+  border-radius: var(--radius-full);
+  padding: 3px 9px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 4px;
+  line-height: 1.2;
+  transition: all 0.18s ease;
+  width: fit-content;
+}
+
+.btn-note-pill:hover {
+  background: rgba(14, 165, 233, 0.22);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.btn-note-pill:active {
+  transform: scale(0.97);
+}
+
+.btn-note-pill .note-pill-icon {
+  font-size: 0.8rem;
+}
+
+.btn-note-pill .note-pill-arrow {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  transition: transform 0.15s ease;
+}
+
+.btn-note-pill:hover .note-pill-arrow {
+  opacity: 1;
+  transform: translate(1px, -1px);
+}
+
+/* Modal et conteneur de note organisée */
+.organized-note-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.organized-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.note-step-card {
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.note-step-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.note-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 0.74rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.note-step-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.35;
+}
+
+.note-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 30px;
+}
+
+.note-step-bullet {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.note-step-bullet .bullet-dot {
+  color: var(--primary);
+  font-size: 0.7rem;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.note-step-bullet .bullet-text {
+  word-break: break-word;
+}
+
+.note-bullet-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  padding: 6px 10px;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.note-bullet-line .bullet-dot {
+  color: var(--primary);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.note-p {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-main);
+  margin: 0 0 6px 0;
+}
+
 .table-actions-cell {
   display: flex;
   align-items: center;
