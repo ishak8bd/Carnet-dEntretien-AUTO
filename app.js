@@ -3412,6 +3412,7 @@ function renderMaintenanceList(vehicle, engine) {
         <td>${badgeHtml}</td>
         <td>
           <div class="table-col-name">${escapeHtml(item.name)}</div>
+          ${item.notes && item.notes.trim() ? `<span class="table-col-notes" title="${escapeHtml(item.notes.trim())}">📝 ${escapeHtml(item.notes.trim())}</span>` : ''}
         </td>
         <td><span class="table-col-sub">${escapeHtml(intervalDesc)}</span></td>
         <td>${dueDateHtml}</td>
@@ -3586,6 +3587,12 @@ function renderMaintenanceList(vehicle, engine) {
           <div class="item-info">
             <span class="item-name">${escapeHtml(item.name)}</span>
             <span class="item-interval">${escapeHtml(intervalDesc)}</span>
+            ${item.notes && item.notes.trim() ? `
+              <div class="item-card-notes" title="${escapeHtml(item.notes.trim())}">
+                <span class="notes-icon">📝</span>
+                <span>${escapeHtml(item.notes.trim())}</span>
+              </div>
+            ` : ''}
           </div>
           ${badgeHtml}
         </div>
@@ -4016,6 +4023,8 @@ function openAddMaintenanceItemModal() {
   document.getElementById('maintIntervalMonths').value = '12';
   document.getElementById('maintLastKm').value = '';
   document.getElementById('maintLastDate').value = '';
+  const notesInput = document.getElementById('maintNotes');
+  if (notesInput) notesInput.value = '';
   document.getElementById('btnDeleteMaintItem').classList.add('hidden');
 
   setMaintenanceTypeMode('km_months');
@@ -4037,6 +4046,8 @@ function openEditMaintenanceItemModal(itemId) {
   document.getElementById('maintIntervalMonths').value = item.intervalMonths || '12';
   document.getElementById('maintLastKm').value = item.lastKm !== null ? item.lastKm : '';
   document.getElementById('maintLastDate').value = item.lastDate || '';
+  const notesInput = document.getElementById('maintNotes');
+  if (notesInput) notesInput.value = item.notes || '';
 
   if (item.intervalKm === null) {
     setMaintenanceTypeMode('date_only');
@@ -4095,6 +4106,7 @@ function handleMaintenanceItemSubmit(e) {
 
   if (!vehicle.maintenanceItems) vehicle.maintenanceItems = [];
 
+  const notes = (document.getElementById('maintNotes')?.value || '').trim();
   let itemToSync = null;
   if (editId) {
     const existing = vehicle.maintenanceItems.find(i => i.id === editId);
@@ -4104,6 +4116,7 @@ function handleMaintenanceItemSubmit(e) {
       existing.intervalMonths = monthsVal;
       existing.lastKm = lastKm;
       existing.lastDate = lastDate || null;
+      existing.notes = notes || null;
       itemToSync = existing;
       showToast(`Entretien "${name}" mis à jour.`, 'success');
     }
@@ -4114,7 +4127,8 @@ function handleMaintenanceItemSubmit(e) {
       intervalKm: intervalKm,
       intervalMonths: monthsVal,
       lastKm: lastKm,
-      lastDate: lastDate || null
+      lastDate: lastDate || null,
+      notes: notes || null
     };
     vehicle.maintenanceItems.push(newItem);
     itemToSync = newItem;
@@ -4171,6 +4185,17 @@ function openDoneModal(itemId) {
 
   document.getElementById('doneItemId').value = item.id;
   document.getElementById('doneItemNameDisplay').textContent = item.name;
+
+  const notesDisplay = document.getElementById('doneItemNotesDisplay');
+  if (notesDisplay) {
+    if (item.notes && item.notes.trim()) {
+      notesDisplay.innerHTML = '<strong>📝 Spécifications / Mémo :</strong> ' + escapeHtml(item.notes.trim());
+      notesDisplay.style.display = 'block';
+    } else {
+      notesDisplay.textContent = '';
+      notesDisplay.style.display = 'none';
+    }
+  }
 
   const dateInput = document.getElementById('doneDateInput');
   dateInput.value = todayIso;
@@ -6377,7 +6402,10 @@ function handlePrintMaintenanceReport() {
 
     itemsRows += `
       <tr>
-        <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1; font-weight: 600;">${it.name}</td>
+        <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1; font-weight: 600;">
+          ${escapeHtml(it.name)}
+          ${it.notes && it.notes.trim() ? `<div style="font-size: 10px; font-weight: normal; color: #64748b; margin-top: 2px;">📝 ${escapeHtml(it.notes.trim())}</div>` : ''}
+        </td>
         <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1;">${lastDoneStr}</td>
         <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1;">${intervalStr}</td>
         <td style="padding: 7px 9px; border-bottom: 1px solid #cbd5e1;">${nextDueStr}</td>

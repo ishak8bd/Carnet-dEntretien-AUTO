@@ -1263,7 +1263,59 @@ try {
   assert.strictEqual(window.appState.settings.thresholdOrangeDays, 10, 'Seuil orange réinitialisé à 10');
   assert.strictEqual(window.appState.settings.thresholdRedDays, 2, 'Seuil rouge réinitialisé à 2');
 
-  console.log('✅ TOUS LES TESTS DU SMOKE TEST (26/26) ONT RÉUSSI SANS AUCUNE ERREUR !');
+  // =========================================================================
+  // 27. Vérification des notes & références pièces sur les entretiens
+  // =========================================================================
+  console.log('27. Vérification des notes & références pièces sur les entretiens');
+
+  const maintNotesEl = document.getElementById('maintNotes');
+  assert.ok(maintNotesEl, 'Le champ #maintNotes doit être présent dans le modal de configuration');
+
+  const doneItemNotesDisplay = document.getElementById('doneItemNotesDisplay');
+  assert.ok(doneItemNotesDisplay, 'Le conteneur #doneItemNotesDisplay doit être présent dans le modal Fait aujourd\'hui');
+
+  // A. Ajout d'un entretien avec notes
+  window.openAddMaintenanceItemModal();
+  assert.strictEqual(maintNotesEl.value, '', '#maintNotes doit être réinitialisé à vide');
+  document.getElementById('maintName').value = 'Bougies d\'allumage';
+  document.getElementById('maintIntervalKm').value = '40000';
+  document.getElementById('maintIntervalMonths').value = '24';
+  maintNotesEl.value = 'Réf NGK Laser Platinum ILZKR7B-11, couple de serrage 25 Nm';
+  document.getElementById('maintenanceItemForm').dispatchEvent(new window.Event('submit'));
+
+  const test27Veh = window.getActiveVehicle();
+  const addedItem = test27Veh.maintenanceItems.find(i => i.name === 'Bougies d\'allumage');
+  assert.ok(addedItem, 'L\'entretien avec notes a été créé');
+  assert.strictEqual(addedItem.notes, 'Réf NGK Laser Platinum ILZKR7B-11, couple de serrage 25 Nm', 'Notes enregistrées');
+
+  // B. Rendu dans la vue Tableau
+  const btnTable27 = document.querySelector('#maintViewToggle button[data-mode="table"]');
+  if (btnTable27) btnTable27.click();
+  const tableNotesEl = document.querySelector('.table-col-notes');
+  assert.ok(tableNotesEl, '.table-col-notes doit être affiché dans le tableau');
+  assert.ok(tableNotesEl.textContent.includes('ILZKR7B-11'), 'Le texte des notes doit être visible dans le tableau');
+
+  // C. Rendu dans la vue Fiches / Cartes
+  const btnCards27 = document.querySelector('#maintViewToggle button[data-mode="cards"]');
+  if (btnCards27) btnCards27.click();
+  const cardNotesEl = document.querySelector('.item-card-notes');
+  assert.ok(cardNotesEl, '.item-card-notes doit être affiché dans la fiche');
+  assert.ok(cardNotesEl.textContent.includes('ILZKR7B-11'), 'Le texte des notes doit être visible dans la fiche');
+
+  // D. Affichage dans le modal "Fait aujourd'hui"
+  window.openDoneModal(addedItem.id);
+  assert.strictEqual(doneItemNotesDisplay.style.display, 'block', 'Le mémo de notes doit être affiché dans le modal de validation');
+  assert.ok(doneItemNotesDisplay.textContent.includes('ILZKR7B-11'), 'Le texte des notes doit figurer dans le mémo');
+  window.closeDoneModal();
+
+  // E. Modification d'un entretien existant avec mise à jour des notes
+  window.openEditMaintenanceItemModal(addedItem.id);
+  assert.strictEqual(maintNotesEl.value, 'Réf NGK Laser Platinum ILZKR7B-11, couple de serrage 25 Nm', '#maintNotes pré-rempli');
+  maintNotesEl.value = 'Réf Denso FXE22HR11';
+  document.getElementById('maintenanceItemForm').dispatchEvent(new window.Event('submit'));
+  assert.strictEqual(addedItem.notes, 'Réf Denso FXE22HR11', 'Notes mises à jour avec succès');
+
+  console.log('✅ TOUS LES TESTS DU SMOKE TEST (27/27) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
 } catch (err) {
   console.error('❌ Échec du smoke test:', err);

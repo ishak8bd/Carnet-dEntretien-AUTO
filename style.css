@@ -1201,6 +1201,25 @@ html[data-color-mode="light"] .header-right-actions {
   color: var(--text-muted);
 }
 
+.item-card-notes {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  line-height: 1.35;
+  margin-top: 4px;
+  word-break: break-word;
+  opacity: 0.92;
+}
+
+.item-card-notes .notes-icon {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
 /* Badges de statut */
 .status-badge {
   display: inline-flex;
@@ -1614,6 +1633,19 @@ body.theme-liquid .metric-success {
   font-size: 0.75rem;
   color: var(--text-muted);
   display: block;
+}
+
+.table-col-notes {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-top: 3px;
+  line-height: 1.35;
+  max-width: 280px;
+  white-space: normal;
+  word-break: break-word;
+  opacity: 0.9;
 }
 
 .table-actions-cell {

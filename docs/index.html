@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=61">
+  <link rel="stylesheet" href="style.css?v=62">
   <script>
     // Pré-application immédiate du logo, thème et mode sombre/clair pour éviter tout flash (FOUC)
     (function() {
@@ -1502,6 +1502,14 @@
           </div>
         </div>
 
+        <div class="form-group">
+          <label class="form-label" for="maintNotes" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>📝 Notes &amp; Références pièces (optionnel)</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal;">Mémo permanent</span>
+          </label>
+          <textarea id="maintNotes" class="form-input" rows="2" placeholder="Ex: Huile 5W30 Castrol Edge (4.2 L), filtre Mann W712/95, couple 30 Nm..." style="resize: vertical; font-size: 0.85rem; line-height: 1.4;"></textarea>
+        </div>
+
         <div class="modal-actions">
           <button type="button" id="btnDeleteMaintItem" class="btn-danger hidden">Supprimer</button>
           <button type="button" id="btnCancelMaintModal" class="btn-secondary">Annuler</button>
@@ -1531,6 +1539,7 @@
           <div style="font-size: 1.05rem; font-weight: 700; color: var(--primary);" id="doneItemNameDisplay">
             Vidange (moteur)
           </div>
+          <div id="doneItemNotesDisplay" style="font-size: 0.8rem; color: var(--text-muted); background: var(--bg-card-subtle); border: 1px dashed var(--border-color); border-radius: var(--radius-sm); padding: 7px 10px; margin-top: 6px; display: none; line-height: 1.4;"></div>
         </div>
 
         <div style="display: flex; gap: 10px;">
@@ -2088,6 +2097,6 @@
 
   <!-- Scripts de l'application -->
   <script type="module" src="room.js"></script>
-  <script src="app.js?v=61"></script>
+  <script src="app.js?v=62"></script>
 </body>
 </html>

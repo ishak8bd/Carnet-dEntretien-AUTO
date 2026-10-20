@@ -67,6 +67,7 @@ service cloud.firestore {
     //   - intervalMonths: number (>= 0, required) - Calendar months interval
     //   - lastDate: string|timestamp (required) - Date of last service
     //   - lastKm: number (>= 0, required) - Odometer reading at last service
+    //   - notes: string|null (optional, <= 1000 chars) - Permanent maintenance memo / part specifications
     //   - updatedAt: timestamp (required) - Last modification timestamp
     //   - updatedBy: string (UID, required) - UID of editor
     //   - deleted: bool (required) - Soft delete flag
@@ -215,6 +216,7 @@ service cloud.firestore {
         data.intervalMonths is number && data.intervalMonths >= 0 &&
         (data.lastDate == null || isValidDate(data.lastDate)) &&
         (data.lastKm == null || (data.lastKm is number && data.lastKm >= 0)) &&
+        (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 1000)) &&
         data.updatedAt is timestamp &&
         data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 128 &&
         data.deleted is bool;
