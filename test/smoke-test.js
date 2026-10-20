@@ -1121,19 +1121,28 @@ try {
   assert(typeof window.handleExportCsvBackup === 'function', 'Fonction handleExportCsvBackup disponible');
   assert(typeof window.handlePrintMaintenanceReport === 'function', 'Fonction handlePrintMaintenanceReport disponible');
 
-  console.log('26. Vérification des seuils configurables des phases d\'entretien (Orange & Rouge)');
+  console.log('26. Vérification des 4 phases d\'entretien et des seuils configurables (Jaune, Orange & Rouge)');
   const cardThresholds = document.getElementById('settingsPhasesThresholdsCard');
   assert(cardThresholds, 'Carte des seuils de phases présente dans le DOM');
 
+  const inpYellowKm = document.getElementById('inputThresholdYellowKm');
+  const inpYellowDays = document.getElementById('inputThresholdYellowDays');
   const inpOrangeKm = document.getElementById('inputThresholdOrangeKm');
   const inpOrangeDays = document.getElementById('inputThresholdOrangeDays');
   const inpRedKm = document.getElementById('inputThresholdRedKm');
   const inpRedDays = document.getElementById('inputThresholdRedDays');
 
+  assert(inpYellowKm, 'Champ seuil Jaune km présent');
+  assert(inpYellowDays, 'Champ seuil Jaune jours présent');
   assert(inpOrangeKm, 'Champ seuil Orange km présent');
   assert(inpOrangeDays, 'Champ seuil Orange jours présent');
   assert(inpRedKm, 'Champ seuil Rouge km présent');
   assert(inpRedDays, 'Champ seuil Rouge jours présent');
+
+  const btnFilterYellow = document.querySelector('.filter-chip[data-filter="yellow"]');
+  const countFilterYellow = document.getElementById('countFilterYellow');
+  assert(btnFilterYellow, 'Puce de filtre statut Jaune présente');
+  assert(countFilterYellow, 'Compteur de filtre statut Jaune présent');
 
   const btnSaveThresholds = document.getElementById('btnSavePhaseThresholds');
   const btnResetThresholds = document.getElementById('btnResetPhaseThresholds');
@@ -1144,44 +1153,115 @@ try {
   assert(typeof window.savePhaseThresholdsFromInputs === 'function', 'savePhaseThresholdsFromInputs disponible');
   assert(typeof window.resetPhaseThresholds === 'function', 'resetPhaseThresholds disponible');
 
-  // Test du comportement avec un véhicule et un entretien de test
+  // Test du comportement avec un véhicule et les différentes phases
   const check26Veh = window.getActiveVehicle();
   assert(check26Veh, 'Véhicule actif trouvé pour le test de seuils');
   const predEngine = window.computePredictionEngine(check26Veh);
 
-  // Création d'un item de test simulant 250 km restants et 20 jours restants
-  const mockItem = {
-    id: 'test_item_threshold',
-    name: 'Test Filtre Habitacle',
-    lastKm: predEngine.effectiveCurrentKm - 9750,
+  // 1. Réinitialisation aux seuils standards : Jaune (1500 km / 30 j), Orange (500 km / 10 j), Rouge (100 km / 2 j)
+  window.resetPhaseThresholds();
+  assert.strictEqual(window.appState.settings.thresholdYellowKm, 1500, 'Défaut Jaune km = 1500');
+  assert.strictEqual(window.appState.settings.thresholdYellowDays, 30, 'Défaut Jaune jours = 30');
+  assert.strictEqual(window.appState.settings.thresholdOrangeKm, 500, 'Défaut Orange km = 500');
+  assert.strictEqual(window.appState.settings.thresholdOrangeDays, 10, 'Défaut Orange jours = 10');
+  assert.strictEqual(window.appState.settings.thresholdRedKm, 100, 'Défaut Rouge km = 100');
+  assert.strictEqual(window.appState.settings.thresholdRedDays, 2, 'Défaut Rouge jours = 2');
+
+  // 2. Test du cycle calendaire des phases (30 j / 10 j / 2 j / <= 0 j)
+  // A. Échéance lointaine (> 30 jours restants) -> VERT / OK
+  const itemGreenDays = {
+    id: 'test_days_green',
+    name: 'Test Temps Vert OK',
+    lastKm: null,
+    lastDate: new Date(Date.now() - (365 - 60) * 86400000).toISOString().split('T')[0],
+    intervalKm: null,
+    intervalMonths: 12
+  };
+  let dueCheck = window.calculateItemDueStatus(check26Veh, itemGreenDays, predEngine);
+  assert.strictEqual(dueCheck.status, 'green', '60 jours restants -> Statut Vert (OK)');
+  assert.strictEqual(dueCheck.statusLabel, 'OK', 'Label = OK');
+
+  // B. Échéance préventive (<= 30 jours et > 10 jours) -> JAUNE / À prévoir
+  const itemYellowDays = {
+    id: 'test_days_yellow',
+    name: 'Test Temps Jaune',
+    lastKm: null,
+    lastDate: new Date(Date.now() - (365 - 25) * 86400000).toISOString().split('T')[0],
+    intervalKm: null,
+    intervalMonths: 12
+  };
+  dueCheck = window.calculateItemDueStatus(check26Veh, itemYellowDays, predEngine);
+  assert.strictEqual(dueCheck.status, 'yellow', '25 jours restants -> Statut Jaune (À prévoir)');
+  assert.strictEqual(dueCheck.statusLabel, 'À prévoir', 'Label = À prévoir');
+
+  // C. Échéance proche (<= 10 jours et > 2 jours) -> ORANGE / Bientôt
+  const itemOrangeDays = {
+    id: 'test_days_orange',
+    name: 'Test Temps Orange',
+    lastKm: null,
+    lastDate: new Date(Date.now() - (365 - 8) * 86400000).toISOString().split('T')[0],
+    intervalKm: null,
+    intervalMonths: 12
+  };
+  dueCheck = window.calculateItemDueStatus(check26Veh, itemOrangeDays, predEngine);
+  assert.strictEqual(dueCheck.status, 'orange', '8 jours restants -> Statut Orange (Bientôt)');
+  assert.strictEqual(dueCheck.statusLabel, 'Bientôt', 'Label = Bientôt');
+
+  // D. Échéance urgente (<= 2 jours et > 0 jours) -> ROUGE / Urgent
+  const itemRedDays = {
+    id: 'test_days_red',
+    name: 'Test Temps Rouge Urgent',
+    lastKm: null,
+    lastDate: new Date(Date.now() - (365 - 1) * 86400000).toISOString().split('T')[0],
+    intervalKm: null,
+    intervalMonths: 12
+  };
+  dueCheck = window.calculateItemDueStatus(check26Veh, itemRedDays, predEngine);
+  assert.strictEqual(dueCheck.status, 'red', '1 jour restant -> Statut Rouge (Urgent)');
+  assert.strictEqual(dueCheck.statusLabel, 'Urgent', 'Label = Urgent');
+
+  // E. Échéance échue (<= 0 jours) -> ROUGE / Dépassé
+  const itemOverdueDays = {
+    id: 'test_days_overdue',
+    name: 'Test Temps Rouge Dépassé',
+    lastKm: null,
+    lastDate: new Date(Date.now() - (365 + 5) * 86400000).toISOString().split('T')[0],
+    intervalKm: null,
+    intervalMonths: 12
+  };
+  dueCheck = window.calculateItemDueStatus(check26Veh, itemOverdueDays, predEngine);
+  assert.strictEqual(dueCheck.status, 'red', 'Jours négatifs -> Statut Rouge (Dépassé)');
+  assert.strictEqual(dueCheck.statusLabel, 'Dépassé', 'Label = Dépassé');
+
+  // 3. Test du cycle kilométrique
+  // Échéance échue en km (<= 0 km) -> ROUGE / Dépassé
+  const itemOverdueKm = {
+    id: 'test_km_overdue',
+    name: 'Test KM Dépassé',
+    lastKm: predEngine.effectiveCurrentKm - 10050,
     lastDate: null,
-    intervalKm: 10000, // Il reste exactement 250 km
+    intervalKm: 10000, // -50 km
     intervalMonths: null
   };
+  dueCheck = window.calculateItemDueStatus(check26Veh, itemOverdueKm, predEngine);
+  assert.strictEqual(dueCheck.status, 'red', 'KM négatif -> Statut Rouge (Dépassé)');
+  assert.strictEqual(dueCheck.statusLabel, 'Dépassé', 'Label = Dépassé');
 
-  // 1. Avec les seuils par défaut (Orange = 1000 km, Rouge = 0 km)
-  window.resetPhaseThresholds();
-  let dueCheck = window.calculateItemDueStatus(check26Veh, mockItem, predEngine);
-  assert.strictEqual(dueCheck.status, 'orange', 'Statut par défaut = orange (Bientôt)');
-  assert.strictEqual(dueCheck.statusLabel, 'Bientôt', 'Label par défaut = Bientôt');
-
-  // 2. Modification du seuil Rouge : passage de Rouge à 300 km (devient Urgent) via click bouton
-  inpRedKm.value = '300';
-  inpOrangeKm.value = '1500';
+  // 4. Modification personnalisée des seuils via inputs et sauvegarde
+  inpYellowDays.value = '45';
+  inpOrangeDays.value = '15';
+  inpRedDays.value = '3';
   btnSaveThresholds.click();
-  assert.strictEqual(window.appState.settings.thresholdRedKm, 300, 'Seuil rouge km persisté à 300');
-  assert.strictEqual(window.appState.settings.thresholdOrangeKm, 1500, 'Seuil orange km persisté à 1500');
 
-  dueCheck = window.calculateItemDueStatus(check26Veh, mockItem, predEngine);
-  assert.strictEqual(dueCheck.status, 'red', 'Le statut bascule en rouge (Urgent) car 250 km <= seuil rouge 300 km');
-  assert.strictEqual(dueCheck.statusLabel, 'Urgent', 'Label bascule sur "Urgent"');
+  assert.strictEqual(window.appState.settings.thresholdYellowDays, 45, 'Seuil jaune jours persisté à 45');
+  assert.strictEqual(window.appState.settings.thresholdOrangeDays, 15, 'Seuil orange jours persisté à 15');
+  assert.strictEqual(window.appState.settings.thresholdRedDays, 3, 'Seuil rouge jours persisté à 3');
 
-  // 3. Rétablissement des seuils standards via click bouton reset
+  // 5. Rétablissement des seuils standards via click bouton reset
   btnResetThresholds.click();
-  assert.strictEqual(window.appState.settings.thresholdRedKm, 0, 'Seuil rouge rétabli à 0');
-  assert.strictEqual(window.appState.settings.thresholdOrangeKm, 1000, 'Seuil orange rétabli à 1000');
-  dueCheck = window.calculateItemDueStatus(check26Veh, mockItem, predEngine);
-  assert.strictEqual(dueCheck.status, 'orange', 'Statut réinitialisé à orange (Bientôt)');
+  assert.strictEqual(window.appState.settings.thresholdYellowDays, 30, 'Seuil jaune réinitialisé à 30');
+  assert.strictEqual(window.appState.settings.thresholdOrangeDays, 10, 'Seuil orange réinitialisé à 10');
+  assert.strictEqual(window.appState.settings.thresholdRedDays, 2, 'Seuil rouge réinitialisé à 2');
 
   console.log('✅ TOUS LES TESTS DU SMOKE TEST (26/26) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);

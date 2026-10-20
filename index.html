@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=59">
+  <link rel="stylesheet" href="style.css?v=60">
   <script>
     // Pré-application immédiate du logo, thème et mode sombre/clair pour éviter tout flash (FOUC)
     (function() {
@@ -291,6 +291,10 @@
           <button type="button" class="filter-chip" data-filter="orange">
             <span>🟠 Bientôt</span>
             <span class="filter-chip-count" id="countFilterOrange">0</span>
+          </button>
+          <button type="button" class="filter-chip" data-filter="yellow">
+            <span>🟡 À prévoir</span>
+            <span class="filter-chip-count" id="countFilterYellow">0</span>
           </button>
           <button type="button" class="filter-chip" data-filter="green">
             <span>🟢 OK</span>
@@ -665,16 +669,71 @@
         <section class="card settings-card" id="settingsPhasesThresholdsCard" style="margin-bottom: 16px;">
           <div class="card-header">
             <div class="card-title">
-              <span>🚦 Seuils des phases d'entretien (Orange &amp; Rouge)</span>
+              <span>🚦 Seuils des phases d'entretien (Jaune, Orange &amp; Rouge)</span>
             </div>
             <span class="status-badge status-badge-info">Global</span>
           </div>
           <p class="card-subtitle">
-            Personnalisez les seuils à partir desquels une intervention entre en <strong>Phase Orange (« Bientôt »)</strong> ou en <strong>Phase Rouge (« Urgent / Dépassé »)</strong> sur votre carnet, vos fiches et l'ensemble de vos canaux d'alertes.
+            Personnalisez les seuils à partir desquels une intervention entre en <strong>Phase Jaune (« À prévoir »)</strong>, en <strong>Phase Orange (« Bientôt »)</strong> ou en <strong>Phase Rouge (« Urgent / Dépassé »)</strong> sur votre carnet, vos fiches et l'ensemble de vos canaux d'alertes.
           </p>
 
           <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 14px;">
-            <!-- 1. PHASE ORANGE -->
+            <!-- 1. PHASE JAUNE -->
+            <div class="alert-freq-card alert-freq-card-yellow" style="margin-top: 0;">
+              <div class="alert-freq-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 1.15rem;">🟡</span>
+                  <div>
+                    <strong style="color: #ca8a04; font-size: 0.95rem;">Phase JAUNE (« À prévoir »)</strong>
+                    <div style="font-size: 0.78rem; color: var(--text-muted);">
+                      L'entretien s'affiche en jaune dès que l'un des deux seuils ci-dessous est atteint (anticipation préventive).
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 10px;">
+                <!-- Seuil KM Jaune -->
+                <div style="background: var(--bg-card); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                  <label for="inputThresholdYellowKm" class="form-label" style="font-size: 0.82rem; margin-bottom: 6px; display: flex; justify-content: space-between;">
+                    <span>Kilomètres restants :</span>
+                    <span style="color: #ca8a04; font-weight: 700;">≤ <span id="lblThresholdYellowKm">1 500</span> km</span>
+                  </label>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.82rem; color: var(--text-muted);">Reste &le;</span>
+                    <input type="number" id="inputThresholdYellowKm" class="form-input" min="0" max="50000" step="50" value="1500" style="padding: 6px 10px; font-size: 0.88rem; font-weight: 600; width: 100px; text-align: center;">
+                    <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted);">km</span>
+                  </div>
+                  <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px;">
+                    <button type="button" class="btn-chip" data-quick-threshold="yellowKm" data-val="1000" onclick="window.setQuickThreshold && window.setQuickThreshold('yellowKm', 1000)">1 000 km</button>
+                    <button type="button" class="btn-chip" data-quick-threshold="yellowKm" data-val="1500" onclick="window.setQuickThreshold && window.setQuickThreshold('yellowKm', 1500)">1 500 km</button>
+                    <button type="button" class="btn-chip" data-quick-threshold="yellowKm" data-val="2000" onclick="window.setQuickThreshold && window.setQuickThreshold('yellowKm', 2000)">2 000 km</button>
+                    <button type="button" class="btn-chip" data-quick-threshold="yellowKm" data-val="3000" onclick="window.setQuickThreshold && window.setQuickThreshold('yellowKm', 3000)">3 000 km</button>
+                  </div>
+                </div>
+
+                <!-- Seuil Jours Jaune -->
+                <div style="background: var(--bg-card); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                  <label for="inputThresholdYellowDays" class="form-label" style="font-size: 0.82rem; margin-bottom: 6px; display: flex; justify-content: space-between;">
+                    <span>Jours restants (Temps) :</span>
+                    <span style="color: #ca8a04; font-weight: 700;">≤ <span id="lblThresholdYellowDays">30</span> jours</span>
+                  </label>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.82rem; color: var(--text-muted);">Reste &le;</span>
+                    <input type="number" id="inputThresholdYellowDays" class="form-input" min="0" max="365" step="1" value="30" style="padding: 6px 10px; font-size: 0.88rem; font-weight: 600; width: 90px; text-align: center;">
+                    <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted);">jour(s)</span>
+                  </div>
+                  <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px;">
+                    <button type="button" class="btn-chip" data-quick-threshold="yellowDays" data-val="20" onclick="window.setQuickThreshold && window.setQuickThreshold('yellowDays', 20)">20 jours</button>
+                    <button type="button" class="btn-chip" data-quick-threshold="yellowDays" data-val="30" onclick="window.setQuickThreshold && window.setQuickThreshold('yellowDays', 30)">30 jours</button>
+                    <button type="button" class="btn-chip" data-quick-threshold="yellowDays" data-val="45" onclick="window.setQuickThreshold && window.setQuickThreshold('yellowDays', 45)">45 jours</button>
+                    <button type="button" class="btn-chip" data-quick-threshold="yellowDays" data-val="60" onclick="window.setQuickThreshold && window.setQuickThreshold('yellowDays', 60)">60 jours</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. PHASE ORANGE -->
             <div class="alert-freq-card alert-freq-card-orange" style="margin-top: 0;">
               <div class="alert-freq-header">
                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -693,18 +752,18 @@
                 <div style="background: var(--bg-card); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
                   <label for="inputThresholdOrangeKm" class="form-label" style="font-size: 0.82rem; margin-bottom: 6px; display: flex; justify-content: space-between;">
                     <span>Kilomètres restants :</span>
-                    <span style="color: #f59e0b; font-weight: 700;">≤ <span id="lblThresholdOrangeKm">1 000</span> km</span>
+                    <span style="color: #f59e0b; font-weight: 700;">≤ <span id="lblThresholdOrangeKm">500</span> km</span>
                   </label>
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 0.82rem; color: var(--text-muted);">Reste &le;</span>
-                    <input type="number" id="inputThresholdOrangeKm" class="form-input" min="0" max="50000" step="50" value="1000" style="padding: 6px 10px; font-size: 0.88rem; font-weight: 600; width: 100px; text-align: center;">
+                    <input type="number" id="inputThresholdOrangeKm" class="form-input" min="0" max="50000" step="50" value="500" style="padding: 6px 10px; font-size: 0.88rem; font-weight: 600; width: 100px; text-align: center;">
                     <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted);">km</span>
                   </div>
                   <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px;">
+                    <button type="button" class="btn-chip" data-quick-threshold="orangeKm" data-val="300" onclick="window.setQuickThreshold && window.setQuickThreshold('orangeKm', 300)">300 km</button>
                     <button type="button" class="btn-chip" data-quick-threshold="orangeKm" data-val="500" onclick="window.setQuickThreshold && window.setQuickThreshold('orangeKm', 500)">500 km</button>
+                    <button type="button" class="btn-chip" data-quick-threshold="orangeKm" data-val="750" onclick="window.setQuickThreshold && window.setQuickThreshold('orangeKm', 750)">750 km</button>
                     <button type="button" class="btn-chip" data-quick-threshold="orangeKm" data-val="1000" onclick="window.setQuickThreshold && window.setQuickThreshold('orangeKm', 1000)">1 000 km</button>
-                    <button type="button" class="btn-chip" data-quick-threshold="orangeKm" data-val="1500" onclick="window.setQuickThreshold && window.setQuickThreshold('orangeKm', 1500)">1 500 km</button>
-                    <button type="button" class="btn-chip" data-quick-threshold="orangeKm" data-val="2000" onclick="window.setQuickThreshold && window.setQuickThreshold('orangeKm', 2000)">2 000 km</button>
                   </div>
                 </div>
 
@@ -712,24 +771,24 @@
                 <div style="background: var(--bg-card); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
                   <label for="inputThresholdOrangeDays" class="form-label" style="font-size: 0.82rem; margin-bottom: 6px; display: flex; justify-content: space-between;">
                     <span>Jours restants (Temps) :</span>
-                    <span style="color: #f59e0b; font-weight: 700;">≤ <span id="lblThresholdOrangeDays">30</span> jours</span>
+                    <span style="color: #f59e0b; font-weight: 700;">≤ <span id="lblThresholdOrangeDays">10</span> jours</span>
                   </label>
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 0.82rem; color: var(--text-muted);">Reste &le;</span>
-                    <input type="number" id="inputThresholdOrangeDays" class="form-input" min="0" max="365" step="1" value="30" style="padding: 6px 10px; font-size: 0.88rem; font-weight: 600; width: 90px; text-align: center;">
+                    <input type="number" id="inputThresholdOrangeDays" class="form-input" min="0" max="365" step="1" value="10" style="padding: 6px 10px; font-size: 0.88rem; font-weight: 600; width: 90px; text-align: center;">
                     <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted);">jour(s)</span>
                   </div>
                   <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px;">
+                    <button type="button" class="btn-chip" data-quick-threshold="orangeDays" data-val="5" onclick="window.setQuickThreshold && window.setQuickThreshold('orangeDays', 5)">5 jours</button>
+                    <button type="button" class="btn-chip" data-quick-threshold="orangeDays" data-val="10" onclick="window.setQuickThreshold && window.setQuickThreshold('orangeDays', 10)">10 jours</button>
                     <button type="button" class="btn-chip" data-quick-threshold="orangeDays" data-val="15" onclick="window.setQuickThreshold && window.setQuickThreshold('orangeDays', 15)">15 jours</button>
-                    <button type="button" class="btn-chip" data-quick-threshold="orangeDays" data-val="30" onclick="window.setQuickThreshold && window.setQuickThreshold('orangeDays', 30)">30 jours</button>
-                    <button type="button" class="btn-chip" data-quick-threshold="orangeDays" data-val="45" onclick="window.setQuickThreshold && window.setQuickThreshold('orangeDays', 45)">45 jours</button>
-                    <button type="button" class="btn-chip" data-quick-threshold="orangeDays" data-val="60" onclick="window.setQuickThreshold && window.setQuickThreshold('orangeDays', 60)">60 jours</button>
+                    <button type="button" class="btn-chip" data-quick-threshold="orangeDays" data-val="20" onclick="window.setQuickThreshold && window.setQuickThreshold('orangeDays', 20)">20 jours</button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- 2. PHASE ROUGE -->
+            <!-- 3. PHASE ROUGE -->
             <div class="alert-freq-card alert-freq-card-red" style="margin-top: 0;">
               <div class="alert-freq-header">
                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -748,18 +807,18 @@
                 <div style="background: var(--bg-card); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
                   <label for="inputThresholdRedKm" class="form-label" style="font-size: 0.82rem; margin-bottom: 6px; display: flex; justify-content: space-between;">
                     <span>Anticipation kilométrique :</span>
-                    <span style="color: #ef4444; font-weight: 700;">≤ <span id="lblThresholdRedKm">0</span> km</span>
+                    <span style="color: #ef4444; font-weight: 700;">≤ <span id="lblThresholdRedKm">100</span> km</span>
                   </label>
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 0.82rem; color: var(--text-muted);">Reste &le;</span>
-                    <input type="number" id="inputThresholdRedKm" class="form-input" min="0" max="10000" step="50" value="0" style="padding: 6px 10px; font-size: 0.88rem; font-weight: 600; width: 100px; text-align: center;">
+                    <input type="number" id="inputThresholdRedKm" class="form-input" min="0" max="10000" step="10" value="100" style="padding: 6px 10px; font-size: 0.88rem; font-weight: 600; width: 100px; text-align: center;">
                     <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted);">km</span>
                   </div>
                   <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px;">
                     <button type="button" class="btn-chip" data-quick-threshold="redKm" data-val="0" onclick="window.setQuickThreshold && window.setQuickThreshold('redKm', 0)">0 km (À l'échéance)</button>
+                    <button type="button" class="btn-chip" data-quick-threshold="redKm" data-val="50" onclick="window.setQuickThreshold && window.setQuickThreshold('redKm', 50)">50 km</button>
                     <button type="button" class="btn-chip" data-quick-threshold="redKm" data-val="100" onclick="window.setQuickThreshold && window.setQuickThreshold('redKm', 100)">100 km</button>
-                    <button type="button" class="btn-chip" data-quick-threshold="redKm" data-val="250" onclick="window.setQuickThreshold && window.setQuickThreshold('redKm', 250)">250 km</button>
-                    <button type="button" class="btn-chip" data-quick-threshold="redKm" data-val="500" onclick="window.setQuickThreshold && window.setQuickThreshold('redKm', 500)">500 km</button>
+                    <button type="button" class="btn-chip" data-quick-threshold="redKm" data-val="200" onclick="window.setQuickThreshold && window.setQuickThreshold('redKm', 200)">200 km</button>
                   </div>
                 </div>
 
@@ -767,18 +826,18 @@
                 <div style="background: var(--bg-card); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
                   <label for="inputThresholdRedDays" class="form-label" style="font-size: 0.82rem; margin-bottom: 6px; display: flex; justify-content: space-between;">
                     <span>Anticipation en jours (Temps) :</span>
-                    <span style="color: #ef4444; font-weight: 700;">≤ <span id="lblThresholdRedDays">0</span> jour(s)</span>
+                    <span style="color: #ef4444; font-weight: 700;">≤ <span id="lblThresholdRedDays">2</span> jour(s)</span>
                   </label>
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 0.82rem; color: var(--text-muted);">Reste &le;</span>
-                    <input type="number" id="inputThresholdRedDays" class="form-input" min="0" max="180" step="1" value="0" style="padding: 6px 10px; font-size: 0.88rem; font-weight: 600; width: 90px; text-align: center;">
+                    <input type="number" id="inputThresholdRedDays" class="form-input" min="0" max="180" step="1" value="2" style="padding: 6px 10px; font-size: 0.88rem; font-weight: 600; width: 90px; text-align: center;">
                     <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted);">jour(s)</span>
                   </div>
                   <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px;">
                     <button type="button" class="btn-chip" data-quick-threshold="redDays" data-val="0" onclick="window.setQuickThreshold && window.setQuickThreshold('redDays', 0)">0 j (À l'échéance)</button>
-                    <button type="button" class="btn-chip" data-quick-threshold="redDays" data-val="3" onclick="window.setQuickThreshold && window.setQuickThreshold('redDays', 3)">3 jours</button>
+                    <button type="button" class="btn-chip" data-quick-threshold="redDays" data-val="2" onclick="window.setQuickThreshold && window.setQuickThreshold('redDays', 2)">2 jours</button>
+                    <button type="button" class="btn-chip" data-quick-threshold="redDays" data-val="5" onclick="window.setQuickThreshold && window.setQuickThreshold('redDays', 5)">5 jours</button>
                     <button type="button" class="btn-chip" data-quick-threshold="redDays" data-val="7" onclick="window.setQuickThreshold && window.setQuickThreshold('redDays', 7)">7 jours</button>
-                    <button type="button" class="btn-chip" data-quick-threshold="redDays" data-val="15" onclick="window.setQuickThreshold && window.setQuickThreshold('redDays', 15)">15 jours</button>
                   </div>
                 </div>
               </div>
@@ -2029,6 +2088,6 @@
 
   <!-- Scripts de l'application -->
   <script type="module" src="room.js"></script>
-  <script src="app.js?v=59"></script>
+  <script src="app.js?v=60"></script>
 </body>
 </html>

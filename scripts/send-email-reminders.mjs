@@ -874,10 +874,10 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
         effectiveRemainingDays = remainingDaysByDate;
       }
 
-      const thresholdOrangeKm = Math.max(0, Number(roomDoc?.alertFrequencies?.thresholdOrangeKm ?? cfg?.thresholdOrangeKm ?? 1000));
-      const thresholdOrangeDays = Math.max(0, Number(roomDoc?.alertFrequencies?.thresholdOrangeDays ?? cfg?.thresholdOrangeDays ?? 30));
-      const thresholdRedKm = Math.max(0, Number(roomDoc?.alertFrequencies?.thresholdRedKm ?? cfg?.thresholdRedKm ?? 0));
-      const thresholdRedDays = Math.max(0, Number(roomDoc?.alertFrequencies?.thresholdRedDays ?? cfg?.thresholdRedDays ?? 0));
+      const thresholdOrangeKm = Math.max(0, Number(roomDoc?.alertFrequencies?.thresholdOrangeKm ?? cfg?.thresholdOrangeKm ?? 500));
+      const thresholdOrangeDays = Math.max(0, Number(roomDoc?.alertFrequencies?.thresholdOrangeDays ?? cfg?.thresholdOrangeDays ?? 10));
+      const thresholdRedKm = Math.max(0, Number(roomDoc?.alertFrequencies?.thresholdRedKm ?? cfg?.thresholdRedKm ?? 100));
+      const thresholdRedDays = Math.max(0, Number(roomDoc?.alertFrequencies?.thresholdRedDays ?? cfg?.thresholdRedDays ?? 2));
 
       const isStrictlyOverdue = (effectiveRemainingDays <= 0) || (remainingKm !== null && remainingKm <= 0);
       const isRedUrgent = (thresholdRedKm > 0 && remainingKm !== null && remainingKm <= thresholdRedKm) ||
