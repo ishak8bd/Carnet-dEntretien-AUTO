@@ -206,7 +206,7 @@ try {
       { id: 'veh_real', name: 'Peugeot 208', brand: 'Peugeot', model: '208', currentKm: 50000, isDemo: false, kmLog: [{ date: '2026-01-01', km: 50000 }] },
       { id: 'veh_demo', name: 'Renault Symbol', brand: 'Renault', model: 'Symbol', currentKm: 118000, isDemo: true, kmLog: [{ date: '2026-01-01', km: 118000 }] }
     ],
-    activeVehicleId: 'veh_real',
+    thresholdVehicleId: 'veh_real',
     history: [
       { id: 'h_real', vehicleId: 'veh_real', type: 'Vidange', date: '2026-01-01', km: 45000, isDemo: false },
       { id: 'h_demo', vehicleId: 'veh_demo', type: 'Filtre', date: '2025-06-01', km: 110000, isDemo: true }
@@ -562,8 +562,8 @@ try {
 
   // Remplir une ancienne vidange passée
   const testPastDate = new Date(Date.now() - 150 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  const activeVeh = window.appState.vehicles[0];
-  const testPastKm = Math.max(1000, (activeVeh.currentKm || 50000) - 8000);
+  const thresholdVeh = window.appState.vehicles[0];
+  const testPastKm = Math.max(1000, (thresholdVeh.currentKm || 50000) - 8000);
 
   selTypeHist.value = 'Vidange (moteur)';
   dateInputHist.value = testPastDate;
@@ -1121,7 +1121,69 @@ try {
   assert(typeof window.handleExportCsvBackup === 'function', 'Fonction handleExportCsvBackup disponible');
   assert(typeof window.handlePrintMaintenanceReport === 'function', 'Fonction handlePrintMaintenanceReport disponible');
 
-  console.log('✅ TOUS LES TESTS DU SMOKE TEST (25/25) ONT RÉUSSI SANS AUCUNE ERREUR !');
+  console.log('26. Vérification des seuils configurables des phases d\'entretien (Orange & Rouge)');
+  const cardThresholds = document.getElementById('settingsPhasesThresholdsCard');
+  assert(cardThresholds, 'Carte des seuils de phases présente dans le DOM');
+
+  const inpOrangeKm = document.getElementById('inputThresholdOrangeKm');
+  const inpOrangeDays = document.getElementById('inputThresholdOrangeDays');
+  const inpRedKm = document.getElementById('inputThresholdRedKm');
+  const inpRedDays = document.getElementById('inputThresholdRedDays');
+
+  assert(inpOrangeKm, 'Champ seuil Orange km présent');
+  assert(inpOrangeDays, 'Champ seuil Orange jours présent');
+  assert(inpRedKm, 'Champ seuil Rouge km présent');
+  assert(inpRedDays, 'Champ seuil Rouge jours présent');
+
+  const btnSaveThresholds = document.getElementById('btnSavePhaseThresholds');
+  const btnResetThresholds = document.getElementById('btnResetPhaseThresholds');
+  assert(btnSaveThresholds, 'Bouton enregistrer les seuils présent');
+  assert(btnResetThresholds, 'Bouton rétablir les seuils présent');
+
+  assert(typeof window.updatePhaseThresholdsUI === 'function', 'updatePhaseThresholdsUI disponible');
+  assert(typeof window.savePhaseThresholdsFromInputs === 'function', 'savePhaseThresholdsFromInputs disponible');
+  assert(typeof window.resetPhaseThresholds === 'function', 'resetPhaseThresholds disponible');
+
+  // Test du comportement avec un véhicule et un entretien de test
+  const check26Veh = window.getActiveVehicle();
+  assert(check26Veh, 'Véhicule actif trouvé pour le test de seuils');
+  const predEngine = window.computePredictionEngine(check26Veh);
+
+  // Création d'un item de test simulant 250 km restants et 20 jours restants
+  const mockItem = {
+    id: 'test_item_threshold',
+    name: 'Test Filtre Habitacle',
+    lastKm: predEngine.effectiveCurrentKm - 9750,
+    lastDate: null,
+    intervalKm: 10000, // Il reste exactement 250 km
+    intervalMonths: null
+  };
+
+  // 1. Avec les seuils par défaut (Orange = 1000 km, Rouge = 0 km)
+  window.resetPhaseThresholds();
+  let dueCheck = window.calculateItemDueStatus(check26Veh, mockItem, predEngine);
+  assert.strictEqual(dueCheck.status, 'orange', 'Statut par défaut = orange (Bientôt)');
+  assert.strictEqual(dueCheck.statusLabel, 'Bientôt', 'Label par défaut = Bientôt');
+
+  // 2. Modification du seuil Rouge : passage de Rouge à 300 km (devient Urgent)
+  inpRedKm.value = '300';
+  inpOrangeKm.value = '1500';
+  window.savePhaseThresholdsFromInputs();
+  assert.strictEqual(window.appState.settings.thresholdRedKm, 300, 'Seuil rouge km persisté à 300');
+  assert.strictEqual(window.appState.settings.thresholdOrangeKm, 1500, 'Seuil orange km persisté à 1500');
+
+  dueCheck = window.calculateItemDueStatus(check26Veh, mockItem, predEngine);
+  assert.strictEqual(dueCheck.status, 'red', 'Le statut bascule en rouge (Urgent) car 250 km <= seuil rouge 300 km');
+  assert.strictEqual(dueCheck.statusLabel, 'Urgent', 'Label bascule sur "Urgent"');
+
+  // 3. Rétablissement des seuils standards
+  window.resetPhaseThresholds();
+  assert.strictEqual(window.appState.settings.thresholdRedKm, 0, 'Seuil rouge rétabli à 0');
+  assert.strictEqual(window.appState.settings.thresholdOrangeKm, 1000, 'Seuil orange rétabli à 1000');
+  dueCheck = window.calculateItemDueStatus(check26Veh, mockItem, predEngine);
+  assert.strictEqual(dueCheck.status, 'orange', 'Statut réinitialisé à orange (Bientôt)');
+
+  console.log('✅ TOUS LES TESTS DU SMOKE TEST (26/26) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
 } catch (err) {
   console.error('❌ Échec du smoke test:', err);

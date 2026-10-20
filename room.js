@@ -885,6 +885,22 @@ export function startRoomSynchronization(roomId) {
           window.appState.settings.notifStaleKmDays = Number(f.staleKmDays);
           changed = true;
         }
+        if (f.thresholdOrangeKm !== undefined && window.appState.settings.thresholdOrangeKm !== f.thresholdOrangeKm) {
+          window.appState.settings.thresholdOrangeKm = Number(f.thresholdOrangeKm);
+          changed = true;
+        }
+        if (f.thresholdOrangeDays !== undefined && window.appState.settings.thresholdOrangeDays !== f.thresholdOrangeDays) {
+          window.appState.settings.thresholdOrangeDays = Number(f.thresholdOrangeDays);
+          changed = true;
+        }
+        if (f.thresholdRedKm !== undefined && window.appState.settings.thresholdRedKm !== f.thresholdRedKm) {
+          window.appState.settings.thresholdRedKm = Number(f.thresholdRedKm);
+          changed = true;
+        }
+        if (f.thresholdRedDays !== undefined && window.appState.settings.thresholdRedDays !== f.thresholdRedDays) {
+          window.appState.settings.thresholdRedDays = Number(f.thresholdRedDays);
+          changed = true;
+        }
 
         // Sous-objet spécifique Notifications
         if (f.notifications && typeof f.notifications === 'object') {
@@ -958,6 +974,12 @@ export function startRoomSynchronization(roomId) {
           }
           if (typeof window.updateNotificationSettingsUI === 'function') {
             window.updateNotificationSettingsUI();
+          }
+          if (typeof window.updatePhaseThresholdsUI === 'function') {
+            window.updatePhaseThresholdsUI();
+          }
+          if (typeof window.renderApp === 'function') {
+            window.renderApp();
           }
           if (typeof window.updateEmailSettingsUI === 'function') {
             window.updateEmailSettingsUI();

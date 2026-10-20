@@ -847,7 +847,129 @@ window.updateEmailSettingsUI = updateEmailSettingsUI;
 /**
  * Met à jour l'interface des paramètres de notifications
  */
+
+/**
+ * Met à jour les champs et libellés des seuils de phases d'entretien dans les paramètres
+ */
+function updatePhaseThresholdsUI() {
+  const inputOrangeKm = document.getElementById('inputThresholdOrangeKm');
+  const inputOrangeDays = document.getElementById('inputThresholdOrangeDays');
+  const inputRedKm = document.getElementById('inputThresholdRedKm');
+  const inputRedDays = document.getElementById('inputThresholdRedDays');
+
+  const lblOrangeKm = document.getElementById('lblThresholdOrangeKm');
+  const lblOrangeDays = document.getElementById('lblThresholdOrangeDays');
+  const lblRedKm = document.getElementById('lblThresholdRedKm');
+  const lblRedDays = document.getElementById('lblThresholdRedDays');
+
+  const settings = (appState && appState.settings) ? appState.settings : {};
+  const orangeKm = (settings.thresholdOrangeKm !== undefined && settings.thresholdOrangeKm !== null)
+    ? Number(settings.thresholdOrangeKm) : 1000;
+  const orangeDays = (settings.thresholdOrangeDays !== undefined && settings.thresholdOrangeDays !== null)
+    ? Number(settings.thresholdOrangeDays) : 30;
+  const redKm = (settings.thresholdRedKm !== undefined && settings.thresholdRedKm !== null)
+    ? Number(settings.thresholdRedKm) : 0;
+  const redDays = (settings.thresholdRedDays !== undefined && settings.thresholdRedDays !== null)
+    ? Number(settings.thresholdRedDays) : 0;
+
+  if (inputOrangeKm && document.activeElement !== inputOrangeKm) inputOrangeKm.value = String(orangeKm);
+  if (inputOrangeDays && document.activeElement !== inputOrangeDays) inputOrangeDays.value = String(orangeDays);
+  if (inputRedKm && document.activeElement !== inputRedKm) inputRedKm.value = String(redKm);
+  if (inputRedDays && document.activeElement !== inputRedDays) inputRedDays.value = String(redDays);
+
+  if (lblOrangeKm) lblOrangeKm.textContent = orangeKm.toLocaleString('fr-FR');
+  if (lblOrangeDays) lblOrangeDays.textContent = String(orangeDays);
+  if (lblRedKm) lblRedKm.textContent = redKm.toLocaleString('fr-FR');
+  if (lblRedDays) lblRedDays.textContent = String(redDays);
+
+  const lblRedDesc = document.getElementById('lblRedFreqDesc');
+  if (lblRedDesc) {
+    const detail = (redKm > 0 || redDays > 0)
+      ? `dépassé (&le; 0) ou critique (&le; ${redKm} km / ${redDays} j)`
+      : `dépassé (&le; 0)`;
+    lblRedDesc.innerHTML = `Déclenchée quand l'entretien est en Phase ROUGE (${detail}).`;
+  }
+
+  const lblOrangeDesc = document.getElementById('lblOrangeFreqDesc');
+  if (lblOrangeDesc) {
+    lblOrangeDesc.innerHTML = `Déclenchée dès que l'intervention approche (&le; ${orangeKm.toLocaleString('fr-FR')} km ou &le; ${orangeDays} j).`;
+  }
+}
+
+/**
+ * Enregistre les seuils de phases saisis par l'utilisateur
+ */
+async function savePhaseThresholdsFromInputs(showFeedback = false) {
+  if (!appState.settings) appState.settings = {};
+  const inputOrangeKm = document.getElementById('inputThresholdOrangeKm');
+  const inputOrangeDays = document.getElementById('inputThresholdOrangeDays');
+  const inputRedKm = document.getElementById('inputThresholdRedKm');
+  const inputRedDays = document.getElementById('inputThresholdRedDays');
+
+  let orangeKm = inputOrangeKm ? Math.max(0, parseInt(inputOrangeKm.value, 10) || 0) : 1000;
+  let orangeDays = inputOrangeDays ? Math.max(0, parseInt(inputOrangeDays.value, 10) || 0) : 30;
+  let redKm = inputRedKm ? Math.max(0, parseInt(inputRedKm.value, 10) || 0) : 0;
+  let redDays = inputRedDays ? Math.max(0, parseInt(inputRedDays.value, 10) || 0) : 0;
+
+  // Cohérence : Orange doit être au moins supérieur ou égal à Rouge
+  if (orangeKm < redKm) orangeKm = redKm;
+  if (orangeDays < redDays) orangeDays = redDays;
+
+  appState.settings.thresholdOrangeKm = orangeKm;
+  appState.settings.thresholdOrangeDays = orangeDays;
+  appState.settings.thresholdRedKm = redKm;
+  appState.settings.thresholdRedDays = redDays;
+
+  saveState();
+  updatePhaseThresholdsUI();
+
+  // Re-calculer et actualiser l'affichage
+  renderApp();
+  checkAndSendPendingMaintenanceNotifications();
+
+  // Synchronisation avec la salle partagée Firestore si connectée
+  const freqData = buildFullAlertFrequenciesPayload();
+  let syncResult = null;
+  if (typeof window !== 'undefined' && window.FamilyRoom && typeof window.FamilyRoom.syncAlertFrequenciesToRoom === 'function') {
+    syncResult = await window.FamilyRoom.syncAlertFrequenciesToRoom(freqData);
+  }
+
+  const statusEl = document.getElementById('lblThresholdsSavedStatus');
+  if (statusEl) {
+    statusEl.textContent = `✅ Enregistré : Orange (≤ ${orangeKm.toLocaleString('fr-FR')} km / ${orangeDays} j), Rouge (≤ ${redKm.toLocaleString('fr-FR')} km / ${redDays} j)`;
+    statusEl.style.display = 'inline-block';
+    setTimeout(() => {
+      if (statusEl) statusEl.style.display = 'none';
+    }, 4500);
+  }
+
+  if (showFeedback) {
+    if (syncResult && syncResult.error) {
+      showToast(`⚠️ Seuils enregistrés localement, échec synchronisation salle : ${syncResult.error}`, 'warning', 4500);
+    } else {
+      showToast(`✅ Seuils des phases d'entretien enregistrés avec succès !`, 'success', 3500);
+    }
+  }
+}
+
+/**
+ * Réinitialise les seuils de phases aux valeurs standards
+ */
+function resetPhaseThresholds() {
+  if (!appState.settings) appState.settings = {};
+  appState.settings.thresholdOrangeKm = 1000;
+  appState.settings.thresholdOrangeDays = 30;
+  appState.settings.thresholdRedKm = 0;
+  appState.settings.thresholdRedDays = 0;
+  saveState();
+  updatePhaseThresholdsUI();
+  renderApp();
+  checkAndSendPendingMaintenanceNotifications();
+  showToast("↺ Seuils d'entretien rétablis aux valeurs standards (Orange : 1 000 km / 30 j, Rouge : 0 km / 0 j).", "info");
+}
+
 function updateNotificationSettingsUI() {
+  updatePhaseThresholdsUI();
   const badge = document.getElementById('notifStatusBadge');
   const infoEl = document.getElementById('notifStatusInfo');
   const toggleBtn = document.getElementById('btnToggleNotifications');
@@ -1334,6 +1456,9 @@ if (typeof window !== 'undefined') {
   window.getAlertFrequencyMs = getAlertFrequencyMs;
   window.getAlertFrequencyMinutes = getAlertFrequencyMinutes;
   window.saveAlertFrequenciesFromInputs = saveAlertFrequenciesFromInputs;
+  window.updatePhaseThresholdsUI = updatePhaseThresholdsUI;
+  window.savePhaseThresholdsFromInputs = savePhaseThresholdsFromInputs;
+  window.resetPhaseThresholds = resetPhaseThresholds;
 }
 
 // ============================================================================
@@ -2207,23 +2332,50 @@ function calculateItemDueStatus(vehicle, item, predEngine) {
   let statusLabel = 'OK';
   let urgencyScore = 0;
 
-  const isKmOverdue = remainingKm !== null && remainingKm <= 0;
-  const isDateOverdue = effectiveRemainingDays !== null && effectiveRemainingDays <= 0;
+  // Seuils configurables (par défaut : Orange = 1000 km / 30 jours, Rouge = 0 km / 0 jour)
+  const settings = (typeof appState !== 'undefined' && appState && appState.settings) ? appState.settings : {};
+  const thresholdOrangeKm = (settings.thresholdOrangeKm !== undefined && settings.thresholdOrangeKm !== null)
+    ? Math.max(0, Number(settings.thresholdOrangeKm))
+    : 1000;
+  const thresholdOrangeDays = (settings.thresholdOrangeDays !== undefined && settings.thresholdOrangeDays !== null)
+    ? Math.max(0, Number(settings.thresholdOrangeDays))
+    : 30;
+  const thresholdRedKm = (settings.thresholdRedKm !== undefined && settings.thresholdRedKm !== null)
+    ? Math.max(0, Number(settings.thresholdRedKm))
+    : 0;
+  const thresholdRedDays = (settings.thresholdRedDays !== undefined && settings.thresholdRedDays !== null)
+    ? Math.max(0, Number(settings.thresholdRedDays))
+    : 0;
 
-  const isKmClose = remainingKm !== null && remainingKm <= 1000 && remainingKm > 0;
-  const isDateClose = effectiveRemainingDays !== null && effectiveRemainingDays <= 30 && effectiveRemainingDays > 0;
+  // Dépassé : strictement <= 0 km ou <= 0 jours
+  const isKmStrictlyOverdue = remainingKm !== null && remainingKm <= 0;
+  const isDateStrictlyOverdue = effectiveRemainingDays !== null && effectiveRemainingDays <= 0;
 
-  if (isKmOverdue || isDateOverdue) {
+  // Urgent (Phase Rouge anticipée) : <= thresholdRed si thresholdRed > 0
+  const isKmRedUrgent = thresholdRedKm > 0 && remainingKm !== null && remainingKm <= thresholdRedKm;
+  const isDateRedUrgent = thresholdRedDays > 0 && effectiveRemainingDays !== null && effectiveRemainingDays <= thresholdRedDays;
+
+  // Bientôt (Phase Orange) : <= thresholdOrange
+  const isKmOrangeClose = remainingKm !== null && remainingKm <= thresholdOrangeKm;
+  const isDateOrangeClose = effectiveRemainingDays !== null && effectiveRemainingDays <= thresholdOrangeDays;
+
+  if (isKmStrictlyOverdue || isDateStrictlyOverdue) {
     status = 'red';
     statusLabel = 'Dépassé';
     const overdueKm = remainingKm !== null && remainingKm < 0 ? Math.abs(remainingKm) : 0;
     const overdueDays = effectiveRemainingDays !== null && effectiveRemainingDays < 0 ? Math.abs(effectiveRemainingDays) : 0;
     urgencyScore = 10000 + overdueKm + overdueDays * 40;
-  } else if (isKmClose || isDateClose) {
+  } else if (isKmRedUrgent || isDateRedUrgent) {
+    status = 'red';
+    statusLabel = 'Urgent';
+    const distFactor = remainingKm !== null ? Math.max(0, thresholdRedKm - remainingKm) : 0;
+    const daysFactor = effectiveRemainingDays !== null ? Math.max(0, thresholdRedDays - effectiveRemainingDays) * 30 : 0;
+    urgencyScore = 8000 + Math.max(distFactor, daysFactor);
+  } else if (isKmOrangeClose || isDateOrangeClose) {
     status = 'orange';
     statusLabel = 'Bientôt';
-    const distFactor = remainingKm !== null ? (1000 - remainingKm) : 0;
-    const daysFactor = effectiveRemainingDays !== null ? (30 - effectiveRemainingDays) * 30 : 0;
+    const distFactor = remainingKm !== null ? Math.max(0, thresholdOrangeKm - remainingKm) : 0;
+    const daysFactor = effectiveRemainingDays !== null ? Math.max(0, thresholdOrangeDays - effectiveRemainingDays) * 30 : 0;
     urgencyScore = 5000 + Math.max(distFactor, daysFactor);
   } else {
     status = 'green';

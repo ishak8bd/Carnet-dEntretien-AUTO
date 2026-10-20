@@ -874,22 +874,30 @@ export async function runEmailReminders({ isTest = false, isDryRun = false, forc
         effectiveRemainingDays = remainingDaysByDate;
       }
 
-      const isOverdue = (effectiveRemainingDays <= 0) || (remainingKm !== null && remainingKm <= 0);
-      const thresholdDays = Math.max(1, Number(roomDoc?.settings?.notifThresholdDays || cfg?.notifThresholdDays || 30));
+      const thresholdOrangeKm = Math.max(0, Number(roomDoc?.alertFrequencies?.thresholdOrangeKm ?? cfg?.thresholdOrangeKm ?? 1000));
+      const thresholdOrangeDays = Math.max(0, Number(roomDoc?.alertFrequencies?.thresholdOrangeDays ?? cfg?.thresholdOrangeDays ?? 30));
+      const thresholdRedKm = Math.max(0, Number(roomDoc?.alertFrequencies?.thresholdRedKm ?? cfg?.thresholdRedKm ?? 0));
+      const thresholdRedDays = Math.max(0, Number(roomDoc?.alertFrequencies?.thresholdRedDays ?? cfg?.thresholdRedDays ?? 0));
 
-      if (isOverdue || effectiveRemainingDays <= thresholdDays || (remainingKm !== null && remainingKm <= 1000)) {
+      const isStrictlyOverdue = (effectiveRemainingDays <= 0) || (remainingKm !== null && remainingKm <= 0);
+      const isRedUrgent = (thresholdRedKm > 0 && remainingKm !== null && remainingKm <= thresholdRedKm) ||
+                          (thresholdRedDays > 0 && effectiveRemainingDays <= thresholdRedDays);
+      const isOrangeClose = (remainingKm !== null && remainingKm <= thresholdOrangeKm) ||
+                            (effectiveRemainingDays <= thresholdOrangeDays);
+
+      if (isStrictlyOverdue || isRedUrgent || isOrangeClose) {
         let level = 'warning';
-        let levelLabel = '⏳ ÉCHÉANCE PROCHE';
+        let levelLabel = '⏳ ÉCHÉANCE PROCHE (Bientôt)';
         let badgeBg = '#d97706';
 
-        if (isOverdue) {
+        if (isStrictlyOverdue) {
           level = 'urgent';
-          levelLabel = '🚨 URGENT / DÉPASSÉ';
+          levelLabel = '🚨 DÉPASSÉ';
           badgeBg = '#dc2626';
-        } else if (effectiveRemainingDays <= 7 || (remainingKm !== null && remainingKm <= 250)) {
-          level = 'warning';
-          levelLabel = '⚠️ IMMINENT';
-          badgeBg = '#d97706';
+        } else if (isRedUrgent) {
+          level = 'urgent';
+          levelLabel = '🚨 URGENT (Critique)';
+          badgeBg = '#dc2626';
         }
 
         const kmInfo = remainingKm !== null
