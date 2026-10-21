@@ -1336,7 +1336,47 @@ try {
   document.getElementById('maintenanceItemForm').dispatchEvent(new window.Event('submit'));
   assert.strictEqual(addedItem.notes, 'Réf Denso FXE22HR11', 'Notes mises à jour avec succès');
 
-  console.log('✅ TOUS LES TESTS DU SMOKE TEST (27/27) ONT RÉUSSI SANS AUCUNE ERREUR !');
+  console.log('28. Vérification de l\'édition et suppression du journal des relevés par l\'administrateur');
+  const activeVeh28 = window.getActiveVehicle();
+  assert.ok(activeVeh28, 'Véhicule actif trouvé');
+  
+  // 1. En mode solo ou admin, renderKmLogList doit afficher les boutons .kmlog-edit-btn
+  window.renderKmLogList(activeVeh28);
+  const editBtns = document.querySelectorAll('#kmlogList .kmlog-edit-btn');
+  assert.ok(editBtns.length > 0, 'Les boutons .kmlog-edit-btn doivent être présents pour l\'admin');
+
+  // 2. Clic sur le premier bouton d'édition : le modal modalEditKmLog doit s'ouvrir avec les bonnes valeurs
+  const firstEditBtn = editBtns[0];
+  firstEditBtn.click();
+  const modalEditKmLog = document.getElementById('modalEditKmLog');
+  assert.ok(modalEditKmLog, 'Le modal #modalEditKmLog doit exister');
+  assert.strictEqual(modalEditKmLog.classList.contains('hidden'), false, 'Le modal d\'édition doit être ouvert');
+  
+  const editKmInput = document.getElementById('editKmLogKmInput');
+  const editDateInput = document.getElementById('editKmLogDateInput');
+  assert.ok(editKmInput.value, 'Le champ kilométrage doit être pré-rempli');
+  assert.ok(editDateInput.value, 'Le champ date doit être pré-rempli');
+
+  // 3. Soumission du formulaire avec un nouveau kilométrage (+500 km)
+  const origLogKm = Number(editKmInput.value);
+  const updatedTestKm = origLogKm + 500;
+  editKmInput.value = updatedTestKm;
+  document.getElementById('formEditKmLog').dispatchEvent(new window.Event('submit'));
+  assert.strictEqual(modalEditKmLog.classList.contains('hidden'), true, 'Le modal d\'édition doit se refermer après validation');
+
+  // 4. Vérifier que la valeur a bien été mise à jour dans le kmLog du véhicule
+  const matchingLog = activeVeh28.kmLog.find(l => l.km === updatedTestKm);
+  assert.ok(matchingLog, 'Le relevé kilométrique doit avoir été modifié dans le kmLog');
+
+  // 5. Test de suppression d'un relevé
+  const prevCount = activeVeh28.kmLog.length;
+  window.openEditKmLogModal(activeVeh28.id, matchingLog.id || null, matchingLog.date, matchingLog.km);
+  window.confirm = () => true; // Simuler confirmation
+  document.getElementById('btnDeleteKmLog').click();
+  assert.strictEqual(activeVeh28.kmLog.length, prevCount - 1, 'Le relevé doit être supprimé du kmLog');
+  assert.strictEqual(modalEditKmLog.classList.contains('hidden'), true, 'Le modal d\'édition doit être fermé après suppression');
+
+  console.log('✅ TOUS LES TESTS DU SMOKE TEST (28/28) ONT RÉUSSI SANS AUCUNE ERREUR !');
   process.exit(0);
 } catch (err) {
   console.error('❌ Échec du smoke test:', err);

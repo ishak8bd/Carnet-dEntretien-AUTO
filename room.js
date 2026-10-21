@@ -1208,6 +1208,110 @@ export async function recordKmReading(vehicleId, km, date, predictedKm) {
   pingRoomActivity(profile.roomId);
 }
 
+/** Vérifie si l'utilisateur courant est administrateur / gestionnaire (ou en mode solo) */
+export function isCurrentUserAdmin() {
+  const profile = getStoredRoomProfile();
+  if (!profile) return true; // En mode solo, l'utilisateur local est le gestionnaire
+  return profile.role === 'owner';
+}
+
+/** Met à jour un relevé kilométrique dans la salle partagée (réservé admin) */
+export async function updateKmReading(vehicleId, logId, updatedData) {
+  const profile = getStoredRoomProfile();
+  if (!profile || profile.status !== 'approved') {
+    throw new Error("Action non autorisée.");
+  }
+  if (profile.role !== 'owner') {
+    throw new Error("Seul l'administrateur peut modifier le journal des relevés.");
+  }
+
+  const user = await ensureAuth();
+  const logRef = doc(db, 'rooms', profile.roomId, 'kmLogs', logId);
+
+  const newKm = Number(updatedData.km);
+  const newDate = updatedData.date;
+
+  const updatePayload = {
+    date: newDate,
+    km: newKm,
+    updatedAt: serverTimestamp(),
+    updatedBy: user.uid
+  };
+  if (updatedData.predictedKm !== undefined) {
+    updatePayload.predictedKm = (updatedData.predictedKm !== null && !isNaN(Number(updatedData.predictedKm)))
+      ? Number(updatedData.predictedKm)
+      : null;
+  }
+
+  await updateDoc(logRef, updatePayload);
+
+  // Mettre à jour le cache local
+  const existingLog = roomKmLogsMap.get(logId);
+  if (existingLog) {
+    roomKmLogsMap.set(logId, {
+      ...existingLog,
+      date: newDate,
+      km: newKm,
+      ...(updatePayload.predictedKm !== undefined ? { predictedKm: updatePayload.predictedKm } : {})
+    });
+  }
+
+  // Recalculer le compteur actuel du véhicule si nécessaire
+  const vehicleLogs = Array.from(roomKmLogsMap.values())
+    .filter(l => l.vehicleId === vehicleId)
+    .sort((a, b) => (a.date || '').localeCompare(b.date || '') || (Number(a.km) - Number(b.km)));
+
+  if (vehicleLogs.length > 0) {
+    const latestLog = vehicleLogs[vehicleLogs.length - 1];
+    const vRef = doc(db, 'rooms', profile.roomId, 'vehicles', vehicleId);
+    await updateDoc(vRef, {
+      currentKm: Number(latestLog.km),
+      updatedAt: serverTimestamp(),
+      updatedBy: user.uid
+    });
+  }
+
+  await addRoomActivity(profile.roomId, `${profile.myName} (Admin) a modifié un relevé kilométrique (${newKm.toLocaleString('fr-FR')} km)`);
+  pingRoomActivity(profile.roomId);
+  rebuildAssembledAppState();
+}
+
+/** Supprime un relevé kilométrique dans la salle partagée (réservé admin) */
+export async function deleteKmReading(vehicleId, logId) {
+  const profile = getStoredRoomProfile();
+  if (!profile || profile.status !== 'approved') {
+    throw new Error("Action non autorisée.");
+  }
+  if (profile.role !== 'owner') {
+    throw new Error("Seul l'administrateur peut modifier ou supprimer du journal des relevés.");
+  }
+
+  const logRef = doc(db, 'rooms', profile.roomId, 'kmLogs', logId);
+  await deleteDoc(logRef);
+
+  roomKmLogsMap.delete(logId);
+
+  // Recalculer le compteur actuel du véhicule
+  const vehicleLogs = Array.from(roomKmLogsMap.values())
+    .filter(l => l.vehicleId === vehicleId)
+    .sort((a, b) => (a.date || '').localeCompare(b.date || '') || (Number(a.km) - Number(b.km)));
+
+  if (vehicleLogs.length > 0) {
+    const latestLog = vehicleLogs[vehicleLogs.length - 1];
+    const user = await ensureAuth();
+    const vRef = doc(db, 'rooms', profile.roomId, 'vehicles', vehicleId);
+    await updateDoc(vRef, {
+      currentKm: Number(latestLog.km),
+      updatedAt: serverTimestamp(),
+      updatedBy: user.uid
+    });
+  }
+
+  await addRoomActivity(profile.roomId, `${profile.myName} (Admin) a supprimé un relevé kilométrique`);
+  pingRoomActivity(profile.roomId);
+  rebuildAssembledAppState();
+}
+
 /** Enregistre une intervention d'historique dans la salle partagée avec auteur */
 export async function recordHistoryEntry(record, updatedItem) {
   const profile = getStoredRoomProfile();
@@ -2395,7 +2499,10 @@ window.FamilyRoom = {
   deleteExternalContact,
   syncAlertFrequenciesToRoom,
   registerPushSubscriptionInRoom,
-  getRoomMembers
+  getRoomMembers,
+  isCurrentUserAdmin,
+  updateKmReading,
+  deleteKmReading
 };
 
 if (document.readyState === 'loading') {

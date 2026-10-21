@@ -5701,6 +5701,78 @@ function renderVehicleSelector() {
   }
 }
 
+/** Vérifie si l'utilisateur courant a les privilèges d'administrateur (gestionnaire de salle ou mode solo) */
+function isCurrentUserAdmin() {
+  if (typeof window === 'undefined') return true;
+  if (window.FamilyRoom && typeof window.FamilyRoom.isCurrentUserAdmin === 'function') {
+    return window.FamilyRoom.isCurrentUserAdmin();
+  }
+  const prof = (window.FamilyRoom && typeof window.FamilyRoom.getStoredRoomProfile === 'function')
+    ? window.FamilyRoom.getStoredRoomProfile()
+    : null;
+  if (!prof) return true; // En mode solo, l'utilisateur est le gestionnaire de son propre carnet
+  return prof.role === 'owner';
+}
+
+let editingKmLogData = null;
+
+function openEditKmLogModal(vehicleId, logId, origDate, origKm) {
+  if (!isCurrentUserAdmin()) {
+    showToast("Seul l'administrateur peut modifier le journal des relevés.", "warning");
+    return;
+  }
+
+  const vehicle = (appState.vehicles || []).find(v => v.id === vehicleId);
+  if (!vehicle || !Array.isArray(vehicle.kmLog)) {
+    showToast("Véhicule introuvable.", "error");
+    return;
+  }
+
+  const entry = vehicle.kmLog.find(l => {
+    if (logId && l.id && l.id === logId) return true;
+    return l.date === origDate && Number(l.km) === Number(origKm);
+  });
+
+  if (!entry) {
+    showToast("Relevé kilométrique introuvable.", "error");
+    return;
+  }
+
+  editingKmLogData = {
+    vehicleId,
+    logId: entry.id || logId || null,
+    origDate: entry.date,
+    origKm: entry.km,
+    entry
+  };
+
+  const modal = document.getElementById('modalEditKmLog');
+  const dateInput = document.getElementById('editKmLogDateInput');
+  const kmInput = document.getElementById('editKmLogKmInput');
+  const vehInput = document.getElementById('editKmLogVehicleId');
+  const idInput = document.getElementById('editKmLogId');
+  const origDateInput = document.getElementById('editKmLogOrigDate');
+  const origKmInput = document.getElementById('editKmLogOrigKm');
+
+  if (vehInput) vehInput.value = vehicleId;
+  if (idInput) idInput.value = entry.id || '';
+  if (origDateInput) origDateInput.value = entry.date;
+  if (origKmInput) origKmInput.value = entry.km;
+  if (dateInput) dateInput.value = entry.date;
+  if (kmInput) kmInput.value = entry.km;
+
+  if (modal) {
+    modal.classList.remove('hidden');
+    kmInput?.focus();
+  }
+}
+
+function closeEditKmLogModal() {
+  const modal = document.getElementById('modalEditKmLog');
+  if (modal) modal.classList.add('hidden');
+  editingKmLogData = null;
+}
+
 function renderKmLogList(vehicle) {
   const container = document.getElementById('kmlogList');
   const badge = document.getElementById('kmlogCountBadge');
@@ -5715,6 +5787,7 @@ function renderKmLogList(vehicle) {
 
   if (badge) badge.textContent = `${vehicle.kmLog.length} relevé${vehicle.kmLog.length > 1 ? 's' : ''}`;
 
+  const isAdmin = isCurrentUserAdmin();
   const reversedLogs = [...vehicle.kmLog].reverse();
 
   reversedLogs.forEach((entry) => {
@@ -5728,6 +5801,15 @@ function renderKmLogList(vehicle) {
       ? `<span class="kmlog-author">👤 ${escapeHtml(entry.authorName)}</span>`
       : '';
 
+    const editBtnHtml = isAdmin
+      ? `<button type="button" class="btn-icon kmlog-edit-btn" data-vehicle-id="${escapeHtml(vehicle.id)}" data-log-id="${escapeHtml(entry.id || '')}" data-log-date="${escapeHtml(entry.date)}" data-log-km="${entry.km}" title="Modifier ce relevé (Admin)" aria-label="Modifier le relevé du ${formatDate(entry.date)}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;" aria-hidden="true">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </button>`
+      : '';
+
     item.innerHTML = `
       <div class="kmlog-item-left">
         <span class="kmlog-date">${formatDate(entry.date)}</span>
@@ -5737,8 +5819,20 @@ function renderKmLogList(vehicle) {
       <div class="kmlog-item-right">
         <span class="kmlog-km">${formatKm(entry.km)}</span>
         <span class="kmlog-delta">${deltaText}</span>
+        ${editBtnHtml}
       </div>
     `;
+
+    if (isAdmin) {
+      const editBtn = item.querySelector('.kmlog-edit-btn');
+      if (editBtn) {
+        editBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openEditKmLogModal(vehicle.id, entry.id || null, entry.date, entry.km);
+        });
+      }
+    }
+
     container.appendChild(item);
   });
 }
@@ -7807,6 +7901,144 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Handlers pour la modale d'édition de relevé kilométrique (Réservé Admin)
+  document.getElementById('formEditKmLog')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!isCurrentUserAdmin()) {
+      showToast("Seul l'administrateur peut modifier le journal des relevés.", "warning");
+      return;
+    }
+
+    const vehId = document.getElementById('editKmLogVehicleId')?.value;
+    const logId = document.getElementById('editKmLogId')?.value;
+    const origDate = document.getElementById('editKmLogOrigDate')?.value;
+    const origKm = document.getElementById('editKmLogOrigKm')?.value;
+    const newDate = document.getElementById('editKmLogDateInput')?.value;
+    const newKmVal = parseInt(document.getElementById('editKmLogKmInput')?.value, 10);
+
+    if (!newDate || isNaN(newKmVal) || newKmVal < 0) {
+      showToast("Veuillez renseigner une date et un kilométrage valides.", "error");
+      return;
+    }
+
+    const vehicle = (appState.vehicles || []).find(v => v.id === vehId);
+    if (!vehicle || !Array.isArray(vehicle.kmLog)) {
+      showToast("Véhicule introuvable.", "error");
+      return;
+    }
+
+    const targetIdx = vehicle.kmLog.findIndex(l => {
+      if (logId && l.id && l.id === logId) return true;
+      return l.date === origDate && Number(l.km) === Number(origKm);
+    });
+
+    if (targetIdx === -1) {
+      showToast("Relevé introuvable dans le journal.", "error");
+      return;
+    }
+
+    // Mise à jour de l'entrée dans le kmLog
+    vehicle.kmLog[targetIdx].date = newDate;
+    vehicle.kmLog[targetIdx].km = newKmVal;
+
+    // Trier les relevés par date croissante
+    vehicle.kmLog.sort((a, b) => (a.date || '').localeCompare(b.date || '') || (Number(a.km) - Number(b.km)));
+
+    // Recalculer le compteur actuel du véhicule si nécessaire
+    if (vehicle.kmLog.length > 0) {
+      const latestLog = vehicle.kmLog[vehicle.kmLog.length - 1];
+      vehicle.currentKm = Number(latestLog.km);
+      vehicle.updatedAt = latestLog.date;
+    }
+
+    // Synchronisation en mode salle
+    if (window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive()) {
+      try {
+        const targetLogId = logId || vehicle.kmLog[targetIdx].id;
+        if (targetLogId && typeof window.FamilyRoom.updateKmReading === 'function') {
+          await window.FamilyRoom.updateKmReading(vehId, targetLogId, { date: newDate, km: newKmVal });
+        }
+      } catch (err) {
+        console.warn("Erreur mise à jour relevé salle:", err);
+      }
+    }
+
+    saveState();
+    closeEditKmLogModal();
+    renderApp();
+    showToast("Relevé kilométrique modifié avec succès !", "success");
+  });
+
+  document.getElementById('btnDeleteKmLog')?.addEventListener('click', async () => {
+    if (!isCurrentUserAdmin()) {
+      showToast("Seul l'administrateur peut supprimer un relevé.", "warning");
+      return;
+    }
+
+    const vehId = document.getElementById('editKmLogVehicleId')?.value;
+    const logId = document.getElementById('editKmLogId')?.value;
+    const origDate = document.getElementById('editKmLogOrigDate')?.value;
+    const origKm = document.getElementById('editKmLogOrigKm')?.value;
+
+    const vehicle = (appState.vehicles || []).find(v => v.id === vehId);
+    if (!vehicle || !Array.isArray(vehicle.kmLog)) {
+      showToast("Véhicule introuvable.", "error");
+      return;
+    }
+
+    const targetIdx = vehicle.kmLog.findIndex(l => {
+      if (logId && l.id && l.id === logId) return true;
+      return l.date === origDate && Number(l.km) === Number(origKm);
+    });
+
+    if (targetIdx === -1) {
+      showToast("Relevé introuvable dans le journal.", "error");
+      return;
+    }
+
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+      const ok = window.confirm(`Supprimer définitivement le relevé du ${formatDate(origDate)} (${formatKm(origKm)}) ?`);
+      if (!ok) return;
+    }
+
+    const removedEntry = vehicle.kmLog.splice(targetIdx, 1)[0];
+
+    // Trier les relevés restants
+    vehicle.kmLog.sort((a, b) => (a.date || '').localeCompare(b.date || '') || (Number(a.km) - Number(b.km)));
+
+    // Recalculer le compteur actuel du véhicule
+    if (vehicle.kmLog.length > 0) {
+      const latestLog = vehicle.kmLog[vehicle.kmLog.length - 1];
+      vehicle.currentKm = Number(latestLog.km);
+      vehicle.updatedAt = latestLog.date;
+    }
+
+    // Synchronisation en mode salle
+    if (window.FamilyRoom && typeof window.FamilyRoom.isRoomActive === 'function' && window.FamilyRoom.isRoomActive()) {
+      try {
+        const targetLogId = logId || removedEntry.id;
+        if (targetLogId && typeof window.FamilyRoom.deleteKmReading === 'function') {
+          await window.FamilyRoom.deleteKmReading(vehId, targetLogId);
+        }
+      } catch (err) {
+        console.warn("Erreur suppression relevé salle:", err);
+      }
+    }
+
+    saveState();
+    closeEditKmLogModal();
+    renderApp();
+    showToast("Relevé kilométrique supprimé du journal.", "info");
+  });
+
+  document.getElementById('btnCloseEditKmLogModal')?.addEventListener('click', closeEditKmLogModal);
+  document.getElementById('btnCancelEditKmLog')?.addEventListener('click', closeEditKmLogModal);
+  document.getElementById('modalEditKmLog')?.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'modalEditKmLog') {
+      closeEditKmLogModal();
+    }
+  });
+
   // Enregistrement du Service Worker pour PWA avec mise à jour automatique
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
@@ -7840,4 +8072,8 @@ if (typeof window !== 'undefined') {
   window.formatOrganizedNote = formatOrganizedNote;
   window.openNoteViewerModal = openNoteViewerModal;
   window.closeNoteViewerModal = closeNoteViewerModal;
+  window.isCurrentUserAdmin = isCurrentUserAdmin;
+  window.openEditKmLogModal = openEditKmLogModal;
+  window.closeEditKmLogModal = closeEditKmLogModal;
+  window.renderKmLogList = renderKmLogList;
 }

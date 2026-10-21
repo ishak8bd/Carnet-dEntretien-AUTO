@@ -51,7 +51,7 @@ service cloud.firestore {
     //
     // Subcollection: rooms/{roomId}/kmLogs/{logId}
     // Fields:
-    //   - vehicleId: string (1-100 chars, required) - Associated vehicle ID
+    //   - vehicleId: string (1-100 chars, required, immutable) - Associated vehicle ID
     //   - date: string|timestamp (required) - Reading date
     //   - km: number (>= 0, required) - Recorded odometer km
     //   - predictedKm: number (>= 0, required) - Predicted odometer km
@@ -459,8 +459,12 @@ service cloud.firestore {
                          request.resource.data.authorUid == request.auth.uid &&
                          isValidKmLog(request.resource.data);
 
-        // Km logs are append-only; updates prohibited
-        allow update: if false;
+        // Updates allowed only by room owner with schema validation (immutable author, vehicle, and createdAt)
+        allow update: if isRoomOwner(roomId) &&
+                         isValidKmLog(request.resource.data) &&
+                         request.resource.data.vehicleId == resource.data.vehicleId &&
+                         request.resource.data.authorUid == resource.data.authorUid &&
+                         request.resource.data.createdAt == resource.data.createdAt;
 
         // Delete allowed by room owner or original author
         allow delete: if isRoomOwner(roomId) ||

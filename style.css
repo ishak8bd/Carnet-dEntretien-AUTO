@@ -805,6 +805,43 @@ html[data-color-mode="light"] .header-right-actions {
   color: var(--text-muted);
 }
 
+.kmlog-edit-btn {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+  margin-left: 4px;
+}
+
+.kmlog-edit-btn:hover {
+  background: var(--primary-subtle);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: scale(1.08);
+}
+
+body.theme-liquid .kmlog-edit-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: var(--liquid-label-2) !important;
+}
+
+body.theme-liquid .kmlog-edit-btn:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
 /* Modals & Overlays */
 .modal-overlay {
   position: fixed;

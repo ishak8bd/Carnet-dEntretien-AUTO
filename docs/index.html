@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=66">
+  <link rel="stylesheet" href="style.css?v=67">
   <script>
     // Pré-application immédiate du logo, thème et mode sombre/clair pour éviter tout flash (FOUC)
     (function() {
@@ -2098,6 +2098,43 @@
     </div>
   </div>
 
+  <!-- MODAL: Modifier un relevé kilométrique du journal (Réservé Admin) -->
+  <div id="modalEditKmLog" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="editKmLogTitle">
+    <div class="modal-content" style="max-width: 440px;">
+      <div class="modal-header">
+        <h2 class="modal-title" id="editKmLogTitle">✏️ Modifier le relevé</h2>
+        <button type="button" class="modal-close" id="btnCloseEditKmLogModal" aria-label="Fermer">✕</button>
+      </div>
+      <p class="card-subtitle">
+        Action réservée à l'administrateur. La modification ou suppression recalibre immédiatement le compteur actuel, l'historique et les prédictions d'entretien.
+      </p>
+
+      <form id="formEditKmLog">
+        <input type="hidden" id="editKmLogVehicleId">
+        <input type="hidden" id="editKmLogId">
+        <input type="hidden" id="editKmLogOrigDate">
+        <input type="hidden" id="editKmLogOrigKm">
+
+        <div class="form-group">
+          <label class="form-label" for="editKmLogDateInput">Date du relevé</label>
+          <input type="date" id="editKmLogDateInput" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editKmLogKmInput">Kilométrage relevé (km)</label>
+          <input type="number" id="editKmLogKmInput" class="form-input" min="0" step="1" required placeholder="Ex: 125000">
+          <span class="form-help">Valeur réelle au compteur du véhicule.</span>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 18px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="submit" id="btnSubmitEditKmLog" class="btn-primary" style="flex: 1; min-width: 130px;">Enregistrer</button>
+          <button type="button" id="btnDeleteKmLog" class="btn-danger btn-sm" style="padding: 0 12px;" title="Supprimer définitivement ce relevé">🗑️ Supprimer</button>
+          <button type="button" id="btnCancelEditKmLog" class="btn-secondary">Annuler</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Barre de navigation mobile inférieure (4 Onglets) -->
   <nav class="bottom-nav" aria-label="Navigation principale" data-active-view="dashboard" data-active-index="0">
     <div class="nav-active-pill" id="navActivePill" aria-hidden="true"></div>
@@ -2148,6 +2185,6 @@
 
   <!-- Scripts de l'application -->
   <script type="module" src="room.js"></script>
-  <script src="app.js?v=66"></script>
+  <script src="app.js?v=67"></script>
 </body>
 </html>
